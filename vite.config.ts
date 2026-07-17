@@ -2,6 +2,7 @@ import path from 'path';
 import tailwindcss from '@tailwindcss/vite';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import react from '@vitejs/plugin-react';
+import { nitro } from 'nitro/vite';
 import { visualizer } from 'rollup-plugin-visualizer';
 import { defineConfig } from 'vite';
 
@@ -14,6 +15,18 @@ export default defineConfig(() => {
             tanstackStart({
                 spa: {
                     enabled: true,
+                },
+            }),
+            // Nitro owns the deployable server output. Vercel zero-config detects the nitro build
+            // and deploys server functions (auth/admin) as Vercel Functions. Without it the build
+            // emits a bare dist/ that Vercel can't run → root 404.
+            // traceDeps full-traces the @node-rs/argon2 native addon (+ its platform binary package)
+            // so nitro keeps it external and copies the .node file instead of trying to bundle it
+            // (rollup can't parse a .node). On Vercel's linux build the linux binary is copied.
+            nitro({
+                traceDeps: ['@node-rs/argon2*'],
+                rollupConfig: {
+                    external: [/@node-rs[\\/]argon2/],
                 },
             }),
             react({
