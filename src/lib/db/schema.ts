@@ -1,6 +1,7 @@
 // Drizzle schema — server-side only. Tables are added per ticket:
 //   T2 (#3)  — user, session
 //   T4a (#5) — team (adds user.team_id FK)
+//   T4c (#14) — invitation (one-time activation token)
 //   T5 (#7)  — preset, preset_version, shared_settings, shared_settings_version
 //   T6 (#8)  — snapshot, snapshot_fact, applied_ruleset, applied_ruleset_geo
 // See docs/specs/0001-multi-user-auth-teams-persistence.md and docs/adr/0002, 0006, 0007.
@@ -66,6 +67,29 @@ export const session = pgTable('session', {
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Invitation (T4c, #14): a one-time, expiring token that lets an `invited` user set their password
+// and activate. Only the sha256 hash of the token is stored — never the raw token. One active
+// invitation per user (`user_id` unique); re-inviting replaces the row. `on delete cascade` so
+// deleting a user drops their invitation.
+export const invitation = pgTable('invitation', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+        .notNull()
+        .unique()
+        .references(
+            () => {
+                return user.id;
+            },
+            { onDelete: 'cascade' }
+        ),
+    tokenHash: text('token_hash').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    // Null until redeemed; set to the redemption time so a token cannot be reused.
+    usedAt: timestamp('used_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type UserRow = typeof user.$inferSelect;
 export type SessionRow = typeof session.$inferSelect;
 export type TeamRow = typeof team.$inferSelect;
+export type InvitationRow = typeof invitation.$inferSelect;

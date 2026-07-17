@@ -39,9 +39,30 @@ export const updateUserInputSchema = z
         { error: 'No fields to update' }
     );
 
+export type DeleteUserInput = z.infer<typeof deleteUserInputSchema>;
+export const deleteUserInputSchema = z.object({
+    id: z.uuid(),
+});
+
+export type ResendInvitationInput = z.infer<typeof resendInvitationInputSchema>;
+export const resendInvitationInputSchema = z.object({
+    id: z.uuid(),
+});
+
 export type CreateTeamInput = z.infer<typeof createTeamInputSchema>;
 export const createTeamInputSchema = z.object({
     name: z.string().trim().min(1, { error: 'This field is required' }),
+});
+
+export type UpdateTeamInput = z.infer<typeof updateTeamInputSchema>;
+export const updateTeamInputSchema = z.object({
+    id: z.uuid(),
+    name: z.string().trim().min(1, { error: 'This field is required' }),
+});
+
+export type DeleteTeamInput = z.infer<typeof deleteTeamInputSchema>;
+export const deleteTeamInputSchema = z.object({
+    id: z.uuid(),
 });
 
 export type UpdateTeamLeadInput = z.infer<typeof updateTeamLeadInputSchema>;

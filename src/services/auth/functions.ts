@@ -1,11 +1,12 @@
 import type { MeData } from './types';
 import { createServerFn } from '@tanstack/react-start';
-import { eq } from 'drizzle-orm';
-import { verifyPassword } from '@/lib/auth/password';
+import { and, eq } from 'drizzle-orm';
+import { hashPassword, verifyPassword } from '@/lib/auth/password';
 import { createSession, destroySession, getSessionUser } from '@/lib/auth/session';
+import { hashInvitationToken } from '@/lib/auth/tokenHash';
 import { db } from '@/lib/db';
-import { user } from '@/lib/db/schema';
-import { loginInputSchema } from './schemas';
+import { invitation, user } from '@/lib/db/schema';
+import { activateInputSchema, loginInputSchema } from './schemas';
 
 // TanStack Start server functions (ADR-0008). Handlers run server-side; their DB/argon/session
 // imports are stripped from the client bundle. Input is Zod-validated via `inputValidator`.
@@ -45,6 +46,57 @@ export const loginFn = createServerFn({ method: 'POST' })
         await createSession(found.id);
 
         return { id: found.id, email: found.email, role: found.role, status: found.status };
+    });
+
+// Redeem an invitation (T4c, #14): a public endpoint — the token IS the credential. Sets the user's
+// password, flips `invited` → `active`, burns the token, and signs them in. All errors collapse to
+// one generic message so a probe cannot distinguish unknown / used / expired / already-active.
+const INVALID_INVITATION_MESSAGE = 'This invitation link is invalid or has expired';
+
+export const activateFn = createServerFn({ method: 'POST' })
+    .inputValidator(activateInputSchema)
+    .handler(async ({ data }): Promise<MeData> => {
+        const tokenHash = hashInvitationToken(data.token);
+
+        const [invite] = await db
+            .select({
+                id: invitation.id,
+                userId: invitation.userId,
+                expiresAt: invitation.expiresAt,
+                usedAt: invitation.usedAt,
+            })
+            .from(invitation)
+            .where(eq(invitation.tokenHash, tokenHash))
+            .limit(1);
+
+        if (!invite || invite.usedAt || invite.expiresAt <= new Date()) {
+            throw new Error(INVALID_INVITATION_MESSAGE);
+        }
+
+        const passwordHash = await hashPassword(data.password);
+
+        const activated = await db.transaction(async (tx) => {
+            // Gate on `status = 'invited'` so a concurrent redemption or an already-active account can
+            // never be re-activated — a no-match returns undefined and aborts.
+            const [row] = await tx
+                .update(user)
+                .set({ passwordHash, status: 'active' })
+                .where(and(eq(user.id, invite.userId), eq(user.status, 'invited')))
+                .returning({ id: user.id, email: user.email, role: user.role, status: user.status });
+
+            if (!row) {
+                throw new Error(INVALID_INVITATION_MESSAGE);
+            }
+
+            // Burn the token — single use.
+            await tx.update(invitation).set({ usedAt: new Date() }).where(eq(invitation.id, invite.id));
+
+            return row;
+        });
+
+        await createSession(activated.id);
+
+        return activated;
     });
 
 export const logoutFn = createServerFn({ method: 'POST' }).handler(async () => {

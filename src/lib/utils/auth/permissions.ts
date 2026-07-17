@@ -15,6 +15,10 @@ export const ROLES_CONFIG = {
 
 export type RolePermissionsKeys = ObjectDotNotation<typeof ROLES_PERMISSIONS>;
 export const ROLES_PERMISSIONS = {
+    // Admin panel (T4b, #6) — Head-only. Mirrors the server-side `requireHead` gate on the admin API.
+    admin: {
+        view: [ROLES_IDS.head],
+    },
     merchants: {
         view: [ROLES_IDS.teamLead, ROLES_IDS.head],
         item: {

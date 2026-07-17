@@ -1,6 +1,6 @@
-import type { LoginInput } from './schemas';
+import type { ActivateInput, LoginInput } from './schemas';
 import { mutationOptions, queryOptions } from '@tanstack/react-query';
-import { loginFn, logoutFn, meFn } from './functions';
+import { activateFn, loginFn, logoutFn, meFn } from './functions';
 import { authKeys } from './queryKeys';
 
 export const meQueryOptions = () => {
@@ -25,6 +25,19 @@ export const loginMutationOptions = () => {
         onSuccess(data, _variables, _onMutateResult, { client }) {
             // Prime the `me` cache with the authenticated user. Using ensureQueryData here would
             // return the still-fresh `null` from the pre-login check and bounce the auth guard.
+            client.setQueryData(authKeys.meQueryKey(), data);
+        },
+    });
+};
+
+export const activateMutationOptions = () => {
+    return mutationOptions({
+        mutationKey: authKeys.activateMutationKey(),
+        mutationFn(data: ActivateInput) {
+            return activateFn({ data });
+        },
+        onSuccess(data, _variables, _onMutateResult, { client }) {
+            // Activation signs the user in — prime the `me` cache so the auth guard passes on redirect.
             client.setQueryData(authKeys.meQueryKey(), data);
         },
     });

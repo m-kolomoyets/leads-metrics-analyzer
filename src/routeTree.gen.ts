@@ -14,9 +14,11 @@ import { Route as PublicRouteRouteImport } from './routes/_public/route'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as PublicIndexRouteImport } from './routes/_public/index'
 import { Route as UnauthenticatedLoginIndexRouteImport } from './routes/_unauthenticated/login/index'
+import { Route as UnauthenticatedActivateIndexRouteImport } from './routes/_unauthenticated/activate/index'
 import { Route as AuthenticatedVouchersIndexRouteImport } from './routes/_authenticated/vouchers/index'
 import { Route as AuthenticatedMerchantsIndexRouteImport } from './routes/_authenticated/merchants/index'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard/index'
+import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 
 const UnauthenticatedRouteRoute = UnauthenticatedRouteRouteImport.update({
   id: '/_unauthenticated',
@@ -41,6 +43,12 @@ const UnauthenticatedLoginIndexRoute =
     path: '/login/',
     getParentRoute: () => UnauthenticatedRouteRoute,
   } as any)
+const UnauthenticatedActivateIndexRoute =
+  UnauthenticatedActivateIndexRouteImport.update({
+    id: '/activate/',
+    path: '/activate/',
+    getParentRoute: () => UnauthenticatedRouteRoute,
+  } as any)
 const AuthenticatedVouchersIndexRoute =
   AuthenticatedVouchersIndexRouteImport.update({
     id: '/vouchers/',
@@ -59,19 +67,28 @@ const AuthenticatedDashboardIndexRoute =
     path: '/dashboard/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof PublicIndexRoute
+  '/admin/': typeof AuthenticatedAdminIndexRoute
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/merchants/': typeof AuthenticatedMerchantsIndexRoute
   '/vouchers/': typeof AuthenticatedVouchersIndexRoute
+  '/activate/': typeof UnauthenticatedActivateIndexRoute
   '/login/': typeof UnauthenticatedLoginIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof PublicIndexRoute
+  '/admin': typeof AuthenticatedAdminIndexRoute
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
   '/merchants': typeof AuthenticatedMerchantsIndexRoute
   '/vouchers': typeof AuthenticatedVouchersIndexRoute
+  '/activate': typeof UnauthenticatedActivateIndexRoute
   '/login': typeof UnauthenticatedLoginIndexRoute
 }
 export interface FileRoutesById {
@@ -80,25 +97,43 @@ export interface FileRoutesById {
   '/_public': typeof PublicRouteRouteWithChildren
   '/_unauthenticated': typeof UnauthenticatedRouteRouteWithChildren
   '/_public/': typeof PublicIndexRoute
+  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/_authenticated/merchants/': typeof AuthenticatedMerchantsIndexRoute
   '/_authenticated/vouchers/': typeof AuthenticatedVouchersIndexRoute
+  '/_unauthenticated/activate/': typeof UnauthenticatedActivateIndexRoute
   '/_unauthenticated/login/': typeof UnauthenticatedLoginIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard/' | '/merchants/' | '/vouchers/' | '/login/'
+  fullPaths:
+    | '/'
+    | '/admin/'
+    | '/dashboard/'
+    | '/merchants/'
+    | '/vouchers/'
+    | '/activate/'
+    | '/login/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/merchants' | '/vouchers' | '/login'
+  to:
+    | '/'
+    | '/admin'
+    | '/dashboard'
+    | '/merchants'
+    | '/vouchers'
+    | '/activate'
+    | '/login'
   id:
     | '__root__'
     | '/_authenticated'
     | '/_public'
     | '/_unauthenticated'
     | '/_public/'
+    | '/_authenticated/admin/'
     | '/_authenticated/dashboard/'
     | '/_authenticated/merchants/'
     | '/_authenticated/vouchers/'
+    | '/_unauthenticated/activate/'
     | '/_unauthenticated/login/'
   fileRoutesById: FileRoutesById
 }
@@ -145,6 +180,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UnauthenticatedLoginIndexRouteImport
       parentRoute: typeof UnauthenticatedRouteRoute
     }
+    '/_unauthenticated/activate/': {
+      id: '/_unauthenticated/activate/'
+      path: '/activate'
+      fullPath: '/activate/'
+      preLoaderRoute: typeof UnauthenticatedActivateIndexRouteImport
+      parentRoute: typeof UnauthenticatedRouteRoute
+    }
     '/_authenticated/vouchers/': {
       id: '/_authenticated/vouchers/'
       path: '/vouchers'
@@ -166,16 +208,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin/': {
+      id: '/_authenticated/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
   AuthenticatedDashboardIndexRoute: typeof AuthenticatedDashboardIndexRoute
   AuthenticatedMerchantsIndexRoute: typeof AuthenticatedMerchantsIndexRoute
   AuthenticatedVouchersIndexRoute: typeof AuthenticatedVouchersIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   AuthenticatedDashboardIndexRoute: AuthenticatedDashboardIndexRoute,
   AuthenticatedMerchantsIndexRoute: AuthenticatedMerchantsIndexRoute,
   AuthenticatedVouchersIndexRoute: AuthenticatedVouchersIndexRoute,
@@ -197,10 +248,12 @@ const PublicRouteRouteWithChildren = PublicRouteRoute._addFileChildren(
 )
 
 interface UnauthenticatedRouteRouteChildren {
+  UnauthenticatedActivateIndexRoute: typeof UnauthenticatedActivateIndexRoute
   UnauthenticatedLoginIndexRoute: typeof UnauthenticatedLoginIndexRoute
 }
 
 const UnauthenticatedRouteRouteChildren: UnauthenticatedRouteRouteChildren = {
+  UnauthenticatedActivateIndexRoute: UnauthenticatedActivateIndexRoute,
   UnauthenticatedLoginIndexRoute: UnauthenticatedLoginIndexRoute,
 }
 
