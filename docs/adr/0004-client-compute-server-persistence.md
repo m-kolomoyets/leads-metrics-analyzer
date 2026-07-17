@@ -1,5 +1,12 @@
 # Client-side compute, server-side persistence via a pure domain layer
 
+> **Status: partially superseded by [0006](0006-authenticated-api-backend.md).** The "backend is
+> just a passive SQL DB reached by a thin API, no auth" stance no longer holds — multi-user email
+> login and role-based visibility require an **authenticated** API that enforces authorization
+> server-side. What still stands: analysis **compute** stays client-side on a pure domain layer,
+> `src/lib/db` runs server-side only, and Snapshots must be self-sufficient. What changed: the
+> "single-user, no auth, delete the auth scaffolding" consequence below is reversed.
+
 The app parses CSVs and computes all metrics **in the browser** — files never leave the machine.
 Persistence (presets, facts + verdict Snapshots) targets **Postgres via drizzle-orm on the
 server**, which the browser reaches through a thin API, never directly.
