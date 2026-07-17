@@ -1,8 +1,9 @@
-import type { AdminTeam, AdminUser } from './types';
+import type { AdminTeam, AdminUser, InvitedUser } from './types';
 import { randomBytes } from 'node:crypto';
 import { createServerFn } from '@tanstack/react-start';
 import { eq } from 'drizzle-orm';
 import { requireHead } from '@/lib/auth/guards';
+import { issueInvitation } from '@/lib/auth/invitation';
 import { hashPassword } from '@/lib/auth/password';
 import { db } from '@/lib/db';
 import { team, user } from '@/lib/db/schema';
@@ -10,6 +11,8 @@ import {
     createTeamInputSchema,
     createUserInputSchema,
     deleteTeamInputSchema,
+    deleteUserInputSchema,
+    resendInvitationInputSchema,
     updateTeamInputSchema,
     updateTeamLeadInputSchema,
     updateUserInputSchema,
@@ -69,17 +72,19 @@ export const createTeamFn = createServerFn({ method: 'POST' })
 
 export const createUserFn = createServerFn({ method: 'POST' })
     .inputValidator(createUserInputSchema)
-    .handler(async ({ data }): Promise<AdminUser> => {
+    .handler(async ({ data }): Promise<InvitedUser> => {
         await requireHead();
 
-        // A created user is invited, not self-registered — no chosen password yet. Store a hash of
-        // an unguessable random secret so the NOT NULL column holds; the account cannot log in until
-        // an activation flow (out of scope here) sets a real password, and `invited`/`disabled`
-        // statuses already block login regardless.
+        // A created user is invited, not self-registered — no chosen password yet. Store a hash of an
+        // unguessable random secret so the NOT NULL column holds; the account cannot log in until the
+        // activation flow (T4c) sets a real password, and `invited`/`disabled` statuses block login
+        // regardless.
         const passwordHash = await hashPassword(randomBytes(32).toString('hex'));
 
+        let row: AdminUser;
+
         try {
-            const [row] = await db
+            [row] = await db
                 .insert(user)
                 .values({
                     email: data.email,
@@ -89,8 +94,6 @@ export const createUserFn = createServerFn({ method: 'POST' })
                     teamId: data.teamId ?? null,
                 })
                 .returning(USER_COLUMNS);
-
-            return row;
         } catch (error) {
             if (isUniqueViolation(error)) {
                 throw new Error('A user with this email already exists');
@@ -98,6 +101,60 @@ export const createUserFn = createServerFn({ method: 'POST' })
 
             throw error;
         }
+
+        // Only an invited user needs to activate — an explicitly-active create (rare) skips the token.
+        const activationToken = row.status === 'invited' ? await issueInvitation(row.id) : null;
+
+        return { ...row, activationToken };
+    });
+
+export const deleteUserFn = createServerFn({ method: 'POST' })
+    .inputValidator(deleteUserInputSchema)
+    .handler(async ({ data }): Promise<{ id: string }> => {
+        const me = await requireHead();
+
+        // Guard against self-deletion — a Head removing their own account would revoke their session
+        // mid-request and could orphan administration.
+        if (me.id === data.id) {
+            throw new Error('You cannot delete your own account');
+        }
+
+        const deleted = await db.transaction(async (tx) => {
+            // If the user leads any team, leave that team leaderless first (spec: unassign the lead).
+            // The FK is `on delete set null` too, but doing it explicitly keeps the intent legible.
+            await tx.update(team).set({ leadId: null }).where(eq(team.leadId, data.id));
+
+            const [row] = await tx.delete(user).where(eq(user.id, data.id)).returning({ id: user.id });
+
+            return row;
+        });
+
+        if (!deleted) {
+            throw new Error('User not found');
+        }
+
+        return deleted;
+    });
+
+export const resendInvitationFn = createServerFn({ method: 'POST' })
+    .inputValidator(resendInvitationInputSchema)
+    .handler(async ({ data }): Promise<InvitedUser> => {
+        await requireHead();
+
+        const [row] = await db.select(USER_COLUMNS).from(user).where(eq(user.id, data.id)).limit(1);
+
+        if (!row) {
+            throw new Error('User not found');
+        }
+
+        // Re-inviting only makes sense for someone who has not activated yet.
+        if (row.status !== 'invited') {
+            throw new Error('Only invited users can be re-invited');
+        }
+
+        const activationToken = await issueInvitation(row.id);
+
+        return { ...row, activationToken };
     });
 
 export const updateUserFn = createServerFn({ method: 'POST' })

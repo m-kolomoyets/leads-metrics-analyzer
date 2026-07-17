@@ -6,6 +6,9 @@ export const authKeys = {
     loginMutationKey() {
         return [...authKeys.all, 'login'] as const;
     },
+    activateMutationKey() {
+        return [...authKeys.all, 'activate'] as const;
+    },
     logoutMutationKey() {
         return [...authKeys.all, 'logout'] as const;
     },

@@ -2,22 +2,17 @@ import type { AdminUser } from '@/services/admin/types';
 import type { UsersSectionProps } from './types';
 import { useState } from 'react';
 import { PlusIcon } from 'lucide-react';
-import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/Sheet';
-import { getTeamName } from '../../utils/teamOptions';
 import { CreateUserForm } from '../CreateUserForm';
 import { EditUserForm } from '../EditUserForm';
+import { InvitePanel } from '../InvitePanel';
+import { UserRow } from '../UserRow';
 
-const STATUS_VARIANT = {
-    active: 'default',
-    invited: 'secondary',
-    disabled: 'destructive',
-} as const;
-
-function UsersSection({ users, teams }: UsersSectionProps) {
+function UsersSection({ users, teams, currentUserId }: UsersSectionProps) {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+    const [invitingUser, setInvitingUser] = useState<AdminUser | null>(null);
 
     return (
         <section className="flex flex-col gap-4">
@@ -48,27 +43,14 @@ function UsersSection({ users, teams }: UsersSectionProps) {
                     <tbody>
                         {users.map((user) => {
                             return (
-                                <tr key={user.id} className="border-b last:border-b-0">
-                                    <td className="px-3 py-2">{user.email}</td>
-                                    <td className="px-3 py-2">
-                                        <Badge variant="outline">{user.role}</Badge>
-                                    </td>
-                                    <td className="px-3 py-2">{getTeamName(user.teamId, teams)}</td>
-                                    <td className="px-3 py-2">
-                                        <Badge variant={STATUS_VARIANT[user.status]}>{user.status}</Badge>
-                                    </td>
-                                    <td className="px-3 py-2 text-right">
-                                        <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            onClick={() => {
-                                                setEditingUser(user);
-                                            }}
-                                        >
-                                            Edit
-                                        </Button>
-                                    </td>
-                                </tr>
+                                <UserRow
+                                    key={user.id}
+                                    user={user}
+                                    teams={teams}
+                                    currentUserId={currentUserId}
+                                    onEdit={setEditingUser}
+                                    onInvite={setInvitingUser}
+                                />
                             );
                         })}
                     </tbody>
@@ -116,6 +98,25 @@ function UsersSection({ users, teams }: UsersSectionProps) {
                             />
                         )}
                     </div>
+                </SheetContent>
+            </Sheet>
+
+            <Sheet
+                open={!!invitingUser}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setInvitingUser(null);
+                    }
+                }}
+            >
+                <SheetContent className="gap-0">
+                    <SheetHeader>
+                        <SheetTitle>Invite link</SheetTitle>
+                        <SheetDescription>
+                            {invitingUser ? `Generate a one-time activation link for ${invitingUser.email}.` : null}
+                        </SheetDescription>
+                    </SheetHeader>
+                    <div className="p-4">{!!invitingUser && <InvitePanel userId={invitingUser.id} />}</div>
                 </SheetContent>
             </Sheet>
         </section>

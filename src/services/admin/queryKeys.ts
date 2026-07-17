@@ -9,8 +9,14 @@ export const adminKeys = {
     createUserMutationKey() {
         return [...adminKeys.all, 'create-user'] as const;
     },
+    resendInvitationMutationKey() {
+        return [...adminKeys.all, 'resend-invitation'] as const;
+    },
     updateUserMutationKey() {
         return [...adminKeys.all, 'update-user'] as const;
+    },
+    deleteUserMutationKey() {
+        return [...adminKeys.all, 'delete-user'] as const;
     },
     createTeamMutationKey() {
         return [...adminKeys.all, 'create-team'] as const;
