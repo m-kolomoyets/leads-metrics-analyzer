@@ -2,10 +2,12 @@
 
 ## ⚙️ Main tech stack
 
-- **[Vite](https://vitejs.dev)** - Lightning-fast build tool with HMR;
+- **[Vite](https://vitejs.dev)** - Lightning-fast build tool with HMR (pinned to Vite 7, see ADR-0008);
 - **[React](https://react.dev)** - Core framework with compiler optimizations;
 - **[TypeScript](https://www.typescriptlang.org)** - Type-safe development with strict mode;
+- **[TanStack Start](https://tanstack.com/start/latest)** - SPA-mode server functions (auth + sessions) on TanStack Router;
 - **[TanStack Router](https://tanstack.com/router/latest)** - Type-safe, file-based routing with code-splitting;
+- **[Drizzle ORM](https://orm.drizzle.team)** + **[Postgres](https://www.postgresql.org)** - Server-side schema, migrations, and sessions;
 - **[TanStack Query](https://tanstack.com/query/latest)** - Powerful async state management;
 - **[TanStack Form](https://tanstack.com/form/latest)** - Type-safe form state management;
 - **[TailwindCSS](https://tailwindcss.com)** - Utility-first styling;
@@ -18,7 +20,6 @@
 - **[StyleLint](https://stylelint.io)** - CSS linting;
 - **[Husky](https://typicode.github.io/husky)** - Git hooks;
 - **[Knip](https://knip.dev)** - Unused dependency detection;
-- **[MSW](https://mswjs.io/docs)** - Mock Service Worker (MSW) is an API mocking library for browser and Node.js;
 
 ##  🚀 Quick start
 
@@ -172,14 +173,13 @@
 -   `src/styles` - contains global style files:
     -   `index.css` - the main CSS file;
 
--   `src/main.tsx` - entry point of the application;
+-   `src/router.tsx` - TanStack Start `getRouter()` factory (client + prerender routers);
+-   `src/routes/__root.tsx` - the root document (HTML shell, `HeadContent`/`Scripts`, theme script, providers). TanStack Start owns the client/server entries, so there is no `main.tsx` or `index.html`;
+-   `src/lib/db` - server-only Drizzle connection + schema; imported only inside server functions;
+-   `src/lib/auth` - server-only password hashing (Argon2id) and session helpers;
+-   `src/services/auth` - `login`/`logout`/`me` server functions (`createServerFn`) + their query/mutation options;
 -   `src/vite-env.d.ts` - Vite environment type definitions. This file should be updated every time you add new environment variables;
 -   `src/routeTree.gen.ts` - auto-generated route tree file (do not edit manually);
--   `src/mocks` - Mock Service Worker (MSW) configuration and request handlers:
-    - `handlers.ts` - the request handlers file;
-    - `browser.ts` - MSW browser service worker setup;
-    - `src/mocks/api` contains mock api. Should consist of:
-        - `<api>.ts` - the mock api file itself;
 -   `public/` - can contain static files such as images, fonts, videos, documents, favicons, etc.;
 
 #### Build and output directories
@@ -190,8 +190,8 @@
 
 #### Configuration files
 
--   `index.html` - main HTML template file with meta tags, font loading, and root div element;
--   `vite.config.ts` - Vite configuration including plugins, build settings, and dev server options;
+-   `vite.config.ts` - Vite configuration including the TanStack Start plugin, build settings, and dev server options;
+-   `drizzle.config.ts` - Drizzle Kit configuration (schema path, migrations output, Postgres credentials);
 -   `tsconfig.json` - main TypeScript configuration;
 -   `tsconfig.app.json` - TypeScript configuration for application code;
 -   `tsconfig.node.json` - TypeScript configuration for Node.js (Vite config);

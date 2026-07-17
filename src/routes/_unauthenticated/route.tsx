@@ -1,14 +1,30 @@
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
 import { z } from 'zod';
 import { FALLBACK_REDIRECT } from '@/lib/constants';
-import { getAuthToken } from '@/lib/utils/auth/tokens';
+import { meQueryOptions } from '@/services/auth/queries';
 
 export const Route = createFileRoute('/_unauthenticated')({
     validateSearch: z.object({
-        redirect: z.string().optional().catch(''),
+        // Only accept internal paths ("/…" but not "//…") so a crafted ?redirect=https://evil.com
+        // cannot turn login into an open redirect. Anything else falls back to '' (→ dashboard).
+        redirect: z
+            .string()
+            .refine((value) => {
+                return value.startsWith('/') && !value.startsWith('//');
+            })
+            .optional()
+            .catch(''),
     }),
-    beforeLoad({ search }) {
-        if (getAuthToken()) {
+    async beforeLoad({ context: { queryClient }, search }) {
+        let me = null;
+
+        try {
+            me = await queryClient.ensureQueryData(meQueryOptions());
+        } catch {
+            // Auth check failed (e.g. transient DB error) — render the login page rather than break it.
+        }
+
+        if (me) {
             throw redirect({
                 to: search.redirect || FALLBACK_REDIRECT,
                 replace: true,

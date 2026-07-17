@@ -2,5 +2,5 @@
 **/dist
 **/tmp
 routeTree.gen.ts
-/public/mockServiceWorker.js
+/drizzle
 pnpm-lock.yaml

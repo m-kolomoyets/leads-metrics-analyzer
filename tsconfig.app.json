@@ -5,7 +5,10 @@
         "useDefineForClassFields": true,
         "lib": ["ES2022", "DOM", "DOM.Iterable"],
         "module": "ESNext",
-        "types": ["vite/client"],
+        // node types are needed because TanStack Start server functions (and src/lib/db) run
+        // server-side in this same Vite app; the client/server split is done by the Start bundler,
+        // not by tsconfig isolation anymore (ADR-0008).
+        "types": ["vite/client", "node"],
         "skipLibCheck": true,
 
         /* Bundler mode */
@@ -28,6 +31,5 @@
             "@/*": ["./src/*"]
         }
     },
-    "include": ["src"],
-    "exclude": ["src/lib/db"]
+    "include": ["src"]
 }
