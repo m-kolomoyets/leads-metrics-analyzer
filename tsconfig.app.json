@@ -8,7 +8,7 @@
         // node types are needed because TanStack Start server functions (and src/lib/db) run
         // server-side in this same Vite app; the client/server split is done by the Start bundler,
         // not by tsconfig isolation anymore (ADR-0008).
-        "types": ["vite/client", "node"],
+        "types": ["vite/client", "node", "vitest/globals"],
         "skipLibCheck": true,
 
         /* Bundler mode */
