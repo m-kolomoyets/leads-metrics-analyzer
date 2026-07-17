@@ -39,6 +39,11 @@ export const updateUserInputSchema = z
         { error: 'No fields to update' }
     );
 
+export type ResendInvitationInput = z.infer<typeof resendInvitationInputSchema>;
+export const resendInvitationInputSchema = z.object({
+    id: z.uuid(),
+});
+
 export type CreateTeamInput = z.infer<typeof createTeamInputSchema>;
 export const createTeamInputSchema = z.object({
     name: z.string().trim().min(1, { error: 'This field is required' }),

@@ -8,6 +8,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { getTeamName } from '../../utils/teamOptions';
 import { CreateUserForm } from '../CreateUserForm';
 import { EditUserForm } from '../EditUserForm';
+import { InvitePanel } from '../InvitePanel';
 
 const STATUS_VARIANT = {
     active: 'default',
@@ -18,6 +19,7 @@ const STATUS_VARIANT = {
 function UsersSection({ users, teams }: UsersSectionProps) {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+    const [invitingUser, setInvitingUser] = useState<AdminUser | null>(null);
 
     return (
         <section className="flex flex-col gap-4">
@@ -57,7 +59,18 @@ function UsersSection({ users, teams }: UsersSectionProps) {
                                     <td className="px-3 py-2">
                                         <Badge variant={STATUS_VARIANT[user.status]}>{user.status}</Badge>
                                     </td>
-                                    <td className="px-3 py-2 text-right">
+                                    <td className="px-3 py-2 text-right whitespace-nowrap">
+                                        {user.status === 'invited' && (
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() => {
+                                                    setInvitingUser(user);
+                                                }}
+                                            >
+                                                Invite link
+                                            </Button>
+                                        )}
                                         <Button
                                             size="sm"
                                             variant="ghost"
@@ -116,6 +129,25 @@ function UsersSection({ users, teams }: UsersSectionProps) {
                             />
                         )}
                     </div>
+                </SheetContent>
+            </Sheet>
+
+            <Sheet
+                open={!!invitingUser}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setInvitingUser(null);
+                    }
+                }}
+            >
+                <SheetContent className="gap-0">
+                    <SheetHeader>
+                        <SheetTitle>Invite link</SheetTitle>
+                        <SheetDescription>
+                            {invitingUser ? `Generate a one-time activation link for ${invitingUser.email}.` : null}
+                        </SheetDescription>
+                    </SheetHeader>
+                    <div className="p-4">{!!invitingUser && <InvitePanel userId={invitingUser.id} />}</div>
                 </SheetContent>
             </Sheet>
         </section>

@@ -59,7 +59,7 @@ function TeamsSection({ users, teams }: TeamsSectionProps) {
                         }}
                     />
                 </FieldGroup>
-                <Field className="w-auto mt-6">
+                <Field className="w-auto mt-6.5">
                     <form.Subscribe
                         selector={(state) => {
                             return [state.canSubmit, state.isSubmitting];

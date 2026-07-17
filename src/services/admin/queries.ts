@@ -2,6 +2,7 @@ import type {
     CreateTeamInput,
     CreateUserInput,
     DeleteTeamInput,
+    ResendInvitationInput,
     UpdateTeamInput,
     UpdateTeamLeadInput,
     UpdateUserInput,
@@ -13,6 +14,7 @@ import {
     deleteTeamFn,
     listTeamsFn,
     listUsersFn,
+    resendInvitationFn,
     setTeamLeadFn,
     updateTeamFn,
     updateUserFn,
@@ -45,6 +47,15 @@ export const createUserMutationOptions = () => {
         },
         onSuccess(_data, _variables, _onMutateResult, { client }) {
             client.invalidateQueries({ queryKey: adminKeys.usersQueryKey() });
+        },
+    });
+};
+
+export const resendInvitationMutationOptions = () => {
+    return mutationOptions({
+        mutationKey: adminKeys.resendInvitationMutationKey(),
+        mutationFn(data: ResendInvitationInput) {
+            return resendInvitationFn({ data });
         },
     });
 };
