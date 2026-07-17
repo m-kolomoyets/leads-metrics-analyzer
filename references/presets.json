@@ -1,0 +1,58 @@
+{
+    "geoPresets": {
+        "IN": [
+            {
+                "name": "Тест ",
+                "installs": {
+                    "gy": "1",
+                    "yr": "2"
+                },
+                "regs": {
+                    "gy": "2",
+                    "yr": "4"
+                },
+                "sales": {
+                    "gy": "15",
+                    "yr": "40"
+                },
+                "clicks": {
+                    "gy": "0.7",
+                    "yr": "1"
+                }
+            }
+        ],
+        "KR": [
+            {
+                "name": "KR Olympus Slot",
+                "installs": {
+                    "gy": "10",
+                    "yr": "14"
+                },
+                "regs": {
+                    "gy": "14",
+                    "yr": "25"
+                },
+                "sales": {
+                    "gy": "100",
+                    "yr": "250"
+                },
+                "clicks": {
+                    "gy": "4",
+                    "yr": "6"
+                }
+            }
+        ]
+    },
+    "activePresetIdx": {
+        "IN": 0,
+        "KR": 0
+    },
+    "shared": {
+        "wasteZones": {
+            "gy": 7,
+            "yr": 15
+        },
+        "reviewMult": 2,
+        "commission": "7"
+    }
+}

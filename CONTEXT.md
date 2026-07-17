@@ -1,0 +1,234 @@
+# Campaign Analyzer
+
+Joins Facebook Ads spend data with Keitaro tracker conversion data to judge whether each
+advertising campaign should be scaled, held, or stopped — per country, per creative, per offer.
+
+Facebook knows what was **spent** and nothing about what it earned. Keitaro knows what was
+**earned** and nothing about what it cost. Neither side alone can answer "is this campaign
+making money?". This context exists to join them and answer that question.
+
+## Language
+
+### Funnel
+
+The stages a user passes through, in order. Each stage is a strict subset of the one before it.
+
+**Link Click**:
+A user who clicked a Facebook ad's link, counted once per user. The honest measure of how many
+people the ad reached — the raw `Clicks` column (repeat presses) is *not* used anywhere.
+Source: Keitaro **clicks report**, `UC (campaign)` column.
+_Avoid_: Click, unique click, UC, hit, visit
+
+**Install** (sheet: *Uniq*):
+A user who, after a Link Click, completed installation of the target app on an external service.
+Confirmed by postback, not observed directly — the gap between Link Clicks and Installs is real
+drop-off, not a reporting error.
+Source: Keitaro **main report**, `UC (campaign)` column.
+_Avoid_: Uniq, unique, UC, download, conversion
+
+**Registration** (sheet: *Conversion*):
+An Install who created an account in the target app.
+Source: Keitaro main report, `Conv.` column.
+_Avoid_: Reg, conversion, signup, lead
+
+**Sale** (sheet: *Deposit*):
+A Registration who deposited money. The event that earns Revenue.
+Source: Keitaro main report, `Sales` column.
+_Avoid_: Deposit, purchase, conversion, FTD
+
+**Revenue**:
+Money earned from Sales, gross, before Commission.
+Source: Keitaro main report, `Revenue` column.
+_Avoid_: Income, payout, earnings
+
+**Spend**:
+Money paid to Facebook to buy traffic, before Commission.
+Source: Facebook `Amount spent (USD)` column.
+_Avoid_: Cost, budget, ad spend
+
+> **Note on `UC (campaign)`**: the same column name means **Link Click** in the clicks report and
+> **Install** in the main report. Different metrics, differently-scoped reports. Never treat the
+> column name as the meaning — the *report* determines it.
+
+> **Uniques do not sum.** Link Clicks and Installs are *unique-per-user* counts. A user touching
+> two Campaigns is two rows at Campaign grain but one person at Geo grain. Summing Campaign rows
+> therefore *overstates* a Geo's unique totals (observed: KR installs 88 summed vs 69 true). The
+> app ingests Campaign-grained data and can only sum — so Geo unique counts read high, and a Geo
+> total can never be perfectly reconciled against Keitaro's own country-grouped view.
+
+### Dimensions
+
+The four axes every fact is measured along. Together they form the Fact Grain.
+
+**Geo**:
+The country a Campaign targets, identified by ISO-2 code. An attribute *of* a Campaign, not a
+dimension sliced across it — one Campaign runs one Geo. Facebook emits the code (`KR`) and is
+authoritative; Keitaro emits an English name (`South Korea`) that plays no part in joining.
+_Avoid_: Country, region, market, GEO
+
+**Account**:
+A Facebook ad account that pays for Spend. Carried by Keitaro as `Sub ID 4`.
+Source: Facebook `Account ID` = Keitaro `Sub ID 4`.
+_Avoid_: Ad account, profile, cabinet
+
+**Campaign**:
+A Facebook campaign — the unit a media buyer starts, stops, and scales. The primary subject of
+every verdict. Carried by Keitaro as `Sub ID 2`.
+Source: Facebook `Campaign ID` = Keitaro `Sub ID 2`.
+_Avoid_: Ad set, ad, adset
+
+**Creative**:
+The advertisement shown to a user. One Creative may run across many Campaigns, and one Campaign
+may run many Creatives.
+Source: Facebook `Ad name` = Keitaro `Sub ID 5`.
+_Avoid_: Ad, ad name, banner, media
+
+### Attribution
+
+**Fact Grain**:
+`Campaign × Creative × Date` — the finest level at which both Facebook and Keitaro can speak.
+Geo and Account are attributes of the Campaign, not part of the key, because a Campaign runs one
+Geo from one Account. Every table in the app is a roll-up of one join at this grain, which is
+what guarantees creative totals sum to campaign totals sum to geo totals.
+
+**Geo Total**:
+All Spend and Revenue recorded for a Geo, including Revenue that carries no Sub IDs because
+Facebook's macros failed to tag the referral. Answers "is this market making money?". Deliberately
+**greater than** the sum of its Campaigns — untagged Revenue is real money earned by these
+campaigns that simply cannot be traced to one of them.
+
+**Attributed**:
+The subset of Facts that joined to a Campaign. Answers "which campaign do I stop?". Every
+Campaign, Account, Creative, Offer and OS figure is Attributed. Only the Geo Total is not.
+
+**Join Key**:
+`Campaign ID` (Facebook) = `Sub ID 2` (Keitaro), alone. Country is deliberately excluded — a
+Campaign has exactly one Geo, so country could only ever cause a match to fail, never to succeed.
+Facebook is authoritative for Geo and Account; Keitaro's `Country` and `Sub ID 4` are ignored.
+
+**Offer**:
+The product a Sale monetized (e.g. `KR | Winum | RegForm (Slot) | CPA | 180 USD ...`). Known to
+Keitaro only — Facebook cannot see it, so an Offer's Spend is never measured, only Allocated.
+_Avoid_: Product, vertical, brand
+
+**OS**:
+The operating system of the user's device. Known to Keitaro only, so like Offer its Spend is
+Allocated, never measured. Every value present in the data is a valid OS — there is no
+"Other" bucket.
+_Avoid_: Platform, device
+
+**Allocated Spend**:
+Spend attributed to an Offer or OS in proportion to that Campaign's own Installs, because those
+dimensions sit below the Fact Grain and have no measured Spend of their own. Always an estimate;
+must be labelled as such wherever it is shown.
+_Avoid_: Estimated spend, est. spend, modelled spend
+
+### Money
+
+**Commission**:
+The fee a Seller charges on Spend. Buying $100 of Facebook traffic at 6% costs $106. Always part
+of cost — it is folded into Spend⁺, which every cost, Profit and ROI figure is built on.
+_Avoid_: Fee, markup, seller %
+
+**Spend⁺** (sheet: *Spend+%*):
+`Spend × (1 + Commission)` — the true cost of the traffic. **The numerator of every
+cost-per metric** (CPC, CPI, CPR, CPS) and the cost basis of Profit and ROI. Raw Spend appears
+only as a display column; no derived figure divides by it.
+_Avoid_: Gross spend, total spend, spend with commission
+
+**CPC / CPI / CPR / CPS**:
+Cost per Link Click / Install / Registration / Sale — each is `Spend⁺ ÷ count`. Sheet names:
+CPC, *UniqCost*, *ConversionCost*, *DepCost*. Lower is better; these are what Thresholds grade.
+
+**EPC**:
+`Revenue ÷ Installs` — earnings per install. Named "EPC" by convention; it is *not* per-click.
+
+**Click2inst / Inst2reg / Reg2dep**:
+Funnel conversion rates: Installs÷Link Clicks, Registrations÷Installs, Sales÷Registrations.
+
+**Seller**:
+A supplier of Facebook ad accounts, charging one Commission rate. Owns a set of Accounts; an
+Account belongs to exactly one Seller, never shared. Accounts claimed by no Seller fall back to
+the default Commission — and are surfaced as a warning, never defaulted silently.
+_Avoid_: Vendor, supplier, agency, provider
+
+**Profit**:
+`Revenue − Spend⁺`. What was actually earned after paying for the traffic.
+
+**ROI**:
+`(Revenue − Spend⁺) ÷ Spend⁺ × 100`. One definition everywhere — Geo, Account, Offer, OS.
+Commission is never omitted.
+_Avoid_: ROAS, return
+
+**Payout**:
+What an Offer pays per Sale, declared in the offer string (`CPA | 180 USD`). Deliberately *not*
+used to derive thresholds — a buyer may knowingly pay above Payout because postback lag and
+player lifetime value mean Revenue understates what a Sale is ultimately worth.
+
+### Judgement
+
+**Zone**:
+A traffic-light grade — `green`, `yellow`, `red`, or `neutral`. Applied to a cost metric by
+comparing it against a Threshold Pair.
+
+**Threshold Pair**:
+The `{gy, yr}` boundaries grading one metric: below `gy` is green, `gy`–`yr` inclusive is yellow,
+above `yr` is red. Lower cost is always better.
+
+**Verdict**:
+The single judgement rendered on a Campaign, derived from the deepest funnel stage that produced
+a result: Sales, else Registrations, else Installs, else Unique Clicks. Surfaced as an action —
+red = **СТОП**, yellow = **ТРИМАЄМО**, green = **БУСТ**, neutral = no call yet.
+_Avoid_: Bucket, status, decision, recommendation
+
+**Waste**:
+Spend that exceeds the red Threshold for the results achieved: `spend − yr × count`, floored at
+zero. Spend below that line is not waste — it is budget still legitimately working toward the
+next result. Only ever non-zero for a red Verdict.
+_Avoid_: Loss, burn, overspend
+
+**Ruleset**:
+The complete set of tunable judgement inputs: every Geo's Threshold Pairs and Waste Zones, plus
+the global Review Multiplier, default Commission and Seller rules.
+
+**Ruleset Version**:
+An immutable snapshot of a Ruleset. Editing never mutates — saving mints a new version. The unit
+a Snapshot references, so that a past judgement can always be reproduced exactly.
+
+**Snapshot**:
+A stored analysis: the Facts at Fact Grain plus the Verdicts they produced, bound to the Ruleset
+Version that produced them. Self-sufficient — a report can be rebuilt from a Snapshot alone.
+
+**Review Multiplier**:
+Global multiplier applied to a Geo's install `yr` threshold to detect a Problem Account.
+
+**Problem Account**:
+An Account whose Spend has outrun its results badly enough to suggest broken tracking or a broken
+launch rather than merely poor performance. Demands investigation, not a Verdict.
+
+### Data hygiene
+
+**Totals Row**:
+A summary row emitted by an export tool, identified by an empty key field (Facebook: empty
+`Country`; Keitaro: empty `Sub ID 2`). Represents the whole report, not a fact. Always discarded
+— counting it would double every total.
+_Avoid_: Summary row, grand total, aggregate row
+
+**Unfired Macro**:
+A Keitaro row whose `Sub ID 2` still holds its literal template (`{{campaign.id}}`) because the
+tracking macro never expanded. Campaign attribution is lost for good, but Geo and Account survive
+— the creative name still carries its Geo code and `Sub ID 4` still names the Account. Counts
+toward the Geo Total; never toward a Campaign.
+_Avoid_: Broken row, macro row, template row
+
+**Untagged Revenue**:
+Revenue on a Keitaro row where Facebook's macros returned an empty referral, leaving every Sub ID
+blank. Real money earned by these campaigns that cannot be traced to one of them. Its only Geo
+signal is Keitaro's country name — there is no creative to read a code from. Counts toward the
+Geo Total.
+_Avoid_: Orphan revenue, untracked revenue, unattributed revenue
+
+**Invalid Row**:
+A Keitaro main-report row with an empty `OS`. Discarded everywhere — not a fact about any
+Campaign.
+_Avoid_: Bot row, junk row, noise
