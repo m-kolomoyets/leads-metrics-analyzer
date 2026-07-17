@@ -1,14 +1,13 @@
 import { useMutation } from '@tanstack/react-query';
 import { getRouteApi, Link } from '@tanstack/react-router';
-import { isHTTPError } from 'ky';
 import { toast } from 'sonner';
 import { FALLBACK_REDIRECT } from '@/lib/constants';
 import { focusFirstError } from '@/lib/utils/focusFirstError';
-import { loginMutationOptions } from '@/services/authExample/queries';
+import { loginMutationOptions } from '@/services/auth/queries';
+import { loginInputSchema } from '@/services/auth/schemas';
 import { useAppForm } from '@/components/Form';
 import { Button } from '@/components/ui/Button';
 import { Field, FieldGroup, FieldSet } from '@/components/ui/Field';
-import { loginSchema } from './schemas';
 
 const routeApi = getRouteApi('/_unauthenticated/login/');
 
@@ -23,49 +22,36 @@ function LoginForm() {
 
     const form = useAppForm({
         defaultValues: {
-            username: '',
+            email: '',
             password: '',
         },
         validators: {
-            onSubmit: loginSchema,
+            onSubmit: loginInputSchema,
         },
         async onSubmit({ value, formApi }) {
-            await login(
-                {
-                    json: {
-                        ...value,
-                        // NOTE: For testing purposes, set expiresInMins to 1 minute
-                        expiresInMins: 1,
-                    },
+            await login(value, {
+                onSuccess() {
+                    navigate({
+                        to: redirectSearch || FALLBACK_REDIRECT,
+                        replace: true,
+                    });
                 },
-                {
-                    onSuccess() {
-                        navigate({
-                            to: redirectSearch || FALLBACK_REDIRECT,
-                            replace: true,
-                        });
-                    },
-                    onError(error) {
-                        if (isHTTPError(error) && typeof error.data === 'object') {
-                            formApi.setErrorMap({
-                                onSubmit: {
-                                    fields: {
-                                        // TODO: The API error messages should be aligned with BE engineers
-                                        username: {
-                                            message: error.data.message,
-                                        },
-                                        password: {
-                                            message: error.data.message,
-                                        },
-                                    },
+                onError(error) {
+                    // Server functions surface a thrown Error; show its message against both fields.
+                    if (error instanceof Error && error.message) {
+                        formApi.setErrorMap({
+                            onSubmit: {
+                                fields: {
+                                    email: { message: error.message },
+                                    password: { message: error.message },
                                 },
-                            });
-                        } else {
-                            toast.error(error.message);
-                        }
-                    },
-                }
-            );
+                            },
+                        });
+                    } else {
+                        toast.error('Login failed');
+                    }
+                },
+            });
         },
         onSubmitInvalid({ formApi }) {
             focusFirstError('#login-form', formApi.state.errorMap.onSubmit);
@@ -89,11 +75,15 @@ function LoginForm() {
                 <FieldSet>
                     <FieldGroup>
                         <form.AppField
-                            name="username"
+                            name="email"
                             children={(field) => {
                                 return (
-                                    <field.FormFieldWrapper label="Username">
-                                        <field.InputField placeholder="emilys" autoComplete="username" />
+                                    <field.FormFieldWrapper label="Email">
+                                        <field.InputField
+                                            type="email"
+                                            placeholder="you@example.com"
+                                            autoComplete="username"
+                                        />
                                     </field.FormFieldWrapper>
                                 );
                             }}

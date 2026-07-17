@@ -1,18 +1,20 @@
 import path from 'path';
 import tailwindcss from '@tailwindcss/vite';
-import { tanstackRouter } from '@tanstack/router-plugin/vite';
+import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import react from '@vitejs/plugin-react';
 import { visualizer } from 'rollup-plugin-visualizer';
 import { defineConfig } from 'vite';
-import { createHtmlPlugin } from 'vite-plugin-html';
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => {
+// TanStack Start in SPA mode (ADR-0008): the Start plugin replaces the standalone router plugin and
+// owns route generation + client/server entries. `react()` must come after it. See docs/adr/0008.
+export default defineConfig(() => {
     return {
         plugins: [
-            tanstackRouter({
-                target: 'react',
-                autoCodeSplitting: true,
+            tanstackStart({
+                spa: {
+                    enabled: true,
+                },
             }),
             react({
                 babel: {
@@ -24,21 +26,6 @@ export default defineConfig(({ mode }) => {
                 filename: './tmp/bundle-visualizer.html',
                 gzipSize: true,
                 brotliSize: true,
-            }),
-            createHtmlPlugin({
-                minify: true,
-                template: 'index.html',
-                inject: {
-                    data: {
-                        injectScript:
-                            mode === 'scan'
-                                ? `<script
-                                    crossOrigin="anonymous"
-                                    src="//unpkg.com/react-scan/dist/auto.global.js"
-                                  ></script>`
-                                : '',
-                    },
-                },
             }),
         ],
         build: {
@@ -66,6 +53,15 @@ export default defineConfig(({ mode }) => {
             alias: {
                 '@': path.resolve(__dirname, './src'),
             },
+        },
+        // @node-rs/argon2 is a native module used only inside server functions. Keep the client dep
+        // optimizer from following it (its wasm fallback has no resolvable entry) and keep it
+        // external to the server bundle so the native binding loads at runtime.
+        optimizeDeps: {
+            exclude: ['@node-rs/argon2'],
+        },
+        ssr: {
+            external: ['@node-rs/argon2'],
         },
         // Extra free PORTS if you need them (9199, 9889, 9521, 9836, 9713, 9407, 9491)
         server: {

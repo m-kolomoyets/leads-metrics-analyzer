@@ -28,7 +28,6 @@
         "prettier.config.js",
         "commitlint.config.js",
         "drizzle.config.ts",
-        "server",
-        "src/lib/db"
+        "scripts"
     ]
 }

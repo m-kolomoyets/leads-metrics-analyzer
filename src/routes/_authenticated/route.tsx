@@ -1,7 +1,6 @@
-import type { AuthenticatedState } from '@/services/authExample/types';
+import type { AuthenticatedState } from '@/services/auth/types';
 import { createFileRoute, isRedirect, redirect } from '@tanstack/react-router';
-import { getAuthToken, removeAuthToken, removeRefreshToken } from '@/lib/utils/auth/tokens';
-import { meQueryOptions } from '@/services/authExample/queries';
+import { meQueryOptions } from '@/services/auth/queries';
 import { MainLayout } from '@/components/layouts/MainLayout';
 
 export const Route = createFileRoute('/_authenticated')({
@@ -12,12 +11,12 @@ export const Route = createFileRoute('/_authenticated')({
             replace: true,
         } as const;
 
-        if (!getAuthToken()) {
-            throw redirect(unauthRedirectOptions);
-        }
-
         try {
             const me = await queryClient.ensureQueryData(meQueryOptions());
+
+            if (!me) {
+                throw redirect(unauthRedirectOptions);
+            }
 
             return { auth: { isAuthenticated: true, me } satisfies AuthenticatedState };
         } catch (error) {
@@ -25,8 +24,6 @@ export const Route = createFileRoute('/_authenticated')({
                 throw error;
             }
 
-            removeAuthToken();
-            removeRefreshToken();
             throw redirect(unauthRedirectOptions);
         }
     },

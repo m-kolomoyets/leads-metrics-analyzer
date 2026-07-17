@@ -1,37 +1,32 @@
 import type { ObjectDotNotation } from '@/lib/types';
-import type { AuthRole } from '@/services/authExample/types';
+import type { AuthRole } from '@/services/auth/types';
 import { notFound } from '@tanstack/react-router';
 import { ROLES_IDS } from '@/lib/constants';
 
+// NOTE: This is the template's demo route-gating (merchants/vouchers pages). The real, spec-driven
+// visibility model — row-scope + dimension-scope via `scopeFor(viewer)` — lands in T3 (#4).
 export const ROLES_CONFIG = {
-    [ROLES_IDS.admin]: {
-        id: ROLES_IDS.admin,
-        label: 'Admin',
-    },
-    [ROLES_IDS.moderator]: {
-        id: ROLES_IDS.moderator,
-        label: 'Moderator',
-    },
-    [ROLES_IDS.user]: {
-        id: ROLES_IDS.user,
-        label: 'User',
-    },
+    [ROLES_IDS.head]: { id: ROLES_IDS.head, label: 'Head' },
+    [ROLES_IDS.teamLead]: { id: ROLES_IDS.teamLead, label: 'Team Lead' },
+    [ROLES_IDS.buyer]: { id: ROLES_IDS.buyer, label: 'Buyer' },
+    [ROLES_IDS.designer]: { id: ROLES_IDS.designer, label: 'Designer' },
+    [ROLES_IDS.bdm]: { id: ROLES_IDS.bdm, label: 'BDM' },
 } as const;
 
 export type RolePermissionsKeys = ObjectDotNotation<typeof ROLES_PERMISSIONS>;
 export const ROLES_PERMISSIONS = {
     merchants: {
-        view: [ROLES_IDS.moderator, ROLES_IDS.admin],
+        view: [ROLES_IDS.teamLead, ROLES_IDS.head],
         item: {
-            view: [ROLES_IDS.moderator, ROLES_IDS.admin],
-            update: [ROLES_IDS.admin],
+            view: [ROLES_IDS.teamLead, ROLES_IDS.head],
+            update: [ROLES_IDS.head],
         },
     },
     vouchers: {
-        view: [ROLES_IDS.admin],
-        update: [ROLES_IDS.admin],
+        view: [ROLES_IDS.head],
+        update: [ROLES_IDS.head],
         item: {
-            view: [ROLES_IDS.admin],
+            view: [ROLES_IDS.head],
         },
     },
 } as const;
