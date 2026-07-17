@@ -24,8 +24,10 @@ type VisibilityScope = {
 | designer | all | creative only |
 | bdm | all | offer only |
 
-Every list/read query applies the descriptor as a filter; the API layer never hand-rolls a role
-check (the Head-only admin endpoints add one extra `role === 'head'` edge guard on top).
+Every list/read query applies the descriptor as a filter; the server function never hand-rolls a
+role check (the Head-only admin server functions add one extra `role === 'head'` edge guard on
+top). `scopeFor` is invoked from inside the server functions ([0006](0006-authenticated-api-backend.md)),
+where the viewer's identity is trusted.
 
 ## Why
 

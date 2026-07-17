@@ -123,17 +123,21 @@ work.
 
 ## Implementation Decisions
 
-### Architecture (supersedes ADR-0004's "no backend" stance)
+### Architecture (see ADR-0006, ADR-0008)
 
-- A **backend API owns the database, `DATABASE_URL`, and authentication**. The SPA calls it over
-  HTTP with a session token. `src/lib/db` (drizzle + `postgres-js`, already installed:
-  `drizzle-orm@1.0.0-rc.4`) runs **server-side only** and must never be bundled into the client —
-  shipping the DB credential to the browser would expose the whole database.
-- ADR-0004 chose client-only compute with no auth. Email login + role-based visibility make
-  client-only unenforceable (a client can lie about its role). ADR-0004 needs a **superseding ADR**
-  recording the shift to a thin authenticated API. Client-side *compute* of the analysis may
-  remain; **authorization** does not.
-- A new ADR should record the **single access-policy seam** (below) as the authorization boundary.
+- Server-side logic — authentication, authorization, DB access — lives in **TanStack Start server
+  functions** colocated in `src/services/*` (`createServerFn(...).inputValidator(zod).handler(...)`),
+  **not** a separate API server. The whole app builds and dev-serves on **one port**. Server-fn
+  bodies are stripped from the client bundle, so `DATABASE_URL` and `src/lib/db` (drizzle +
+  `postgres-js`) stay server-side.
+- ADR-0004 chose client-only compute with no auth; email login + role-based visibility make that
+  unenforceable (a client can lie about its role). ADR-0006 records the shift. Client-side *compute*
+  of the analysis may remain; **authorization** and DB access do not.
+- **Requires Vite 7** — TanStack Start is broken on Vite 8 (ADR-0008); the build was downgraded
+  (rolldown → Rollup, React Compiler moved into `@vitejs/plugin-react`) in T1.
+- Inputs are validated with **Zod** at the server-function boundary, not just TypeScript.
+- Authorization flows through the **single access-policy seam** (ADR-0007), invoked inside server
+  functions.
 
 ### Authentication
 
@@ -201,16 +205,18 @@ work.
   os, spend, spend_plus, revenue, link_clicks, installs, regs, sales, verdict, zone, …)` — grain
   `Campaign × Creative × Date`, carrying enough to rebuild every roll-up and chart.
 
-### API contracts (shape only)
+### Server functions (shape only)
 
-- `POST /auth/login` (email, password) → sets session; `POST /auth/logout` clears it;
-  `GET /auth/me` → current user (id, role, team).
-- `GET /snapshots`, `GET /snapshots/:id`, `GET /presets`, `GET /snapshots/:id/facts` — **every**
-  read runs its query through `scopeFor(viewer)`; a Designer/BDM request for a dollar-dimension
-  table is rejected or returns only its permitted dimension.
-- Admin (Head only): `POST /admin/users`, `PATCH /admin/users/:id` (role, team, status),
-  `PATCH /admin/teams/:id` (lead), guarded by a `role === 'head'` check at the edge in addition to
-  the access policy.
+Each is a TanStack Start `createServerFn` in `src/services/*`, Zod-validated input, DB access in the
+handler. Names indicative, not literal routes.
+
+- `login` (email, password) → sets session; `logout` → clears it; `me` → current user (id, role,
+  team).
+- `listSnapshots`, `getSnapshot`, `listPresets`, `getSnapshotFacts` — **every** read runs its query
+  through `scopeFor(viewer)`; a Designer/BDM request for a dollar-dimension table is rejected or
+  returns only its permitted dimension.
+- Admin (Head only): `createUser`, `updateUser` (role, team, status), `setTeamLead` — each guarded
+  by a `role === 'head'` check in addition to the access policy.
 
 ## Testing Decisions
 
@@ -249,7 +255,11 @@ work.
   Keitaro's country view.
 - **Geo Total ≠ sum of Campaigns by design** (ADR-0003): if a reporting view aggregates Snapshot
   facts to Geo, it must include untagged/unfired-macro revenue the same way the live analysis does.
-- Two ADRs should follow this spec: one **superseding ADR-0004** (client-only → authenticated API),
-  and one recording the **access-policy seam** as the single authorization boundary.
-- The template's `authExample` / dummyjson `users` services are leftovers and should be removed as
-  this lands, so they don't mislead.
+- Architecture ADRs: **ADR-0006** (TanStack Start server functions), **ADR-0007** (access-policy
+  seam), **ADR-0008** (Vite 7 requirement). ADR-0004 is partially superseded by 0006.
+- **T1 (#2) delivered the foundation**: Vite 7 downgrade + Rollup build, drizzle tooling, server-only
+  `src/lib/db`. The **TanStack Start shell migration folds into T2 (#3)** — it is entangled with the
+  `authExample`/MSW scaffolding T2 removes (a `router` singleton, MSW boot, template auth routes), so
+  the shell conversion and the auth rebuild happen in one coherent pass rather than leaving a
+  half-migrated shell with broken login in between.
+- The template's `authExample` / dummyjson `users` services are removed in T2 as real auth lands.
