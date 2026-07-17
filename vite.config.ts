@@ -1,8 +1,7 @@
 import path from 'path';
-import babel from '@rolldown/plugin-babel';
 import tailwindcss from '@tailwindcss/vite';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
-import react, { reactCompilerPreset } from '@vitejs/plugin-react';
+import react from '@vitejs/plugin-react';
 import { visualizer } from 'rollup-plugin-visualizer';
 import { defineConfig } from 'vite';
 import { createHtmlPlugin } from 'vite-plugin-html';
@@ -15,9 +14,10 @@ export default defineConfig(({ mode }) => {
                 target: 'react',
                 autoCodeSplitting: true,
             }),
-            react(),
-            babel({
-                presets: [reactCompilerPreset()],
+            react({
+                babel: {
+                    plugins: [['babel-plugin-react-compiler', {}]],
+                },
             }),
             tailwindcss(),
             visualizer({
@@ -44,26 +44,20 @@ export default defineConfig(({ mode }) => {
         build: {
             target: 'baseline-widely-available',
             chunkSizeWarningLimit: 500,
-            rolldownOptions: {
+            rollupOptions: {
                 output: {
-                    codeSplitting: {
-                        groups: [
-                            {
-                                name: 'vendor-react',
-                                test: /[\\/]node_modules[\\/](react|react-dom|scheduler|use-sync-external-store)[\\/]/,
-                                priority: 50,
-                            },
-                            {
-                                name: 'vendor-tanstack',
-                                test: /[\\/]node_modules[\\/]@tanstack[\\/]/,
-                                priority: 40,
-                            },
-                            {
-                                name: 'vendor-zod',
-                                test: /[\\/]node_modules[\\/]zod[\\/]/,
-                                priority: 30,
-                            },
-                        ],
+                    manualChunks(id) {
+                        if (/[\\/]node_modules[\\/](react|react-dom|scheduler|use-sync-external-store)[\\/]/.test(id)) {
+                            return 'vendor-react';
+                        }
+
+                        if (/[\\/]node_modules[\\/]@tanstack[\\/]/.test(id)) {
+                            return 'vendor-tanstack';
+                        }
+
+                        if (/[\\/]node_modules[\\/]zod[\\/]/.test(id)) {
+                            return 'vendor-zod';
+                        }
                     },
                 },
             },

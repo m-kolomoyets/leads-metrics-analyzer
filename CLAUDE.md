@@ -15,3 +15,17 @@ SPA admin template built with React (React Compiler) + TypeScript + Vite.
     - `pnpm` is the project-standard package manager. Always respect [`pnpm-workspace.yaml`](pnpm-workspace.yaml) config.
     - Prefer using defined `pnpm` scripts over raw execution of binary commands (e.g., use `pnpm tsc` instead of `npx tsc --build`).
 - Code style & conventions: see [`.claude/rules/code-style.md`](.claude/rules/code-style.md).
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues on `m-kolomoyets/leads-metrics-analyzer`, via the `gh` CLI. See [`docs/agents/issue-tracker.md`](docs/agents/issue-tracker.md).
+
+### Triage labels
+
+Five canonical roles, label strings equal to role names. See [`docs/agents/triage-labels.md`](docs/agents/triage-labels.md).
+
+### Domain docs
+
+Single-context — `CONTEXT.md` + `docs/adr/` at repo root. See [`docs/agents/domain.md`](docs/agents/domain.md).

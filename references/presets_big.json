@@ -1,0 +1,118 @@
+{
+    "geoPresets": {
+        "IN": [
+            {
+                "name": "Тест ",
+                "installs": {
+                    "gy": "1",
+                    "yr": "2"
+                },
+                "regs": {
+                    "gy": "2",
+                    "yr": "4"
+                },
+                "sales": {
+                    "gy": "15",
+                    "yr": "40"
+                },
+                "clicks": {
+                    "gy": "0.7",
+                    "yr": "1"
+                }
+            },
+            {
+                "name": "IN Slot",
+                "installs": {
+                    "gy": 2,
+                    "yr": 4
+                },
+                "regs": {
+                    "gy": 5,
+                    "yr": 10
+                },
+                "sales": {
+                    "gy": 30,
+                    "yr": 60
+                },
+                "clicks": {
+                    "gy": 0.2,
+                    "yr": 0.5
+                }
+            }
+        ],
+        "KR": [
+            {
+                "name": "KR Olympus Slot",
+                "installs": {
+                    "gy": "10",
+                    "yr": "14"
+                },
+                "regs": {
+                    "gy": "14",
+                    "yr": "25"
+                },
+                "sales": {
+                    "gy": "100",
+                    "yr": "250"
+                },
+                "clicks": {
+                    "gy": "4",
+                    "yr": "6"
+                }
+            }
+        ],
+        "SG": [
+            {
+                "name": "Дефолт",
+                "installs": {
+                    "gy": 2,
+                    "yr": 4
+                },
+                "regs": {
+                    "gy": 5,
+                    "yr": 10
+                },
+                "sales": {
+                    "gy": 30,
+                    "yr": 60
+                },
+                "clicks": {
+                    "gy": 0.2,
+                    "yr": 0.5
+                }
+            },
+            {
+                "name": "SG Money",
+                "installs": {
+                    "gy": "8",
+                    "yr": "12"
+                },
+                "regs": {
+                    "gy": "12",
+                    "yr": "25"
+                },
+                "sales": {
+                    "gy": "150",
+                    "yr": "250"
+                },
+                "clicks": {
+                    "gy": "3",
+                    "yr": "5"
+                }
+            }
+        ]
+    },
+    "activePresetIdx": {
+        "IN": 1,
+        "KR": 0,
+        "SG": 1
+    },
+    "shared": {
+        "wasteZones": {
+            "gy": 7,
+            "yr": 15
+        },
+        "reviewMult": 2,
+        "commission": "7"
+    }
+}
