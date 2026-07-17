@@ -2,21 +2,14 @@ import type { AdminUser } from '@/services/admin/types';
 import type { UsersSectionProps } from './types';
 import { useState } from 'react';
 import { PlusIcon } from 'lucide-react';
-import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/Sheet';
-import { getTeamName } from '../../utils/teamOptions';
 import { CreateUserForm } from '../CreateUserForm';
 import { EditUserForm } from '../EditUserForm';
 import { InvitePanel } from '../InvitePanel';
+import { UserRow } from '../UserRow';
 
-const STATUS_VARIANT = {
-    active: 'default',
-    invited: 'secondary',
-    disabled: 'destructive',
-} as const;
-
-function UsersSection({ users, teams }: UsersSectionProps) {
+function UsersSection({ users, teams, currentUserId }: UsersSectionProps) {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
     const [invitingUser, setInvitingUser] = useState<AdminUser | null>(null);
@@ -50,38 +43,14 @@ function UsersSection({ users, teams }: UsersSectionProps) {
                     <tbody>
                         {users.map((user) => {
                             return (
-                                <tr key={user.id} className="border-b last:border-b-0">
-                                    <td className="px-3 py-2">{user.email}</td>
-                                    <td className="px-3 py-2">
-                                        <Badge variant="outline">{user.role}</Badge>
-                                    </td>
-                                    <td className="px-3 py-2">{getTeamName(user.teamId, teams)}</td>
-                                    <td className="px-3 py-2">
-                                        <Badge variant={STATUS_VARIANT[user.status]}>{user.status}</Badge>
-                                    </td>
-                                    <td className="px-3 py-2 text-right whitespace-nowrap">
-                                        {user.status === 'invited' && (
-                                            <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                onClick={() => {
-                                                    setInvitingUser(user);
-                                                }}
-                                            >
-                                                Invite link
-                                            </Button>
-                                        )}
-                                        <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            onClick={() => {
-                                                setEditingUser(user);
-                                            }}
-                                        >
-                                            Edit
-                                        </Button>
-                                    </td>
-                                </tr>
+                                <UserRow
+                                    key={user.id}
+                                    user={user}
+                                    teams={teams}
+                                    currentUserId={currentUserId}
+                                    onEdit={setEditingUser}
+                                    onInvite={setInvitingUser}
+                                />
                             );
                         })}
                     </tbody>

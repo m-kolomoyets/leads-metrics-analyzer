@@ -2,6 +2,7 @@ import type {
     CreateTeamInput,
     CreateUserInput,
     DeleteTeamInput,
+    DeleteUserInput,
     ResendInvitationInput,
     UpdateTeamInput,
     UpdateTeamLeadInput,
@@ -12,6 +13,7 @@ import {
     createTeamFn,
     createUserFn,
     deleteTeamFn,
+    deleteUserFn,
     listTeamsFn,
     listUsersFn,
     resendInvitationFn,
@@ -47,6 +49,20 @@ export const createUserMutationOptions = () => {
         },
         onSuccess(_data, _variables, _onMutateResult, { client }) {
             client.invalidateQueries({ queryKey: adminKeys.usersQueryKey() });
+        },
+    });
+};
+
+export const deleteUserMutationOptions = () => {
+    return mutationOptions({
+        mutationKey: adminKeys.deleteUserMutationKey(),
+        mutationFn(data: DeleteUserInput) {
+            return deleteUserFn({ data });
+        },
+        onSuccess(_data, _variables, _onMutateResult, { client }) {
+            // A deleted user may have led a team (now leaderless), so refresh both lists.
+            client.invalidateQueries({ queryKey: adminKeys.usersQueryKey() });
+            client.invalidateQueries({ queryKey: adminKeys.teamsQueryKey() });
         },
     });
 };

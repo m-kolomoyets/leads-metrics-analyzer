@@ -11,6 +11,7 @@ import {
     createTeamInputSchema,
     createUserInputSchema,
     deleteTeamInputSchema,
+    deleteUserInputSchema,
     resendInvitationInputSchema,
     updateTeamInputSchema,
     updateTeamLeadInputSchema,
@@ -105,6 +106,34 @@ export const createUserFn = createServerFn({ method: 'POST' })
         const activationToken = row.status === 'invited' ? await issueInvitation(row.id) : null;
 
         return { ...row, activationToken };
+    });
+
+export const deleteUserFn = createServerFn({ method: 'POST' })
+    .inputValidator(deleteUserInputSchema)
+    .handler(async ({ data }): Promise<{ id: string }> => {
+        const me = await requireHead();
+
+        // Guard against self-deletion — a Head removing their own account would revoke their session
+        // mid-request and could orphan administration.
+        if (me.id === data.id) {
+            throw new Error('You cannot delete your own account');
+        }
+
+        const deleted = await db.transaction(async (tx) => {
+            // If the user leads any team, leave that team leaderless first (spec: unassign the lead).
+            // The FK is `on delete set null` too, but doing it explicitly keeps the intent legible.
+            await tx.update(team).set({ leadId: null }).where(eq(team.leadId, data.id));
+
+            const [row] = await tx.delete(user).where(eq(user.id, data.id)).returning({ id: user.id });
+
+            return row;
+        });
+
+        if (!deleted) {
+            throw new Error('User not found');
+        }
+
+        return deleted;
     });
 
 export const resendInvitationFn = createServerFn({ method: 'POST' })

@@ -15,6 +15,9 @@ export const adminKeys = {
     updateUserMutationKey() {
         return [...adminKeys.all, 'update-user'] as const;
     },
+    deleteUserMutationKey() {
+        return [...adminKeys.all, 'delete-user'] as const;
+    },
     createTeamMutationKey() {
         return [...adminKeys.all, 'create-team'] as const;
     },

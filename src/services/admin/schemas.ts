@@ -39,6 +39,11 @@ export const updateUserInputSchema = z
         { error: 'No fields to update' }
     );
 
+export type DeleteUserInput = z.infer<typeof deleteUserInputSchema>;
+export const deleteUserInputSchema = z.object({
+    id: z.uuid(),
+});
+
 export type ResendInvitationInput = z.infer<typeof resendInvitationInputSchema>;
 export const resendInvitationInputSchema = z.object({
     id: z.uuid(),
