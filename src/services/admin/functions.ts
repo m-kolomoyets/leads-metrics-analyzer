@@ -9,6 +9,8 @@ import { team, user } from '@/lib/db/schema';
 import {
     createTeamInputSchema,
     createUserInputSchema,
+    deleteTeamInputSchema,
+    updateTeamInputSchema,
     updateTeamLeadInputSchema,
     updateUserInputSchema,
 } from './schemas';
@@ -31,6 +33,26 @@ const USER_COLUMNS = {
     status: user.status,
     teamId: user.teamId,
 } as const;
+
+const TEAM_COLUMNS = {
+    id: team.id,
+    name: team.name,
+    leadId: team.leadId,
+} as const;
+
+// Head-only reads backing the admin panel (T4b, #6). Same `requireHead` edge gate as the mutations —
+// the list is administrative data (every user, every team) that only the Head may see.
+export const listUsersFn = createServerFn({ method: 'GET' }).handler(async (): Promise<AdminUser[]> => {
+    await requireHead();
+
+    return db.select(USER_COLUMNS).from(user).orderBy(user.email);
+});
+
+export const listTeamsFn = createServerFn({ method: 'GET' }).handler(async (): Promise<AdminTeam[]> => {
+    await requireHead();
+
+    return db.select(TEAM_COLUMNS).from(team).orderBy(team.name);
+});
 
 export const createTeamFn = createServerFn({ method: 'POST' })
     .inputValidator(createTeamInputSchema)
@@ -103,6 +125,40 @@ export const updateUserFn = createServerFn({ method: 'POST' })
 
         if (!row) {
             throw new Error('User not found');
+        }
+
+        return row;
+    });
+
+export const updateTeamFn = createServerFn({ method: 'POST' })
+    .inputValidator(updateTeamInputSchema)
+    .handler(async ({ data }): Promise<AdminTeam> => {
+        await requireHead();
+
+        const [row] = await db
+            .update(team)
+            .set({ name: data.name })
+            .where(eq(team.id, data.id))
+            .returning({ id: team.id, name: team.name, leadId: team.leadId });
+
+        if (!row) {
+            throw new Error('Team not found');
+        }
+
+        return row;
+    });
+
+// Deleting a team unplaces its members and clears its lead pointer automatically — both `user.team_id`
+// and `team.lead_id` FKs are declared `on delete set null` (schema.ts), so no member is deleted.
+export const deleteTeamFn = createServerFn({ method: 'POST' })
+    .inputValidator(deleteTeamInputSchema)
+    .handler(async ({ data }): Promise<{ id: string }> => {
+        await requireHead();
+
+        const [row] = await db.delete(team).where(eq(team.id, data.id)).returning({ id: team.id });
+
+        if (!row) {
+            throw new Error('Team not found');
         }
 
         return row;
