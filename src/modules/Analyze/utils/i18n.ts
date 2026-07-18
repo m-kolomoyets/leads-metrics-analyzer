@@ -41,6 +41,13 @@ const UI: Record<Locale, Record<string, string>> = {
         accountIds: 'ID акаунтів (через кому)',
         addSeller: 'Додати продавця',
         remove: 'Прибрати',
+        createPreset: 'Створити пресет',
+        presetName: 'Назва пресету',
+        create: 'Створити',
+        creating: 'Створення…',
+        rename: 'Перейменувати',
+        renaming: 'Перейменування…',
+        preset: 'Пресет',
     },
     en: {
         sales: 'WITH SALES',
@@ -67,6 +74,13 @@ const UI: Record<Locale, Record<string, string>> = {
         accountIds: 'Account IDs (comma-separated)',
         addSeller: 'Add seller',
         remove: 'Remove',
+        createPreset: 'Create preset',
+        presetName: 'Preset name',
+        create: 'Create',
+        creating: 'Creating…',
+        rename: 'Rename',
+        renaming: 'Renaming…',
+        preset: 'Preset',
     },
 };
 
