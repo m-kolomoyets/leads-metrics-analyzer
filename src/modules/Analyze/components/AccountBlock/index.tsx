@@ -17,12 +17,24 @@ type AccountBlockProps = {
     onCopy: (text: string, key: string) => void;
     isExcluded: (campaign: string) => boolean;
     onToggleExcluded: (campaign: string) => void;
+    // Collapse is lifted so the summary nav table (#36) can uncollapse a block on row click.
+    open: boolean;
+    onToggleOpen: () => void;
 };
 
 // One Account panel: a glass frame (red when Problem) with a metrics header, the three action buckets
-// + sales block, and the full campaign table. Collapse and "reviewed" are local view state.
-function AccountBlock({ account, locale, copiedKey, onCopy, isExcluded, onToggleExcluded }: AccountBlockProps) {
-    const [open, setOpen] = useState(true);
+// + sales block, and the full campaign table. `id="acc-<account>"` is the summary table's jump anchor;
+// collapse is controlled by the parent, "reviewed" stays local view state.
+function AccountBlock({
+    account,
+    locale,
+    copiedKey,
+    onCopy,
+    isExcluded,
+    onToggleExcluded,
+    open,
+    onToggleOpen,
+}: AccountBlockProps) {
     const [reviewed, setReviewed] = useState(false);
     const { metrics, counts, problem } = account;
 
@@ -32,8 +44,9 @@ function AccountBlock({ account, locale, copiedKey, onCopy, isExcluded, onToggle
 
     return (
         <section
+            id={`acc-${account.account}`}
             className={cn(
-                'rounded-2xl border p-4 backdrop-blur transition-opacity',
+                'scroll-mt-4 rounded-2xl border p-4 backdrop-blur transition-opacity',
                 problem ? 'border-red-500/50 bg-red-500/5' : 'border-border bg-card/40',
                 reviewed && 'opacity-60'
             )}
@@ -45,11 +58,7 @@ function AccountBlock({ account, locale, copiedKey, onCopy, isExcluded, onToggle
                     size="icon-sm"
                     aria-expanded={open}
                     aria-label={open ? 'collapse account' : 'expand account'}
-                    onClick={() => {
-                        setOpen((value) => {
-                            return !value;
-                        });
-                    }}
+                    onClick={onToggleOpen}
                 >
                     {open ? '▾' : '▸'}
                 </Button>

@@ -75,6 +75,10 @@ const UI: Record<Locale, Record<string, string>> = {
         creative: 'Креатив',
         creativeEstimate:
             'Spend та покази — реальні на креатив; воронку (інстали/реги/продажі/кліки) розподілено пропорційно Spend (оцінка).',
+        accountSummary: 'Зведення по акаунтах',
+        summaryHint: 'клік — до блоку',
+        wasteCol: 'Злито',
+        wasteEstimate: 'Злито — оцінка (Spend⁺ понад лінію жовт→черв).',
     },
     en: {
         sales: 'WITH SALES',
@@ -136,6 +140,10 @@ const UI: Record<Locale, Record<string, string>> = {
         creative: 'Creative',
         creativeEstimate:
             'Spend and impressions are real per creative; the funnel (installs/regs/sales/clicks) is split across creatives in proportion to Spend (estimate).',
+        accountSummary: 'Account summary',
+        summaryHint: 'click a row to jump',
+        wasteCol: 'Waste',
+        wasteEstimate: 'Waste is an estimate (Spend⁺ over the yellow→red line).',
     },
 };
 
