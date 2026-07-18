@@ -9,6 +9,12 @@ export type AdminUser = {
     teamId: string | null;
 };
 
+// A user row as listed in the admin panel. Carries `hasPendingReset` — true when the user has an
+// unredeemed `password_reset` row (#42) — which drives the attention icon on their row.
+export type AdminUserListItem = AdminUser & {
+    hasPendingReset: boolean;
+};
+
 // Returned when the Head creates or re-invites an `invited` user. `activationToken` is the raw,
 // shown-once token (null for a non-invited create) — the panel builds the activation link from it.
 export type InvitedUser = AdminUser & {

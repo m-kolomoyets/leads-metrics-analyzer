@@ -2,11 +2,12 @@ import type { MeData } from './types';
 import { createServerFn } from '@tanstack/react-start';
 import { and, eq } from 'drizzle-orm';
 import { hashPassword, verifyPassword } from '@/lib/auth/password';
+import { canRequestPasswordReset } from '@/lib/auth/passwordResetPolicy';
 import { createSession, destroySession, getSessionUser } from '@/lib/auth/session';
 import { hashInvitationToken } from '@/lib/auth/tokenHash';
 import { db } from '@/lib/db';
-import { invitation, user } from '@/lib/db/schema';
-import { activateInputSchema, loginInputSchema } from './schemas';
+import { invitation, passwordReset, user } from '@/lib/db/schema';
+import { activateInputSchema, loginInputSchema, requestPasswordResetInputSchema } from './schemas';
 
 // TanStack Start server functions (ADR-0008). Handlers run server-side; their DB/argon/session
 // imports are stripped from the client bundle. Input is Zod-validated via `inputValidator`.
@@ -48,6 +49,37 @@ export const loginFn = createServerFn({ method: 'POST' })
         await createSession(found.id);
 
         return { id: found.id, email: found.email, role: found.role, status: found.status, teamId: found.teamId };
+    });
+
+// Request a password reset (T5, #42): a public endpoint. Anti-enumeration — the response is one
+// fixed confirmation regardless of whether the email exists or the account's status, so a probe
+// cannot distinguish states. Only an `active` account raises a flag the Head sees; invited / disabled
+// / unknown are silent no-ops (status gate lives in the pure `passwordResetPolicy` module). Repeated
+// requests collapse to a single pending row via the `user_id` unique upsert.
+const PASSWORD_RESET_REQUESTED_MESSAGE = 'If an account exists, your Head has been notified';
+
+export const requestPasswordResetFn = createServerFn({ method: 'POST' })
+    .inputValidator(requestPasswordResetInputSchema)
+    .handler(async ({ data }): Promise<{ message: string }> => {
+        const [found] = await db
+            .select({ id: user.id, status: user.status })
+            .from(user)
+            .where(eq(user.email, data.email))
+            .limit(1);
+
+        if (found && canRequestPasswordReset(found.status)) {
+            // Upsert the pending flag. A re-request bumps `requested_at` and clears `used_at`/token so
+            // the row is pending again — collapsing to one row per user (unique `user_id`).
+            await db
+                .insert(passwordReset)
+                .values({ userId: found.id })
+                .onConflictDoUpdate({
+                    target: passwordReset.userId,
+                    set: { requestedAt: new Date(), tokenHash: null, expiresAt: null, usedAt: null },
+                });
+        }
+
+        return { message: PASSWORD_RESET_REQUESTED_MESSAGE };
     });
 
 // Redeem an invitation (T4c, #14): a public endpoint — the token IS the credential. Sets the user's

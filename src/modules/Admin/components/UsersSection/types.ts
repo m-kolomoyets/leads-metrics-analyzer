@@ -1,7 +1,7 @@
-import type { AdminTeam, AdminUser } from '@/services/admin/types';
+import type { AdminTeam, AdminUserListItem } from '@/services/admin/types';
 
 export type UsersSectionProps = {
-    users: AdminUser[];
+    users: AdminUserListItem[];
     teams: AdminTeam[];
     currentUserId: string;
 };

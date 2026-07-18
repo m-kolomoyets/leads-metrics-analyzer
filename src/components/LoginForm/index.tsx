@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { getRouteApi, Link } from '@tanstack/react-router';
+import { getRouteApi } from '@tanstack/react-router';
 import { toast } from 'sonner';
 import { FALLBACK_REDIRECT } from '@/lib/constants';
 import { focusFirstError } from '@/lib/utils/focusFirstError';
@@ -8,6 +8,7 @@ import { loginInputSchema } from '@/services/auth/schemas';
 import { useAppForm } from '@/components/Form';
 import { Button } from '@/components/ui/Button';
 import { Field, FieldGroup, FieldSet } from '@/components/ui/Field';
+import { ForgotPasswordDialog } from './components/ForgotPasswordDialog';
 
 const routeApi = getRouteApi('/_unauthenticated/login/');
 
@@ -96,13 +97,7 @@ function LoginForm() {
                                         labelClassName="flex items-center justify-between"
                                         label={
                                             <>
-                                                Password{' '}
-                                                <Link
-                                                    to="/login"
-                                                    className="ml-auto text-sm underline-offset-2 hover:underline text-foreground rounded-sm outline-none  focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                                                >
-                                                    Forgot your password?
-                                                </Link>
+                                                Password <ForgotPasswordDialog />
                                             </>
                                         }
                                     >
