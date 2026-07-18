@@ -1,5 +1,6 @@
 import type { SharedSettingsPayload, SharedSettingsView } from '@/services/presets/types';
 import type { Locale } from '../../utils/i18n';
+import type { ImportedShared } from '../../utils/importPresets';
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -13,6 +14,9 @@ type SharedSettingsEditorProps = {
     shared: SharedSettingsView | null;
     canEdit: boolean;
     locale: Locale;
+    // Review-multiplier / default-commission lifted from an imported preset file. Seeds the initial
+    // draft (over the saved payload); the parent remounts on a fresh import so this re-seeds.
+    seed?: ImportedShared;
 };
 
 type SellerDraft = { rate: string; accountIds: string };
@@ -60,9 +64,10 @@ function parseAccountIds(value: string): string[] {
 // values disabled. Saving mints a new immutable shared-settings version; the query invalidates,
 // `toRuleset` re-derives, and grading (Problem-Account escalation + Spend⁺) re-runs. Parent remounts
 // on `activeVersionId` change to reset drafts to the saved values.
-function SharedSettingsEditor({ shared, canEdit, locale }: SharedSettingsEditorProps) {
+function SharedSettingsEditor({ shared, canEdit, locale, seed }: SharedSettingsEditorProps) {
     const [draft, setDraft] = useState<Draft>(() => {
-        return toDraft(shared?.payload ?? DEFAULTS);
+        const base = shared?.payload ?? DEFAULTS;
+        return toDraft(seed ? { ...base, ...seed } : base);
     });
     const { mutateAsync: saveShared, isPending } = useMutation(saveSharedSettingsMutationOptions());
 

@@ -24,10 +24,26 @@ const filePresetSchema = z.object({
 
 const importPresetsFileSchema = z.object({
     geoPresets: z.record(z.string(), z.array(filePresetSchema)),
-    shared: z.object({ wasteZones: pairSchema }).partial().optional(),
+    // The prototype's team-global block: waste zones (per-preset back-fill above) plus the two shared
+    // tunables. `reviewMult`/`commission` are numeric strings in the export, so coerce.
+    shared: z
+        .object({
+            wasteZones: pairSchema,
+            reviewMult: z.coerce.number(),
+            commission: z.coerce.number(),
+        })
+        .partial()
+        .optional(),
 });
 
 export type ImportPresetsFile = z.infer<typeof importPresetsFileSchema>;
+
+// The shared tunables lifted from an import file, mapped onto our shared-settings names. Sellers are
+// not part of the prototype export, so they are left untouched by an import.
+export type ImportedShared = {
+    reviewMultiplier: number;
+    defaultCommission: number;
+};
 
 // A preset lifted from the file, ready to prefill the create form: a display name plus the full
 // typed thresholds (waste zones back-filled from the shared block, then 0).
@@ -68,4 +84,18 @@ export function importedPresetsForGeo(file: ImportPresetsFile, geo: string): Imp
             },
         };
     });
+}
+
+// The shared tunables the file carries, or null when it has neither. Absent values fall back to the
+// no-op defaults (multiplier 1, commission 0) so the seeded draft is always complete.
+export function importedSharedFrom(file: ImportPresetsFile): ImportedShared | null {
+    const shared = file.shared;
+    if (!shared || (shared.reviewMult === undefined && shared.commission === undefined)) {
+        return null;
+    }
+
+    return {
+        reviewMultiplier: shared.reviewMult ?? 1,
+        defaultCommission: shared.commission ?? 0,
+    };
 }

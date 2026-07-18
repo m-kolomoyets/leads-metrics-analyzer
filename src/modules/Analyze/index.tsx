@@ -2,6 +2,7 @@ import type { GeoThresholds } from '@/lib/domain/types';
 import type { PresetView } from '@/services/presets/types';
 import type { UploadedFile } from './types';
 import type { Locale } from './utils/i18n';
+import type { ImportedShared } from './utils/importPresets';
 import { useState } from 'react';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
@@ -10,6 +11,16 @@ import { accountsFor } from '@/lib/domain/accounts';
 import { presetsQueryOptions, sharedSettingsQueryOptions } from '@/services/presets/queries';
 import { MainLayoutHeader } from '@/components/layouts/MainLayoutHeader';
 import { Button } from '@/components/ui/Button';
+import {
+    Combobox,
+    ComboboxContent,
+    ComboboxEmpty,
+    ComboboxInput,
+    ComboboxInputGroup,
+    ComboboxItem,
+    ComboboxList,
+    ComboboxTrigger,
+} from '@/components/ui/Combobox';
 import { LOCALES, ui } from './utils/i18n';
 import { presetForGeo, presetsForGeo } from './utils/presetForGeo';
 import { toRuleset } from './utils/toRuleset';
@@ -52,6 +63,9 @@ function Analyze() {
     const [selectedGeo, setSelectedGeo] = useState<string | null>(null);
     // Which preset drives grading for a Geo that carries several — owner's pick, keyed by Geo.
     const [selectedPresetByGeo, setSelectedPresetByGeo] = useState<Record<string, string>>({});
+    // Shared tunables lifted from an imported file, with a bump counter so each import re-seeds the
+    // shared-settings editor even when the values repeat.
+    const [importedShared, setImportedShared] = useState<{ seed: ImportedShared; n: number } | null>(null);
     const [locale, setLocale] = useState<Locale>('uk');
     // Muted campaigns, keyed `${geo}:${campaign}` so the same id in two geos toggles independently.
     const [excluded, setExcluded] = useState<ReadonlySet<string>>(new Set());
@@ -153,25 +167,39 @@ function Analyze() {
                         </div>
 
                         {geoPresets.length > 0 && (
-                            <div className="flex items-center gap-2" role="group" aria-label={ui('preset', locale)}>
+                            <div className="flex items-center gap-2">
                                 <span className="text-muted-foreground text-xs">{ui('preset', locale)}</span>
-                                {geoPresets.map((preset) => {
-                                    return (
-                                        <Button
-                                            key={preset.id}
-                                            type="button"
-                                            size="xs"
-                                            variant={preset.id === activePreset?.id ? 'default' : 'ghost'}
-                                            onClick={() => {
-                                                setSelectedPresetByGeo((current) => {
-                                                    return { ...current, [activeGeo]: preset.id };
-                                                });
+                                <Combobox
+                                    items={geoPresets}
+                                    value={activePreset ?? null}
+                                    onValueChange={(preset) => {
+                                        if (preset) {
+                                            setSelectedPresetByGeo((current) => {
+                                                return { ...current, [activeGeo]: preset.id };
+                                            });
+                                        }
+                                    }}
+                                    itemToStringLabel={(preset) => {
+                                        return preset.name;
+                                    }}
+                                >
+                                    <ComboboxInputGroup className="w-64">
+                                        <ComboboxInput placeholder={ui('preset', locale)} />
+                                        <ComboboxTrigger />
+                                    </ComboboxInputGroup>
+                                    <ComboboxContent>
+                                        <ComboboxEmpty>{ui('noResults', locale)}</ComboboxEmpty>
+                                        <ComboboxList>
+                                            {(preset) => {
+                                                return (
+                                                    <ComboboxItem key={preset.id} value={preset}>
+                                                        {preset.name}
+                                                    </ComboboxItem>
+                                                );
                                             }}
-                                        >
-                                            {preset.name}
-                                        </Button>
-                                    );
-                                })}
+                                        </ComboboxList>
+                                    </ComboboxContent>
+                                </Combobox>
                             </div>
                         )}
 
@@ -183,13 +211,25 @@ function Analyze() {
                                     locale={locale}
                                 />
                             )}
-                            {canWritePresets && <PresetCreator key={activeGeo} geo={activeGeo} locale={locale} />}
+                            {canWritePresets && (
+                                <PresetCreator
+                                    key={activeGeo}
+                                    geo={activeGeo}
+                                    locale={locale}
+                                    onImportShared={(seed) => {
+                                        setImportedShared((current) => {
+                                            return { seed, n: (current?.n ?? 0) + 1 };
+                                        });
+                                    }}
+                                />
+                            )}
                             {(shared || canEditShared) && (
                                 <SharedSettingsEditor
-                                    key={shared?.activeVersionId ?? 'new'}
+                                    key={`${shared?.activeVersionId ?? 'new'}:${importedShared?.n ?? 0}`}
                                     shared={shared}
                                     canEdit={canEditShared}
                                     locale={locale}
+                                    seed={importedShared?.seed}
                                 />
                             )}
                         </div>

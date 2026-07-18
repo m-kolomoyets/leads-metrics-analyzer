@@ -1,6 +1,6 @@
 import type { ChangeEvent } from 'react';
 import type { Locale, ThresholdMetric } from '../../utils/i18n';
-import type { ImportedPreset } from '../../utils/importPresets';
+import type { ImportedPreset, ImportedShared } from '../../utils/importPresets';
 import type { ThresholdDraft } from '../ThresholdFields';
 import { useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
@@ -10,12 +10,15 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { ui } from '../../utils/i18n';
-import { importedPresetsForGeo, parseImportPresetsFile } from '../../utils/importPresets';
+import { importedPresetsForGeo, importedSharedFrom, parseImportPresetsFile } from '../../utils/importPresets';
 import { EMPTY_THRESHOLD_DRAFT, parseThresholdDraft, ThresholdFields, toThresholdDraft } from '../ThresholdFields';
 
 type PresetCreatorProps = {
     geo: string;
     locale: Locale;
+    // Invoked when an imported file carries the team-global tunables, so the page can seed the shared
+    // settings editor with them (the file's shared block is Geo-independent).
+    onImportShared: (shared: ImportedShared) => void;
 };
 
 // A preset for one Geo (S9/S15, #30): mint a fresh one or import from the prototype export
@@ -23,7 +26,7 @@ type PresetCreatorProps = {
 // the form via New / Import; `createPresetFn` stamps them as owner + their team, mints v1 and sets it
 // active, so grading immediately runs against it. Only mounted for a viewer authorised to own presets
 // (dollar-dimension role). Parent keys this on the Geo, so switching Geo resets it.
-function PresetCreator({ geo, locale }: PresetCreatorProps) {
+function PresetCreator({ geo, locale, onImportShared }: PresetCreatorProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [name, setName] = useState('');
     const [draft, setDraft] = useState<ThresholdDraft>(EMPTY_THRESHOLD_DRAFT);
@@ -71,6 +74,13 @@ function PresetCreator({ geo, locale }: PresetCreatorProps) {
         if (!parsed) {
             toast.error('Invalid preset file');
             return;
+        }
+
+        // The shared block is Geo-independent — surface it to the shared-settings editor even if this
+        // Geo has no preset in the file.
+        const shared = importedSharedFrom(parsed);
+        if (shared) {
+            onImportShared(shared);
         }
 
         const imported = importedPresetsForGeo(parsed, geo);

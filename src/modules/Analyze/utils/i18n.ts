@@ -52,6 +52,7 @@ const UI: Record<Locale, Record<string, string>> = {
         importPreset: 'Імпортувати пресет',
         chooseImport: 'Оберіть пресет для імпорту',
         cancel: 'Скасувати',
+        noResults: 'Нічого не знайдено',
     },
     en: {
         sales: 'WITH SALES',
@@ -89,6 +90,7 @@ const UI: Record<Locale, Record<string, string>> = {
         importPreset: 'Import preset',
         chooseImport: 'Choose a preset to import',
         cancel: 'Cancel',
+        noResults: 'No results',
     },
 };
 

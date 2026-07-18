@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { importedPresetsForGeo, parseImportPresetsFile } from './importPresets';
+import { importedPresetsForGeo, importedSharedFrom, parseImportPresetsFile } from './importPresets';
 
 const FILE = JSON.stringify({
     geoPresets: {
@@ -71,7 +71,7 @@ describe('importedPresetsForGeo', () => {
     });
 
     it('falls back to zero waste zones when the shared block has none', () => {
-        const file = parseImportPresetsFile(
+        const noShared = parseImportPresetsFile(
             JSON.stringify({
                 geoPresets: {
                     IN: [
@@ -86,6 +86,28 @@ describe('importedPresetsForGeo', () => {
                 },
             })
         )!;
-        expect(importedPresetsForGeo(file, 'IN')[0].thresholds.wasteZones).toEqual({ gy: 0, yr: 0 });
+        expect(importedPresetsForGeo(noShared, 'IN')[0].thresholds.wasteZones).toEqual({ gy: 0, yr: 0 });
+    });
+});
+
+describe('importedSharedFrom', () => {
+    it('coerces reviewMult / commission (numeric string) onto the shared-settings names', () => {
+        const file = parseImportPresetsFile(
+            JSON.stringify({
+                geoPresets: {},
+                shared: { wasteZones: { gy: 7, yr: 15 }, reviewMult: 2, commission: '7' },
+            })
+        )!;
+        expect(importedSharedFrom(file)).toEqual({ reviewMultiplier: 2, defaultCommission: 7 });
+    });
+
+    it('returns null when the file carries neither tunable', () => {
+        const file = parseImportPresetsFile(FILE)!;
+        expect(importedSharedFrom(file)).toBeNull();
+    });
+
+    it('defaults the absent tunable (multiplier 1, commission 0)', () => {
+        const file = parseImportPresetsFile(JSON.stringify({ geoPresets: {}, shared: { reviewMult: 3 } }))!;
+        expect(importedSharedFrom(file)).toEqual({ reviewMultiplier: 3, defaultCommission: 0 });
     });
 });
