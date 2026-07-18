@@ -1,6 +1,6 @@
-import type { ActivateInput, LoginInput, RequestPasswordResetInput } from './schemas';
+import type { ActivateInput, LoginInput, RequestPasswordResetInput, ResetPasswordInput } from './schemas';
 import { mutationOptions, queryOptions } from '@tanstack/react-query';
-import { activateFn, loginFn, logoutFn, meFn, requestPasswordResetFn } from './functions';
+import { activateFn, loginFn, logoutFn, meFn, requestPasswordResetFn, resetPasswordFn } from './functions';
 import { authKeys } from './queryKeys';
 
 export const meQueryOptions = () => {
@@ -49,6 +49,16 @@ export const requestPasswordResetMutationOptions = () => {
         mutationFn(data: RequestPasswordResetInput) {
             return requestPasswordResetFn({ data });
         },
+    });
+};
+
+export const resetPasswordMutationOptions = () => {
+    return mutationOptions({
+        mutationKey: authKeys.resetPasswordMutationKey(),
+        mutationFn(data: ResetPasswordInput) {
+            return resetPasswordFn({ data });
+        },
+        // No `me` cache priming — reset deliberately creates no session; the user signs in fresh.
     });
 };
 
