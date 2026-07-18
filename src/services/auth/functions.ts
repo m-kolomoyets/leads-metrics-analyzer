@@ -13,10 +13,11 @@ import { activateInputSchema, loginInputSchema } from './schemas';
 
 const INVALID_CREDENTIALS_MESSAGE = 'Invalid email or password';
 
-// A precomputed Argon2id hash verified when the email is unknown, so the response time does not
-// reveal whether an account exists (defeats user enumeration by timing).
+// A precomputed scrypt hash verified when the email is unknown, so the response time does not reveal
+// whether an account exists (defeats user enumeration by timing). Must match the current scrypt cost
+// parameters so the decoy verify does the same work as a real one.
 const DUMMY_PASSWORD_HASH =
-    '$argon2id$v=19$m=19456,t=2,p=1$aD/SRybOA88SOuzoKxdk5Q$TgmabwP9ljp3m87r2CH0zuUVs6ATUUS/TtFxHqHI5j8';
+    'scrypt$65536$8$1$1860bd1ef52a75b2ee3df3c7c2c5e56f$926288038b40142ac9a0b992897f5468c8c65f20c266f6f37710524e21d29d95';
 
 export const loginFn = createServerFn({ method: 'POST' })
     .inputValidator(loginInputSchema)
