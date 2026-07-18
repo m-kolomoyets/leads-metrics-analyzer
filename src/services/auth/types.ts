@@ -8,6 +8,9 @@ export type MeData = {
     email: string;
     role: AuthRole;
     status: UserStatus;
+    // The user's team (spec: `me` → id, role, team). Null for teamless roles; drives team-scoped
+    // visibility (`scopeFor`) for a Team Lead.
+    teamId: string | null;
 };
 
 export type AuthenticatedState = {

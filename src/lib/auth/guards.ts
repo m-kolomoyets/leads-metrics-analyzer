@@ -10,6 +10,20 @@ import { getSessionUser } from './session';
 export const UNAUTHORIZED_MESSAGE = 'Not authenticated';
 export const FORBIDDEN_MESSAGE = 'Forbidden';
 
+// Resolves the current session user or rejects — the authenticated-any-role gate. Row/dimension
+// visibility is then applied per query via `scopeFor(viewer)` built from the returned `MeData`
+// (id, role, teamId). Use this for reads/writes open to any signed-in user; `requireHead` remains
+// the edge gate for Head-only administration.
+export const requireUser = async (): Promise<MeData> => {
+    const me = await getSessionUser();
+
+    if (!me) {
+        throw new Error(UNAUTHORIZED_MESSAGE);
+    }
+
+    return me;
+};
+
 // Resolves the current session user and asserts they are the Head. Reads role fresh from the
 // session store every request, so a demoted Head loses admin access on their next request
 // (spec story 4). Throws on missing session or any non-head role.

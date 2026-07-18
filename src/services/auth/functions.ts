@@ -28,6 +28,7 @@ export const loginFn = createServerFn({ method: 'POST' })
                 email: user.email,
                 role: user.role,
                 status: user.status,
+                teamId: user.teamId,
                 passwordHash: user.passwordHash,
             })
             .from(user)
@@ -46,7 +47,7 @@ export const loginFn = createServerFn({ method: 'POST' })
 
         await createSession(found.id);
 
-        return { id: found.id, email: found.email, role: found.role, status: found.status };
+        return { id: found.id, email: found.email, role: found.role, status: found.status, teamId: found.teamId };
     });
 
 // Redeem an invitation (T4c, #14): a public endpoint — the token IS the credential. Sets the user's
@@ -83,7 +84,13 @@ export const activateFn = createServerFn({ method: 'POST' })
                 .update(user)
                 .set({ passwordHash, status: 'active' })
                 .where(and(eq(user.id, invite.userId), eq(user.status, 'invited')))
-                .returning({ id: user.id, email: user.email, role: user.role, status: user.status });
+                .returning({
+                    id: user.id,
+                    email: user.email,
+                    role: user.role,
+                    status: user.status,
+                    teamId: user.teamId,
+                });
 
             if (!row) {
                 throw new Error(INVALID_INVITATION_MESSAGE);

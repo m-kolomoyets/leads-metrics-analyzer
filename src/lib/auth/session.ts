@@ -49,6 +49,7 @@ export const getSessionUser = async (): Promise<MeData | null> => {
         email: string;
         role: MeData['role'];
         status: MeData['status'];
+        teamId: string | null;
         expiresAt: Date;
     }>;
 
@@ -59,6 +60,7 @@ export const getSessionUser = async (): Promise<MeData | null> => {
                 email: user.email,
                 role: user.role,
                 status: user.status,
+                teamId: user.teamId,
                 expiresAt: session.expiresAt,
             })
             .from(session)
@@ -88,7 +90,7 @@ export const getSessionUser = async (): Promise<MeData | null> => {
         return null;
     }
 
-    return { id: found.id, email: found.email, role: found.role, status: found.status };
+    return { id: found.id, email: found.email, role: found.role, status: found.status, teamId: found.teamId };
 };
 
 // Deletes the session row (if any) and clears the cookie.
