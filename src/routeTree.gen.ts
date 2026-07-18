@@ -13,6 +13,7 @@ import { Route as UnauthenticatedRouteRouteImport } from './routes/_unauthentica
 import { Route as PublicRouteRouteImport } from './routes/_public/route'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as PublicIndexRouteImport } from './routes/_public/index'
+import { Route as UnauthenticatedResetPasswordIndexRouteImport } from './routes/_unauthenticated/reset-password/index'
 import { Route as UnauthenticatedLoginIndexRouteImport } from './routes/_unauthenticated/login/index'
 import { Route as UnauthenticatedActivateIndexRouteImport } from './routes/_unauthenticated/activate/index'
 import { Route as AuthenticatedVouchersIndexRouteImport } from './routes/_authenticated/vouchers/index'
@@ -39,6 +40,12 @@ const PublicIndexRoute = PublicIndexRouteImport.update({
   path: '/',
   getParentRoute: () => PublicRouteRoute,
 } as any)
+const UnauthenticatedResetPasswordIndexRoute =
+  UnauthenticatedResetPasswordIndexRouteImport.update({
+    id: '/reset-password/',
+    path: '/reset-password/',
+    getParentRoute: () => UnauthenticatedRouteRoute,
+  } as any)
 const UnauthenticatedLoginIndexRoute =
   UnauthenticatedLoginIndexRouteImport.update({
     id: '/login/',
@@ -97,6 +104,7 @@ export interface FileRoutesByFullPath {
   '/vouchers/': typeof AuthenticatedVouchersIndexRoute
   '/activate/': typeof UnauthenticatedActivateIndexRoute
   '/login/': typeof UnauthenticatedLoginIndexRoute
+  '/reset-password/': typeof UnauthenticatedResetPasswordIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof PublicIndexRoute
@@ -108,6 +116,7 @@ export interface FileRoutesByTo {
   '/vouchers': typeof AuthenticatedVouchersIndexRoute
   '/activate': typeof UnauthenticatedActivateIndexRoute
   '/login': typeof UnauthenticatedLoginIndexRoute
+  '/reset-password': typeof UnauthenticatedResetPasswordIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -123,6 +132,7 @@ export interface FileRoutesById {
   '/_authenticated/vouchers/': typeof AuthenticatedVouchersIndexRoute
   '/_unauthenticated/activate/': typeof UnauthenticatedActivateIndexRoute
   '/_unauthenticated/login/': typeof UnauthenticatedLoginIndexRoute
+  '/_unauthenticated/reset-password/': typeof UnauthenticatedResetPasswordIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -136,6 +146,7 @@ export interface FileRouteTypes {
     | '/vouchers/'
     | '/activate/'
     | '/login/'
+    | '/reset-password/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -147,6 +158,7 @@ export interface FileRouteTypes {
     | '/vouchers'
     | '/activate'
     | '/login'
+    | '/reset-password'
   id:
     | '__root__'
     | '/_authenticated'
@@ -161,6 +173,7 @@ export interface FileRouteTypes {
     | '/_authenticated/vouchers/'
     | '/_unauthenticated/activate/'
     | '/_unauthenticated/login/'
+    | '/_unauthenticated/reset-password/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -198,6 +211,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof PublicIndexRouteImport
       parentRoute: typeof PublicRouteRoute
+    }
+    '/_unauthenticated/reset-password/': {
+      id: '/_unauthenticated/reset-password/'
+      path: '/reset-password'
+      fullPath: '/reset-password/'
+      preLoaderRoute: typeof UnauthenticatedResetPasswordIndexRouteImport
+      parentRoute: typeof UnauthenticatedRouteRoute
     }
     '/_unauthenticated/login/': {
       id: '/_unauthenticated/login/'
@@ -294,11 +314,14 @@ const PublicRouteRouteWithChildren = PublicRouteRoute._addFileChildren(
 interface UnauthenticatedRouteRouteChildren {
   UnauthenticatedActivateIndexRoute: typeof UnauthenticatedActivateIndexRoute
   UnauthenticatedLoginIndexRoute: typeof UnauthenticatedLoginIndexRoute
+  UnauthenticatedResetPasswordIndexRoute: typeof UnauthenticatedResetPasswordIndexRoute
 }
 
 const UnauthenticatedRouteRouteChildren: UnauthenticatedRouteRouteChildren = {
   UnauthenticatedActivateIndexRoute: UnauthenticatedActivateIndexRoute,
   UnauthenticatedLoginIndexRoute: UnauthenticatedLoginIndexRoute,
+  UnauthenticatedResetPasswordIndexRoute:
+    UnauthenticatedResetPasswordIndexRoute,
 }
 
 const UnauthenticatedRouteRouteWithChildren =

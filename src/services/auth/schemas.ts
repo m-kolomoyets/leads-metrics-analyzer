@@ -26,3 +26,9 @@ export type RequestPasswordResetInput = z.infer<typeof requestPasswordResetInput
 export const requestPasswordResetInputSchema = z.object({
     email: emailSchema,
 });
+
+export type ResetPasswordInput = z.infer<typeof resetPasswordInputSchema>;
+export const resetPasswordInputSchema = z.object({
+    token: z.string().min(1, { error: 'Missing reset token' }),
+    password: passwordSchema,
+});

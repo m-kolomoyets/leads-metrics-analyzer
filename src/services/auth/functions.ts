@@ -1,13 +1,18 @@
 import type { MeData } from './types';
 import { createServerFn } from '@tanstack/react-start';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { hashPassword, verifyPassword } from '@/lib/auth/password';
-import { canRequestPasswordReset } from '@/lib/auth/passwordResetPolicy';
+import { canRequestPasswordReset, isResetTokenUsable } from '@/lib/auth/passwordResetPolicy';
 import { createSession, destroySession, getSessionUser } from '@/lib/auth/session';
-import { hashInvitationToken } from '@/lib/auth/tokenHash';
+import { hashInvitationToken, hashResetToken } from '@/lib/auth/tokenHash';
 import { db } from '@/lib/db';
 import { invitation, passwordReset, user } from '@/lib/db/schema';
-import { activateInputSchema, loginInputSchema, requestPasswordResetInputSchema } from './schemas';
+import {
+    activateInputSchema,
+    loginInputSchema,
+    requestPasswordResetInputSchema,
+    resetPasswordInputSchema,
+} from './schemas';
 
 // TanStack Start server functions (ADR-0008). Handlers run server-side; their DB/argon/session
 // imports are stripped from the client bundle. Input is Zod-validated via `inputValidator`.
@@ -137,6 +142,55 @@ export const activateFn = createServerFn({ method: 'POST' })
         await createSession(activated.id);
 
         return activated;
+    });
+
+// Complete a password reset (T4c, #44): a public endpoint — the token IS the credential. Sets the
+// user's new password and burns the token, but deliberately does NOT create a session: the user is
+// bounced to /login to sign in fresh. All errors collapse to one generic message so a probe cannot
+// distinguish missing / used / expired. Burning the token (setting `used_at`) also clears the Head's
+// pending indicator, which reads `used_at IS NULL`.
+const INVALID_RESET_MESSAGE = 'This reset link is invalid or has expired';
+
+export const resetPasswordFn = createServerFn({ method: 'POST' })
+    .inputValidator(resetPasswordInputSchema)
+    .handler(async ({ data }): Promise<{ success: true }> => {
+        const tokenHash = hashResetToken(data.token);
+
+        const [row] = await db
+            .select({
+                id: passwordReset.id,
+                userId: passwordReset.userId,
+                tokenHash: passwordReset.tokenHash,
+                expiresAt: passwordReset.expiresAt,
+                usedAt: passwordReset.usedAt,
+            })
+            .from(passwordReset)
+            .where(eq(passwordReset.tokenHash, tokenHash))
+            .limit(1);
+
+        if (!row || !isResetTokenUsable(row, new Date())) {
+            throw new Error(INVALID_RESET_MESSAGE);
+        }
+
+        const passwordHash = await hashPassword(data.password);
+
+        await db.transaction(async (tx) => {
+            // Burn the token first, gated on `used_at IS NULL`, so a concurrent redemption cannot set
+            // the password twice — a no-match returns undefined and aborts before the user is touched.
+            const [burned] = await tx
+                .update(passwordReset)
+                .set({ usedAt: new Date() })
+                .where(and(eq(passwordReset.id, row.id), isNull(passwordReset.usedAt)))
+                .returning({ id: passwordReset.id });
+
+            if (!burned) {
+                throw new Error(INVALID_RESET_MESSAGE);
+            }
+
+            await tx.update(user).set({ passwordHash }).where(eq(user.id, row.userId));
+        });
+
+        return { success: true };
     });
 
 export const logoutFn = createServerFn({ method: 'POST' }).handler(async () => {
