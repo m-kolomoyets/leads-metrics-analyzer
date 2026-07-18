@@ -17,7 +17,7 @@ const STATUS_VARIANT = {
 
 // A single user row. Delete uses a two-step inline confirm (the repo bans window.confirm); deleting a
 // user who leads a team leaves that team leaderless server-side.
-function UserRow({ user, teams, currentUserId, onEdit, onInvite }: UserRowProps) {
+function UserRow({ user, teams, currentUserId, onEdit, onInvite, onReset }: UserRowProps) {
     const { mutate: deleteUser, isPending: isDeleting } = useMutation(deleteUserMutationOptions());
     const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
@@ -97,6 +97,17 @@ function UserRow({ user, teams, currentUserId, onEdit, onInvite }: UserRowProps)
                                 }}
                             >
                                 Invite link
+                            </Button>
+                        )}
+                        {user.hasPendingReset && (
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                    onReset(user);
+                                }}
+                            >
+                                Reset link
                             </Button>
                         )}
                         <Button

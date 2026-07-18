@@ -7,12 +7,14 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { CreateUserForm } from '../CreateUserForm';
 import { EditUserForm } from '../EditUserForm';
 import { InvitePanel } from '../InvitePanel';
+import { ResetPanel } from '../ResetPanel';
 import { UserRow } from '../UserRow';
 
 function UsersSection({ users, teams, currentUserId }: UsersSectionProps) {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
     const [invitingUser, setInvitingUser] = useState<AdminUser | null>(null);
+    const [resettingUser, setResettingUser] = useState<AdminUser | null>(null);
 
     return (
         <section className="flex flex-col gap-4">
@@ -50,6 +52,7 @@ function UsersSection({ users, teams, currentUserId }: UsersSectionProps) {
                                     currentUserId={currentUserId}
                                     onEdit={setEditingUser}
                                     onInvite={setInvitingUser}
+                                    onReset={setResettingUser}
                                 />
                             );
                         })}
@@ -117,6 +120,27 @@ function UsersSection({ users, teams, currentUserId }: UsersSectionProps) {
                         </SheetDescription>
                     </SheetHeader>
                     <div className="p-4">{!!invitingUser && <InvitePanel userId={invitingUser.id} />}</div>
+                </SheetContent>
+            </Sheet>
+
+            <Sheet
+                open={!!resettingUser}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setResettingUser(null);
+                    }
+                }}
+            >
+                <SheetContent className="gap-0">
+                    <SheetHeader>
+                        <SheetTitle>Reset link</SheetTitle>
+                        <SheetDescription>
+                            {resettingUser
+                                ? `Generate a one-time password reset link for ${resettingUser.email}.`
+                                : null}
+                        </SheetDescription>
+                    </SheetHeader>
+                    <div className="p-4">{!!resettingUser && <ResetPanel userId={resettingUser.id} />}</div>
                 </SheetContent>
             </Sheet>
         </section>

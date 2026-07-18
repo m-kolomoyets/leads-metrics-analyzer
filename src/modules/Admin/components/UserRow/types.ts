@@ -7,4 +7,6 @@ export type UserRowProps = {
     currentUserId: string;
     onEdit: (user: AdminUser) => void;
     onInvite: (user: AdminUser) => void;
+    // Open the reset-link panel for a user who raised a pending reset request (#43).
+    onReset: (user: AdminUser) => void;
 };
