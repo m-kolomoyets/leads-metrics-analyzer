@@ -15,6 +15,8 @@ function preset(overrides: Partial<PresetView>): PresetView {
         id: 'p',
         teamId: null,
         ownerUserId: 'u',
+        ownerEmail: 'u@x.io',
+        teamName: null,
         geo: 'IN',
         name: 'IN',
         activeVersionId: 'v',

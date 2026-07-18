@@ -1,7 +1,14 @@
 import type { LinkProps } from '@tanstack/react-router';
 import type { LucideIcon } from 'lucide-react';
 import type { RolePermissionsKeys } from '@/lib/utils/auth/permissions';
-import { ChartColumnBigIcon, LayoutDashboardIcon, ShieldUserIcon, ShoppingBagIcon, TicketsIcon } from 'lucide-react';
+import {
+    ChartColumnBigIcon,
+    LayoutDashboardIcon,
+    ShieldUserIcon,
+    ShoppingBagIcon,
+    SlidersHorizontalIcon,
+    TicketsIcon,
+} from 'lucide-react';
 
 type SidebarNavigationLinkItem = {
     label: string;
@@ -25,6 +32,14 @@ export const SIDEBAR_NAVIGATION_LINK_LIST: SidebarNavigationLinkItem[] = [
             to: '/analyze',
         },
         rolePermissionKey: 'analyze.view',
+    },
+    {
+        label: 'Presets',
+        Icon: SlidersHorizontalIcon,
+        linkProps: {
+            to: '/presets',
+        },
+        rolePermissionKey: 'presets.manage',
     },
     {
         label: 'Merchants',

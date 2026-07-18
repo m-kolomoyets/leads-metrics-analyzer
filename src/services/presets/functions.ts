@@ -8,7 +8,7 @@ import { FORBIDDEN_MESSAGE, requireUser } from '@/lib/auth/guards';
 import { presetAccessFor } from '@/lib/auth/presetAccess';
 import { scopeFor } from '@/lib/auth/scope';
 import { db } from '@/lib/db';
-import { preset, presetVersion, sharedSettings, sharedSettingsVersion } from '@/lib/db/schema';
+import { preset, presetVersion, sharedSettings, sharedSettingsVersion, team, user } from '@/lib/db/schema';
 import {
     createPresetInputSchema,
     deletePresetInputSchema,
@@ -73,6 +73,8 @@ const toPresetView = (
         id: string;
         teamId: string | null;
         ownerUserId: string;
+        ownerEmail: string | null;
+        teamName: string | null;
         geo: string;
         name: string;
         activeVersionId: string | null;
@@ -83,6 +85,9 @@ const toPresetView = (
         id: row.id,
         teamId: row.teamId,
         ownerUserId: row.ownerUserId,
+        // The owner FK cascades on user delete, so a listed preset always has one; guard anyway.
+        ownerEmail: row.ownerEmail ?? '',
+        teamName: row.teamName,
         geo: row.geo,
         name: row.name,
         activeVersionId: row.activeVersionId,
@@ -90,6 +95,13 @@ const toPresetView = (
         access: presetAccessFor(viewer, { ownerUserId: row.ownerUserId, teamId: row.teamId }),
     };
 };
+
+// The owner email + team name every read joins in, so the management table has creator + team without
+// a second round-trip.
+const PRESET_META_COLUMNS = {
+    ownerEmail: user.email,
+    teamName: team.name,
+} as const;
 
 export const listPresetsFn = createServerFn({ method: 'GET' }).handler(async (): Promise<PresetView[]> => {
     const me = await requireUser();
@@ -107,9 +119,11 @@ export const listPresetsFn = createServerFn({ method: 'GET' }).handler(async ():
     }
 
     const rows = await db
-        .select({ ...PRESET_COLUMNS, thresholds: presetVersion.thresholds })
+        .select({ ...PRESET_COLUMNS, ...PRESET_META_COLUMNS, thresholds: presetVersion.thresholds })
         .from(preset)
         .leftJoin(presetVersion, eq(preset.activeVersionId, presetVersion.id))
+        .leftJoin(user, eq(preset.ownerUserId, user.id))
+        .leftJoin(team, eq(preset.teamId, team.id))
         .where(presetRowFilter(scope))
         .orderBy(preset.geo, preset.name);
 
@@ -122,9 +136,11 @@ export const listPresetsFn = createServerFn({ method: 'GET' }).handler(async ():
 // every write, so the client always gets identity + current thresholds + access in one payload.
 const loadPresetView = async (viewer: Viewer, presetId: string): Promise<PresetView | undefined> => {
     const [row] = await db
-        .select({ ...PRESET_COLUMNS, thresholds: presetVersion.thresholds })
+        .select({ ...PRESET_COLUMNS, ...PRESET_META_COLUMNS, thresholds: presetVersion.thresholds })
         .from(preset)
         .leftJoin(presetVersion, eq(preset.activeVersionId, presetVersion.id))
+        .leftJoin(user, eq(preset.ownerUserId, user.id))
+        .leftJoin(team, eq(preset.teamId, team.id))
         .where(eq(preset.id, presetId))
         .limit(1);
 

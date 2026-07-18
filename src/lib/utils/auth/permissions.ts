@@ -23,6 +23,11 @@ export const ROLES_PERMISSIONS = {
     analyze: {
         view: [ROLES_IDS.head, ROLES_IDS.teamLead, ROLES_IDS.buyer],
     },
+    // Presets manager (#30 follow-up). Dollar roles only; server row-scope still narrows the rows
+    // each one actually sees (Head all / Team Lead team / Buyer own).
+    presets: {
+        manage: [ROLES_IDS.head, ROLES_IDS.teamLead, ROLES_IDS.buyer],
+    },
     merchants: {
         view: [ROLES_IDS.teamLead, ROLES_IDS.head],
         item: {

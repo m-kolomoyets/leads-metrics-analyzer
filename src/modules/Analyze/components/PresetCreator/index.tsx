@@ -17,8 +17,9 @@ type PresetCreatorProps = {
     geo: string;
     locale: Locale;
     // Invoked when an imported file carries the team-global tunables, so the page can seed the shared
-    // settings editor with them (the file's shared block is Geo-independent).
-    onImportShared: (shared: ImportedShared) => void;
+    // settings editor with them (the file's shared block is Geo-independent). Optional — the presets
+    // manager reuses this component but has no shared-settings surface to seed.
+    onImportShared?: (shared: ImportedShared) => void;
 };
 
 // A preset for one Geo (S9/S15, #30): mint a fresh one or import from the prototype export
@@ -80,7 +81,7 @@ function PresetCreator({ geo, locale, onImportShared }: PresetCreatorProps) {
         // Geo has no preset in the file.
         const shared = importedSharedFrom(parsed);
         if (shared) {
-            onImportShared(shared);
+            onImportShared?.(shared);
         }
 
         const imported = importedPresetsForGeo(parsed, geo);

@@ -16,6 +16,7 @@ import { Route as PublicIndexRouteImport } from './routes/_public/index'
 import { Route as UnauthenticatedLoginIndexRouteImport } from './routes/_unauthenticated/login/index'
 import { Route as UnauthenticatedActivateIndexRouteImport } from './routes/_unauthenticated/activate/index'
 import { Route as AuthenticatedVouchersIndexRouteImport } from './routes/_authenticated/vouchers/index'
+import { Route as AuthenticatedPresetsIndexRouteImport } from './routes/_authenticated/presets/index'
 import { Route as AuthenticatedMerchantsIndexRouteImport } from './routes/_authenticated/merchants/index'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard/index'
 import { Route as AuthenticatedAnalyzeIndexRouteImport } from './routes/_authenticated/analyze/index'
@@ -56,6 +57,12 @@ const AuthenticatedVouchersIndexRoute =
     path: '/vouchers/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedPresetsIndexRoute =
+  AuthenticatedPresetsIndexRouteImport.update({
+    id: '/presets/',
+    path: '/presets/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedMerchantsIndexRoute =
   AuthenticatedMerchantsIndexRouteImport.update({
     id: '/merchants/',
@@ -86,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/analyze/': typeof AuthenticatedAnalyzeIndexRoute
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/merchants/': typeof AuthenticatedMerchantsIndexRoute
+  '/presets/': typeof AuthenticatedPresetsIndexRoute
   '/vouchers/': typeof AuthenticatedVouchersIndexRoute
   '/activate/': typeof UnauthenticatedActivateIndexRoute
   '/login/': typeof UnauthenticatedLoginIndexRoute
@@ -96,6 +104,7 @@ export interface FileRoutesByTo {
   '/analyze': typeof AuthenticatedAnalyzeIndexRoute
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
   '/merchants': typeof AuthenticatedMerchantsIndexRoute
+  '/presets': typeof AuthenticatedPresetsIndexRoute
   '/vouchers': typeof AuthenticatedVouchersIndexRoute
   '/activate': typeof UnauthenticatedActivateIndexRoute
   '/login': typeof UnauthenticatedLoginIndexRoute
@@ -110,6 +119,7 @@ export interface FileRoutesById {
   '/_authenticated/analyze/': typeof AuthenticatedAnalyzeIndexRoute
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/_authenticated/merchants/': typeof AuthenticatedMerchantsIndexRoute
+  '/_authenticated/presets/': typeof AuthenticatedPresetsIndexRoute
   '/_authenticated/vouchers/': typeof AuthenticatedVouchersIndexRoute
   '/_unauthenticated/activate/': typeof UnauthenticatedActivateIndexRoute
   '/_unauthenticated/login/': typeof UnauthenticatedLoginIndexRoute
@@ -122,6 +132,7 @@ export interface FileRouteTypes {
     | '/analyze/'
     | '/dashboard/'
     | '/merchants/'
+    | '/presets/'
     | '/vouchers/'
     | '/activate/'
     | '/login/'
@@ -132,6 +143,7 @@ export interface FileRouteTypes {
     | '/analyze'
     | '/dashboard'
     | '/merchants'
+    | '/presets'
     | '/vouchers'
     | '/activate'
     | '/login'
@@ -145,6 +157,7 @@ export interface FileRouteTypes {
     | '/_authenticated/analyze/'
     | '/_authenticated/dashboard/'
     | '/_authenticated/merchants/'
+    | '/_authenticated/presets/'
     | '/_authenticated/vouchers/'
     | '/_unauthenticated/activate/'
     | '/_unauthenticated/login/'
@@ -207,6 +220,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedVouchersIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/presets/': {
+      id: '/_authenticated/presets/'
+      path: '/presets'
+      fullPath: '/presets/'
+      preLoaderRoute: typeof AuthenticatedPresetsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/merchants/': {
       id: '/_authenticated/merchants/'
       path: '/merchants'
@@ -243,6 +263,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAnalyzeIndexRoute: typeof AuthenticatedAnalyzeIndexRoute
   AuthenticatedDashboardIndexRoute: typeof AuthenticatedDashboardIndexRoute
   AuthenticatedMerchantsIndexRoute: typeof AuthenticatedMerchantsIndexRoute
+  AuthenticatedPresetsIndexRoute: typeof AuthenticatedPresetsIndexRoute
   AuthenticatedVouchersIndexRoute: typeof AuthenticatedVouchersIndexRoute
 }
 
@@ -251,6 +272,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAnalyzeIndexRoute: AuthenticatedAnalyzeIndexRoute,
   AuthenticatedDashboardIndexRoute: AuthenticatedDashboardIndexRoute,
   AuthenticatedMerchantsIndexRoute: AuthenticatedMerchantsIndexRoute,
+  AuthenticatedPresetsIndexRoute: AuthenticatedPresetsIndexRoute,
   AuthenticatedVouchersIndexRoute: AuthenticatedVouchersIndexRoute,
 }
 
