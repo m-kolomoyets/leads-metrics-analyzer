@@ -17,6 +17,9 @@ type SharedSettingsEditorProps = {
     // Review-multiplier / default-commission lifted from an imported preset file. Seeds the initial
     // draft (over the saved payload); the parent remounts on a fresh import so this re-seeds.
     seed?: ImportedShared;
+    // Head-only: the team whose row this write targets (null = global). Undefined for every other role
+    // — the server pins them to their own team regardless of what is sent.
+    saveTeamId?: string | null;
 };
 
 type SellerDraft = { rate: string; accountIds: string };
@@ -64,7 +67,7 @@ function parseAccountIds(value: string): string[] {
 // values disabled. Saving mints a new immutable shared-settings version; the query invalidates,
 // `toRuleset` re-derives, and grading (Problem-Account escalation + Spend⁺) re-runs. Parent remounts
 // on `activeVersionId` change to reset drafts to the saved values.
-function SharedSettingsEditor({ shared, canEdit, locale, seed }: SharedSettingsEditorProps) {
+function SharedSettingsEditor({ shared, canEdit, locale, seed, saveTeamId }: SharedSettingsEditorProps) {
     const [draft, setDraft] = useState<Draft>(() => {
         const base = shared?.payload ?? DEFAULTS;
         return toDraft(seed ? { ...base, ...seed } : base);
@@ -130,7 +133,7 @@ function SharedSettingsEditor({ shared, canEdit, locale, seed }: SharedSettingsE
         };
 
         await saveShared(
-            { payload },
+            { payload, teamId: saveTeamId },
             {
                 onSuccess() {
                     toast.success(ui('sharedSettings', locale));

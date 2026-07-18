@@ -26,11 +26,14 @@ export const presetsQueryOptions = () => {
     });
 };
 
-export const sharedSettingsQueryOptions = () => {
+// `teamId` is a Head-only override (any team, or `null`/absent for the global row); every other role's
+// value is ignored server-side. Omitting it keeps the route loader's preloaded key.
+export const sharedSettingsQueryOptions = (teamId?: string | null) => {
+    const scoped = teamId ?? null;
     return queryOptions({
-        queryKey: presetKeys.sharedSettingsQueryKey(),
+        queryKey: presetKeys.sharedSettingsQueryKey(scoped),
         queryFn() {
-            return getSharedSettingsFn();
+            return getSharedSettingsFn({ data: { teamId: scoped } });
         },
     });
 };
@@ -90,7 +93,9 @@ export const saveSharedSettingsMutationOptions = () => {
             return saveSharedSettingsFn({ data });
         },
         onSuccess(_data, _variables, _onMutateResult, { client }) {
-            client.invalidateQueries({ queryKey: presetKeys.sharedSettingsQueryKey() });
+            // Refresh every scope (base key is a prefix of all of them) — a Head may have written a
+            // team other than the one currently shown.
+            client.invalidateQueries({ queryKey: presetKeys.sharedSettingsBaseKey() });
         },
     });
 };

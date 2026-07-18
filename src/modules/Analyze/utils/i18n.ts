@@ -56,6 +56,8 @@ const UI: Record<Locale, Record<string, string>> = {
         delete: 'Видалити',
         confirmDelete: 'Підтвердити видалення',
         deleting: 'Видалення…',
+        team: 'Команда',
+        globalSettings: 'Глобальні (без команди)',
     },
     en: {
         sales: 'WITH SALES',
@@ -97,6 +99,8 @@ const UI: Record<Locale, Record<string, string>> = {
         delete: 'Delete',
         confirmDelete: 'Confirm delete',
         deleting: 'Deleting…',
+        team: 'Team',
+        globalSettings: 'Global (no team)',
     },
 };
 

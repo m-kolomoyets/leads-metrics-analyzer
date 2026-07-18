@@ -48,7 +48,8 @@ export type PresetView = {
 
 export type SharedSettingsView = {
     id: string;
-    teamId: string;
+    // Null for the global row a teamless Head owns; a team's UUID otherwise.
+    teamId: string | null;
     activeVersionId: string | null;
     payload: SharedSettingsPayload | null;
 };

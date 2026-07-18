@@ -4,10 +4,11 @@ import type { UploadedFile } from './types';
 import type { Locale } from './utils/i18n';
 import type { ImportedShared } from './utils/importPresets';
 import { useState } from 'react';
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 import { analyze } from '@/lib/domain';
 import { accountsFor } from '@/lib/domain/accounts';
+import { teamsQueryOptions } from '@/services/admin/queries';
 import { presetsQueryOptions, sharedSettingsQueryOptions } from '@/services/presets/queries';
 import { MainLayoutHeader } from '@/components/layouts/MainLayoutHeader';
 import { Button } from '@/components/ui/Button';
@@ -31,6 +32,7 @@ import { GeoTabs } from './components/GeoTabs';
 import { PresetCreator } from './components/PresetCreator';
 import { ProblemAccounts } from './components/ProblemAccounts';
 import { SharedSettingsEditor } from './components/SharedSettingsEditor';
+import { TeamScopePicker } from './components/TeamScopePicker';
 import { ThresholdEditor } from './components/ThresholdEditor';
 
 // Roles that hold the Geo dollar dimension and so may own presets (designer/bdm see none).
@@ -53,14 +55,23 @@ const routeApi = getRouteApi('/_authenticated');
 
 function Analyze() {
     const { data: presets } = useSuspenseQuery(presetsQueryOptions());
-    const { data: shared } = useSuspenseQuery(sharedSettingsQueryOptions());
     const role = routeApi.useRouteContext({
         select(context) {
             return context.auth.me.role;
         },
     });
+    const isHead = role === 'head';
     const [files, setFiles] = useState<UploadedFile[]>([]);
     const [selectedGeo, setSelectedGeo] = useState<string | null>(null);
+    // Which shared-settings scope a Head is viewing/editing: null = the global row, a UUID = that
+    // team's. Ignored for every other role (server pins them to their own team).
+    const [sharedTeamId, setSharedTeamId] = useState<string | null>(null);
+    // Non-suspense so a Head switching teams re-fetches without a suspense boundary; the default
+    // (null) scope shares the loader-preloaded key, so first render is already warm.
+    const { data: sharedData } = useQuery(sharedSettingsQueryOptions(isHead ? sharedTeamId : null));
+    const shared = sharedData ?? null;
+    // Team list backs the Head-only scope picker (head-gated query, so only enabled for a Head).
+    const { data: teams } = useQuery({ ...teamsQueryOptions(), enabled: isHead });
     // Which preset drives grading for a Geo that carries several — owner's pick, keyed by Geo.
     const [selectedPresetByGeo, setSelectedPresetByGeo] = useState<Record<string, string>>({});
     // Shared tunables lifted from an imported file, with a bump counter so each import re-seeds the
@@ -224,13 +235,27 @@ function Analyze() {
                                 />
                             )}
                             {(shared || canEditShared) && (
-                                <SharedSettingsEditor
-                                    key={`${shared?.activeVersionId ?? 'new'}:${importedShared?.n ?? 0}`}
-                                    shared={shared}
-                                    canEdit={canEditShared}
-                                    locale={locale}
-                                    seed={importedShared?.seed}
-                                />
+                                <div className="flex flex-col gap-2">
+                                    {isHead && (
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-muted-foreground text-xs">{ui('team', locale)}</span>
+                                            <TeamScopePicker
+                                                teams={teams ?? []}
+                                                value={sharedTeamId}
+                                                locale={locale}
+                                                onChange={setSharedTeamId}
+                                            />
+                                        </div>
+                                    )}
+                                    <SharedSettingsEditor
+                                        key={`${sharedTeamId ?? 'global'}:${shared?.activeVersionId ?? 'new'}:${importedShared?.n ?? 0}`}
+                                        shared={shared}
+                                        canEdit={canEditShared}
+                                        locale={locale}
+                                        seed={importedShared?.seed}
+                                        saveTeamId={isHead ? sharedTeamId : undefined}
+                                    />
+                                </div>
                             )}
                         </div>
 

@@ -61,7 +61,16 @@ export const deletePresetInputSchema = z.object({
     presetId: z.uuid(),
 });
 
+// Which team's shared settings to read. Only a Head may target a team other than their own (or the
+// global, teamless row via `null`); every other role's value is ignored server-side in favour of
+// their own team. `teamId` absent → the viewer's default scope.
+export const sharedSettingsScopeSchema = z.object({
+    teamId: z.uuid().nullable().optional(),
+});
+
 export type SaveSharedSettingsInput = z.infer<typeof saveSharedSettingsInputSchema>;
 export const saveSharedSettingsInputSchema = z.object({
     payload: sharedSettingsPayloadSchema,
+    // Same rule as the scope above — only a Head may direct the write at another team / the global row.
+    teamId: z.uuid().nullable().optional(),
 });

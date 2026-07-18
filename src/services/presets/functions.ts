@@ -3,7 +3,7 @@ import type { Viewer, VisibilityScope } from '@/lib/auth/scope';
 import type { MeData } from '@/services/auth/types';
 import type { PresetView, SharedSettingsView } from './types';
 import { createServerFn } from '@tanstack/react-start';
-import { eq } from 'drizzle-orm';
+import { eq, isNull } from 'drizzle-orm';
 import { FORBIDDEN_MESSAGE, requireUser } from '@/lib/auth/guards';
 import { presetAccessFor } from '@/lib/auth/presetAccess';
 import { scopeFor } from '@/lib/auth/scope';
@@ -17,6 +17,7 @@ import {
     savePresetVersionInputSchema,
     saveSharedSettingsInputSchema,
     sharedSettingsPayloadSchema,
+    sharedSettingsScopeSchema,
 } from './schemas';
 
 // Presets API (T5, #7). Every read runs through `scopeFor(viewer)` (ADR-0007) — no hand-rolled role
@@ -280,14 +281,21 @@ const parsePayload = (value: unknown): SharedSettingsView['payload'] => {
     return parsed.success ? parsed.data : null;
 };
 
-export const getSharedSettingsFn = createServerFn({ method: 'GET' }).handler(
-    async (): Promise<SharedSettingsView | null> => {
+export const getSharedSettingsFn = createServerFn({ method: 'GET' })
+    .inputValidator(sharedSettingsScopeSchema)
+    .handler(async ({ data }): Promise<SharedSettingsView | null> => {
         const me = await requireUser();
 
-        // Shared settings are team-global; a teamless viewer (head/designer/bdm) has none to read.
-        if (!me.teamId) {
+        // Which row applies: a Head may read any team's (or the global, null-team row) via `teamId`,
+        // defaulting to global; every other role is pinned to their own team, and a teamless non-Head
+        // (designer/bdm/unplaced) has none.
+        const isHead = me.role === 'head';
+        const teamId = isHead ? (data.teamId ?? null) : (me.teamId ?? null);
+        if (teamId === null && !isHead) {
             return null;
         }
+
+        const teamFilter = teamId === null ? isNull(sharedSettings.teamId) : eq(sharedSettings.teamId, teamId);
 
         const [row] = await db
             .select({
@@ -298,7 +306,7 @@ export const getSharedSettingsFn = createServerFn({ method: 'GET' }).handler(
             })
             .from(sharedSettings)
             .leftJoin(sharedSettingsVersion, eq(sharedSettings.activeVersionId, sharedSettingsVersion.id))
-            .where(eq(sharedSettings.teamId, me.teamId))
+            .where(teamFilter)
             .limit(1);
 
         if (!row) {
@@ -311,28 +319,34 @@ export const getSharedSettingsFn = createServerFn({ method: 'GET' }).handler(
             activeVersionId: row.activeVersionId,
             payload: parsePayload(row.payload),
         };
-    }
-);
+    });
 
 export const saveSharedSettingsFn = createServerFn({ method: 'POST' })
     .inputValidator(saveSharedSettingsInputSchema)
     .handler(async ({ data }): Promise<SharedSettingsView> => {
         const me = await requireUser();
 
-        // Team-global tunables are set by the dollar-dimension roles (team_lead / head / buyer), and
-        // only for a team they belong to — a teamless viewer has no shared-settings row to write.
-        if (!SHARED_SETTINGS_WRITE_ROLES.includes(me.role) || !me.teamId) {
+        // Team-global tunables are set by the dollar-dimension roles (team_lead / head / buyer). A Head
+        // may write any team's row (or the global, null-team row) via `data.teamId`; team_lead / buyer
+        // are pinned to their own team's row and so must belong to one.
+        if (!SHARED_SETTINGS_WRITE_ROLES.includes(me.role)) {
             throw new Error(FORBIDDEN_MESSAGE);
         }
 
-        const teamId = me.teamId;
+        const isHead = me.role === 'head';
+        const teamId = isHead ? (data.teamId ?? null) : (me.teamId ?? null);
+        if (teamId === null && !isHead) {
+            throw new Error(FORBIDDEN_MESSAGE);
+        }
+
+        const teamFilter = teamId === null ? isNull(sharedSettings.teamId) : eq(sharedSettings.teamId, teamId);
 
         const view = await db.transaction(async (tx) => {
-            // One `shared_settings` row per team (upsert-by-team); versions append beneath it.
+            // One `shared_settings` row per scope (upsert-by-team, or the global row); versions append.
             const [existing] = await tx
                 .select({ id: sharedSettings.id })
                 .from(sharedSettings)
-                .where(eq(sharedSettings.teamId, teamId))
+                .where(teamFilter)
                 .limit(1);
 
             const settingsId =
