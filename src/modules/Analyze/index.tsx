@@ -54,7 +54,7 @@ function Analyze() {
     // The very preset that fed this geo's grading — the inline editor mutates it so edits and
     // verdicts stay in lock-step. Team Leads own the team-global shared-settings write.
     const activePreset = activeGeo ? presetForGeo(presets, activeGeo) : undefined;
-    const canEditShared = role === 'team_lead';
+    const canEditShared = ['team_lead', 'head', 'buyer'].includes(role);
 
     const geoFacts =
         result?.facts.filter((fact) => {
