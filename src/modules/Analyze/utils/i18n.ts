@@ -27,6 +27,20 @@ const UI: Record<Locale, Record<string, string>> = {
         checkManually: 'перевір руками (запуск / трекінг)',
         why: 'Чому',
         noPreset: 'без пресету — не оцінюється',
+        thresholds: 'Пороги',
+        gy: 'зел→жовт',
+        yr: 'жовт→черв',
+        save: 'Зберегти',
+        saving: 'Збереження…',
+        readonly: 'лише читання',
+        sharedSettings: 'Спільні налаштування',
+        defaultCommission: 'Комісія за замовч.',
+        reviewMultiplier: 'Множник перевірки',
+        sellers: 'Продавці',
+        rate: 'ставка',
+        accountIds: 'ID акаунтів (через кому)',
+        addSeller: 'Додати продавця',
+        remove: 'Прибрати',
     },
     en: {
         sales: 'WITH SALES',
@@ -39,8 +53,36 @@ const UI: Record<Locale, Record<string, string>> = {
         checkManually: 'check by hand (launch / tracking)',
         why: 'Why',
         noPreset: 'no preset — ungraded',
+        thresholds: 'Thresholds',
+        gy: 'green→yellow',
+        yr: 'yellow→red',
+        save: 'Save',
+        saving: 'Saving…',
+        readonly: 'read-only',
+        sharedSettings: 'Shared settings',
+        defaultCommission: 'Default commission',
+        reviewMultiplier: 'Review multiplier',
+        sellers: 'Sellers',
+        rate: 'rate',
+        accountIds: 'Account IDs (comma-separated)',
+        addSeller: 'Add seller',
+        remove: 'Remove',
     },
 };
+
+// The five editable threshold rows, in the reference's order. Keyed to `PresetThresholds`.
+export const THRESHOLD_METRICS = ['installs', 'regs', 'sales', 'clicks', 'wasteZones'] as const;
+
+export type ThresholdMetric = (typeof THRESHOLD_METRICS)[number];
+
+const METRIC_LABEL: Record<Locale, Record<ThresholdMetric, string>> = {
+    uk: { installs: 'Інстали', regs: 'Реги', sales: 'Продажі', clicks: 'Кліки', wasteZones: 'Зони втрат' },
+    en: { installs: 'Installs', regs: 'Regs', sales: 'Sales', clicks: 'Clicks', wasteZones: 'Waste zones' },
+};
+
+export function metricLabel(metric: ThresholdMetric, locale: Locale): string {
+    return METRIC_LABEL[locale][metric];
+}
 
 export function actionLabel(zone: Zone, locale: Locale): string {
     return ACTION[locale][zone];
