@@ -8,6 +8,7 @@ import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 import { analyze } from '@/lib/domain';
 import { accountsFor } from '@/lib/domain/accounts';
+import { creativesFor } from '@/lib/domain/creatives';
 import { teamsQueryOptions } from '@/services/admin/queries';
 import { presetsQueryOptions, sharedSettingsQueryOptions } from '@/services/presets/queries';
 import { MainLayoutHeader } from '@/components/layouts/MainLayoutHeader';
@@ -27,6 +28,7 @@ import { presetForGeo, presetsForGeo } from './utils/presetForGeo';
 import { toRuleset } from './utils/toRuleset';
 import { useClipboard } from './hooks/useClipboard';
 import { AccountBlock } from './components/AccountBlock';
+import { CreativeTable } from './components/CreativeTable';
 import { FileDropzones } from './components/FileDropzones';
 import { GeoStat } from './components/GeoStat';
 import { GeoTabs } from './components/GeoTabs';
@@ -123,6 +125,9 @@ function Analyze() {
             })
     );
     const accounts = accountsFor(geoFacts, thresholds, ruleset.reviewMultiplier, excludedInGeo);
+    // Per-creative table for the active geo (#35): FB Spend/Impressions real, funnel allocated. Graded
+    // against the same focused thresholds as the campaign tables; empty geo → the table renders nothing.
+    const creatives = result ? creativesFor(geoFacts, result.campaignCreatives, thresholds) : [];
     // The active geo's market-level roll-up (Geo Total + Attributed + allocation, doc 06 / ADR-0003).
     const geoRollup = result?.geos.find((geo) => {
         return geo.geo === activeGeo;
@@ -277,24 +282,6 @@ function Analyze() {
 
                         <ProblemAccounts accounts={accounts} locale={locale} />
 
-                        <div className="flex flex-col gap-4">
-                            {accounts.map((account) => {
-                                return (
-                                    <AccountBlock
-                                        key={account.account}
-                                        account={account}
-                                        locale={locale}
-                                        copiedKey={copied ?? ''}
-                                        onCopy={copy}
-                                        isExcluded={(campaign) => {
-                                            return excluded.has(`${activeGeo}:${campaign}`);
-                                        }}
-                                        onToggleExcluded={toggleExcluded}
-                                    />
-                                );
-                            })}
-                        </div>
-
                         {geoRollup && thresholds && (
                             <div className="flex flex-col gap-6">
                                 <ModelTable
@@ -318,9 +305,27 @@ function Analyze() {
                                     onCopy={copy}
                                     copyKey={`os:${activeGeo}`}
                                 />
+                                <CreativeTable rows={creatives} thresholds={thresholds} locale={locale} />
                             </div>
                         )}
 
+                        <div className="flex flex-col gap-4">
+                            {accounts.map((account) => {
+                                return (
+                                    <AccountBlock
+                                        key={account.account}
+                                        account={account}
+                                        locale={locale}
+                                        copiedKey={copied ?? ''}
+                                        onCopy={copy}
+                                        isExcluded={(campaign) => {
+                                            return excluded.has(`${activeGeo}:${campaign}`);
+                                        }}
+                                        onToggleExcluded={toggleExcluded}
+                                    />
+                                );
+                            })}
+                        </div>
                         {result && result.unclaimedAccounts.length > 0 && (
                             <p className="text-muted-foreground text-xs">
                                 Unclaimed accounts (default commission): {result.unclaimedAccounts.join(', ')}
