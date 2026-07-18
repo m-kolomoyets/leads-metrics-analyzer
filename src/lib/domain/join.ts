@@ -30,6 +30,25 @@ export type RawFact = RawTotals & {
     os: string | null;
 };
 
+// One dimension value's raw funnel within a campaign — installs/regs/sales/revenue from KT main;
+// linkClicks only for OS (KT clicks has no Offer). The allocation table (doc 06) sums these to Geo
+// and splits the campaign's real Spend⁺ across them in proportion to installs.
+export type ModelFunnel = {
+    installs: number;
+    regs: number;
+    sales: number;
+    revenue: number;
+    linkClicks: number;
+};
+
+// A campaign's Offer/OS breakdown, kept out of the (persisted) Fact — allocation input only.
+export type CampaignModel = {
+    // Offer ID → its funnel + a display label parsed from the pipe string (doc 06 offer identity).
+    offer: Map<string, ModelFunnel & { label: string }>;
+    // OS value → its funnel; linkClicks merged in from the KT clicks report.
+    os: Map<string, ModelFunnel>;
+};
+
 export type IntegrityWarning =
     | { kind: 'geo-mismatch'; campaign: string; fbGeo: string; ktGeo: string }
     | { kind: 'account-mismatch'; campaign: string; fbAccount: string; ktAccount: string }
@@ -41,11 +60,32 @@ export type JoinResult = {
     // Untagged/unfired-macro contributions, per Geo. Counted toward the Geo Total, never a Campaign
     // (ADR-0003) — so a Geo Total legitimately diverges from the sum of its attributed campaigns.
     geoUntagged: Map<string, RawTotals>;
+    // Per-campaign Offer/OS funnel breakdown (doc 06). Keyed by campaign id; only tagged campaigns.
+    campaignModels: Map<string, CampaignModel>;
     warnings: IntegrityWarning[];
 };
 
 function zeroRaw(): RawTotals {
     return { spend: 0, revenue: 0, linkClicks: 0, installs: 0, regs: 0, sales: 0 };
+}
+
+function zeroFunnel(): ModelFunnel {
+    return { installs: 0, regs: 0, sales: 0, revenue: 0, linkClicks: 0 };
+}
+
+// Display label from the pipe-delimited Offer string: the first 6 meaningful blocks (doc 06 mirrors
+// the prototype), tolerating absence — empty string when the source carries no name.
+function offerLabel(offerName: string): string {
+    return offerName
+        .split('|')
+        .map((block) => {
+            return block.trim();
+        })
+        .filter((block) => {
+            return block !== '';
+        })
+        .slice(0, 6)
+        .join(' | ');
 }
 
 // Collapse FB rows to one campaign each: sum spend (colliding rows add, doc 02), keep the first geo,
@@ -101,7 +141,17 @@ type KtMainAgg = RawTotals & {
     account: string;
     offerSpend: Map<string, number>;
     osSet: Set<string>;
+    // The Offer/OS funnel split within this campaign — allocation input (doc 06).
+    model: CampaignModel;
 };
+
+// Add one KT-main row's counts to a dimension bucket (offer or os) inside a campaign's model.
+function addFunnel(funnel: ModelFunnel, row: KtMainRow): void {
+    funnel.installs += row.installs;
+    funnel.regs += row.regs;
+    funnel.sales += row.sales;
+    funnel.revenue += row.revenue;
+}
 
 function aggregateKtMain(rows: KtMainRow[]): { byCampaign: Map<string, KtMainAgg>; untagged: Map<string, RawTotals> } {
     const byCampaign = new Map<string, KtMainAgg>();
@@ -121,7 +171,14 @@ function aggregateKtMain(rows: KtMainRow[]): { byCampaign: Map<string, KtMainAgg
         }
         let agg = byCampaign.get(row.campaign);
         if (!agg) {
-            agg = { ...zeroRaw(), geo: row.geo, account: row.account, offerSpend: new Map(), osSet: new Set() };
+            agg = {
+                ...zeroRaw(),
+                geo: row.geo,
+                account: row.account,
+                offerSpend: new Map(),
+                osSet: new Set(),
+                model: { offer: new Map(), os: new Map() },
+            };
             byCampaign.set(row.campaign, agg);
         }
         agg.installs += row.installs;
@@ -130,12 +187,31 @@ function aggregateKtMain(rows: KtMainRow[]): { byCampaign: Map<string, KtMainAgg
         agg.revenue += row.revenue;
         agg.osSet.add(row.os);
         agg.offerSpend.set(row.offer, (agg.offerSpend.get(row.offer) ?? 0) + row.revenue);
+
+        let offer = agg.model.offer.get(row.offer);
+        if (!offer) {
+            offer = { ...zeroFunnel(), label: offerLabel(row.offerName) };
+            agg.model.offer.set(row.offer, offer);
+        }
+        addFunnel(offer, row);
+        let os = agg.model.os.get(row.os);
+        if (!os) {
+            os = zeroFunnel();
+            agg.model.os.set(row.os, os);
+        }
+        addFunnel(os, row);
     }
     return { byCampaign, untagged };
 }
 
-function aggregateKtClicks(rows: KtClicksRow[]): { byCampaign: Map<string, number>; untagged: Map<string, number> } {
+function aggregateKtClicks(rows: KtClicksRow[]): {
+    byCampaign: Map<string, number>;
+    // Per-(campaign, OS) clicks — the OS allocation table's only clicks source (doc 06).
+    byCampaignOs: Map<string, Map<string, number>>;
+    untagged: Map<string, number>;
+} {
     const byCampaign = new Map<string, number>();
+    const byCampaignOs = new Map<string, Map<string, number>>();
     const untagged = new Map<string, number>();
     for (const row of rows) {
         if (row.unfiredMacro) {
@@ -145,8 +221,14 @@ function aggregateKtClicks(rows: KtClicksRow[]): { byCampaign: Map<string, numbe
             continue;
         }
         byCampaign.set(row.campaign, (byCampaign.get(row.campaign) ?? 0) + row.linkClicks);
+        // Empty OS rows carry no dimension; skip (the OS table has no empty-OS row, doc 06).
+        if (row.os !== '') {
+            const perOs = byCampaignOs.get(row.campaign) ?? new Map<string, number>();
+            perOs.set(row.os, (perOs.get(row.os) ?? 0) + row.linkClicks);
+            byCampaignOs.set(row.campaign, perOs);
+        }
     }
-    return { byCampaign, untagged };
+    return { byCampaign, byCampaignOs, untagged };
 }
 
 // The most-revenue offer id for a campaign (representative attribute; the Offer allocation table
@@ -166,7 +248,11 @@ function topOffer(offerSpend: Map<string, number>): string {
 export function join(parsed: ParsedFiles): JoinResult {
     const fb = aggregateFb(parsed.fb);
     const { byCampaign: ktMain, untagged: untaggedMain } = aggregateKtMain(parsed.ktMain);
-    const { byCampaign: ktClicks, untagged: untaggedClicks } = aggregateKtClicks(parsed.ktClicks);
+    const {
+        byCampaign: ktClicks,
+        byCampaignOs: ktClicksByOs,
+        untagged: untaggedClicks,
+    } = aggregateKtClicks(parsed.ktClicks);
 
     const warnings: IntegrityWarning[] = [];
     const facts: RawFact[] = [];
@@ -214,6 +300,24 @@ export function join(parsed: ParsedFiles): JoinResult {
         }
     }
 
+    // Assemble the per-campaign Offer/OS models: KT-main funnels + KT-clicks OS clicks. Only
+    // campaigns that joined to FB (attributed) — the allocation table lives below the join.
+    const campaignModels = new Map<string, CampaignModel>();
+    for (const [campaign, agg] of ktMain) {
+        if (!fb.has(campaign)) {
+            continue;
+        }
+        const perOs = ktClicksByOs.get(campaign);
+        if (perOs) {
+            for (const [os, clicks] of perOs) {
+                const funnel = agg.model.os.get(os) ?? zeroFunnel();
+                funnel.linkClicks += clicks;
+                agg.model.os.set(os, funnel);
+            }
+        }
+        campaignModels.set(campaign, agg.model);
+    }
+
     // Merge the two untagged sources into one per-Geo bucket.
     const geoUntagged = new Map<string, RawTotals>();
     for (const [geo, totals] of untaggedMain) {
@@ -225,5 +329,5 @@ export function join(parsed: ParsedFiles): JoinResult {
         geoUntagged.set(geo, bucket);
     }
 
-    return { facts, geoUntagged, warnings };
+    return { facts, geoUntagged, campaignModels, warnings };
 }

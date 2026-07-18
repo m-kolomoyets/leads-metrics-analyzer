@@ -28,11 +28,13 @@ export type AccountRollup = {
     counts: Record<Zone, number>;
     // Non-null when a Problem-Account rule fires (doc 04) over the included campaigns.
     problem: ProblemAccount | null;
+    // Σ Spend⁺ wasted over the included red campaigns (doc 06) — the account's slice of geo waste.
+    waste: number;
     // Included campaigns that produced ≥1 sale — surfaced in their own block, sales desc.
     salesCampaigns: CampaignRollup[];
 };
 
-const NEUTRAL: Verdict = { verdict: 'neutral', zone: 'neutral', reason: null };
+const NEUTRAL: Verdict = { verdict: 'neutral', zone: 'neutral', reason: null, waste: 0 };
 
 function gradeCampaign(
     campaign: string,
@@ -100,6 +102,9 @@ export function accountsFor(
             metrics: metricsFor(totals),
             campaigns: rollups,
             counts,
+            waste: included.reduce((sum, rollup) => {
+                return sum + rollup.verdict.waste;
+            }, 0),
             // No included spend → no verdict to alarm on (rule 2's CPI would divide 0/0 to Infinity).
             problem:
                 thresholds && totals.spendPlus > 0
