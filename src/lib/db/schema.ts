@@ -3,11 +3,11 @@
 //   T4a (#5) — team (adds user.team_id FK)
 //   T4c (#14) — invitation (one-time activation token)
 //   T5 (#7)  — preset, preset_version, shared_settings, shared_settings_version ✓
-//   T6 (#8)  — snapshot, snapshot_fact, applied_ruleset, applied_ruleset_geo
+//   T6 (#8)  — applied_ruleset, applied_ruleset_geo, snapshot, snapshot_fact ✓
 // See docs/specs/0001-multi-user-auth-teams-persistence.md and docs/adr/0002, 0006, 0007.
 
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
-import { jsonb, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { date, doublePrecision, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 // One role per user (spec §Roles). DB enum, not a TS enum — repo bans TS `enum`.
 export const userRole = pgEnum('user_role', ['head', 'team_lead', 'buyer', 'designer', 'bdm']);
@@ -179,6 +179,113 @@ export const sharedSettingsVersion = pgTable('shared_settings_version', {
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Snapshots (T6, #8): a saved analysis pins the exact ruleset versions that produced it via a frozen
+// Applied Ruleset (ADR-0002 at multi-user granularity), so later preset edits never change a saved
+// Snapshot's numbers. `applied_ruleset` names the Shared-settings version in force; `applied_ruleset_geo`
+// names one Preset version per analyzed Geo. Both point at the immutable version tables — a Snapshot
+// can only be built from ALREADY-SAVED versions (spec story 35, "push forces save first").
+// `shared_settings_version_id` is nullable so a teamless creator (with no shared settings) can still
+// snapshot; `set null` on the version keeps the bundle if history is pruned.
+export const appliedRuleset = pgTable('applied_ruleset', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    sharedSettingsVersionId: uuid('shared_settings_version_id').references(
+        () => {
+            return sharedSettingsVersion.id;
+        },
+        { onDelete: 'set null' }
+    ),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// One frozen Preset version per Geo the Snapshot analyzed. `preset_version_id` is `set null` rather
+// than cascade so pruning a preset's history never silently rewrites what a saved Snapshot pinned.
+export const appliedRulesetGeo = pgTable('applied_ruleset_geo', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    appliedRulesetId: uuid('applied_ruleset_id')
+        .notNull()
+        .references(
+            () => {
+                return appliedRuleset.id;
+            },
+            { onDelete: 'cascade' }
+        ),
+    geo: text('geo').notNull(),
+    presetVersionId: uuid('preset_version_id').references(
+        () => {
+            return presetVersion.id;
+        },
+        { onDelete: 'set null' }
+    ),
+});
+
+// The traffic-light grade a fact carries — a cost metric graded against a Threshold Pair, or the
+// funnel-derived Verdict (domain doc 04). `neutral` = no call yet.
+export const factZone = pgEnum('fact_zone', ['green', 'yellow', 'red', 'neutral']);
+
+// A saved Snapshot (spec §Snapshots). Creator-owned (`created_by_user_id`) and STAMPED with the
+// creator's team at creation (`team_id`) so a member's later transfer never re-attributes their past
+// Snapshots (spec story 13, ADR row-scope). Row-scope visibility filters on this stamped `team_id`.
+// Immutable once saved — rows are only ever INSERTed. `owner` cascades; `team_id` is `set null` so a
+// deleted team leaves the Snapshot standing (still creator-attributed). `meta` carries report-level
+// context (date range, source hashes) as jsonb.
+export const snapshot = pgTable('snapshot', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    createdByUserId: uuid('created_by_user_id')
+        .notNull()
+        .references(
+            () => {
+                return user.id;
+            },
+            { onDelete: 'cascade' }
+        ),
+    teamId: uuid('team_id').references(
+        () => {
+            return team.id;
+        },
+        { onDelete: 'set null' }
+    ),
+    appliedRulesetId: uuid('applied_ruleset_id')
+        .notNull()
+        .references(() => {
+            return appliedRuleset.id;
+        }),
+    reportDate: date('report_date').notNull(),
+    takenAt: timestamp('taken_at', { withTimezone: true }).notNull().defaultNow(),
+    meta: jsonb('meta'),
+});
+
+// A Snapshot's facts at grain Campaign × Creative × Date — enough to rebuild every roll-up and chart
+// later (spec story 34). Money as double precision (Spend⁺ = Spend×(1+commission) is the numerator of
+// every cost metric — domain gotchas); funnel counts as integers. `verdict` is the campaign action,
+// `zone` the ROI/spend grade; both frozen at save. Append-only with its parent Snapshot.
+export const snapshotFact = pgTable('snapshot_fact', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    snapshotId: uuid('snapshot_id')
+        .notNull()
+        .references(
+            () => {
+                return snapshot.id;
+            },
+            { onDelete: 'cascade' }
+        ),
+    campaign: text('campaign').notNull(),
+    creative: text('creative').notNull(),
+    reportDate: date('report_date').notNull(),
+    geo: text('geo').notNull(),
+    account: text('account').notNull(),
+    offer: text('offer').notNull(),
+    os: text('os'),
+    spend: doublePrecision('spend').notNull(),
+    spendPlus: doublePrecision('spend_plus').notNull(),
+    revenue: doublePrecision('revenue').notNull(),
+    linkClicks: integer('link_clicks').notNull(),
+    installs: integer('installs').notNull(),
+    regs: integer('regs').notNull(),
+    sales: integer('sales').notNull(),
+    verdict: factZone('verdict').notNull(),
+    zone: factZone('zone').notNull(),
+});
+
 export type UserRow = typeof user.$inferSelect;
 export type SessionRow = typeof session.$inferSelect;
 export type TeamRow = typeof team.$inferSelect;
@@ -187,3 +294,7 @@ export type PresetRow = typeof preset.$inferSelect;
 export type PresetVersionRow = typeof presetVersion.$inferSelect;
 export type SharedSettingsRow = typeof sharedSettings.$inferSelect;
 export type SharedSettingsVersionRow = typeof sharedSettingsVersion.$inferSelect;
+export type AppliedRulesetRow = typeof appliedRuleset.$inferSelect;
+export type AppliedRulesetGeoRow = typeof appliedRulesetGeo.$inferSelect;
+export type SnapshotRow = typeof snapshot.$inferSelect;
+export type SnapshotFactRow = typeof snapshotFact.$inferSelect;
