@@ -11,6 +11,7 @@ import { db } from '@/lib/db';
 import { preset, presetVersion, sharedSettings, sharedSettingsVersion } from '@/lib/db/schema';
 import {
     createPresetInputSchema,
+    deletePresetInputSchema,
     presetThresholdsSchema,
     renamePresetInputSchema,
     savePresetVersionInputSchema,
@@ -26,6 +27,10 @@ import {
 const viewerFrom = (me: MeData): Viewer => {
     return { id: me.id, role: me.role, teamId: me.teamId };
 };
+
+// Team-global shared settings are writable by the dollar-dimension roles (they carry the Geo/account
+// dimensions the tunables feed); designer/bdm never touch them. Gated further by team membership.
+const SHARED_SETTINGS_WRITE_ROLES: MeData['role'][] = ['team_lead', 'head', 'buyer'];
 
 const PRESET_COLUMNS = {
     id: preset.id,
@@ -239,6 +244,36 @@ export const renamePresetFn = createServerFn({ method: 'POST' })
         return view;
     });
 
+export const deletePresetFn = createServerFn({ method: 'POST' })
+    .inputValidator(deletePresetInputSchema)
+    .handler(async ({ data }): Promise<{ id: string }> => {
+        const me = await requireUser();
+        const viewer = viewerFrom(me);
+
+        // Owner-only delete — same gate as edit. `preset_version` rows cascade off the FK, and any
+        // Snapshot that pinned one of those versions keeps it (`snapshot_geo_preset.preset_version_id`
+        // is `set null`, ADR-0002), so a past judgement is never silently rewritten.
+        await db.transaction(async (tx) => {
+            const [row] = await tx
+                .select({ ownerUserId: preset.ownerUserId, teamId: preset.teamId })
+                .from(preset)
+                .where(eq(preset.id, data.presetId))
+                .limit(1);
+
+            if (!row) {
+                throw new Error('Preset not found');
+            }
+
+            if (presetAccessFor(viewer, row) !== 'edit') {
+                throw new Error(FORBIDDEN_MESSAGE);
+            }
+
+            await tx.delete(preset).where(eq(preset.id, data.presetId));
+        });
+
+        return { id: data.presetId };
+    });
+
 const parsePayload = (value: unknown): SharedSettingsView['payload'] => {
     const parsed = sharedSettingsPayloadSchema.safeParse(value);
 
@@ -284,8 +319,9 @@ export const saveSharedSettingsFn = createServerFn({ method: 'POST' })
     .handler(async ({ data }): Promise<SharedSettingsView> => {
         const me = await requireUser();
 
-        // Team-global tunables are the Team Lead's to set, and only for a team they lead.
-        if (me.role !== 'team_lead' || !me.teamId) {
+        // Team-global tunables are set by the dollar-dimension roles (team_lead / head / buyer), and
+        // only for a team they belong to — a teamless viewer has no shared-settings row to write.
+        if (!SHARED_SETTINGS_WRITE_ROLES.includes(me.role) || !me.teamId) {
             throw new Error(FORBIDDEN_MESSAGE);
         }
 

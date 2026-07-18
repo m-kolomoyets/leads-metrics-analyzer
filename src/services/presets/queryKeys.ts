@@ -15,6 +15,9 @@ export const presetKeys = {
     renameMutationKey() {
         return [...presetKeys.all, 'rename'] as const;
     },
+    deleteMutationKey() {
+        return [...presetKeys.all, 'delete'] as const;
+    },
     saveSharedSettingsMutationKey() {
         return [...presetKeys.all, 'save-shared-settings'] as const;
     },

@@ -4,7 +4,11 @@ import type { ThresholdDraft } from '../ThresholdFields';
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { renamePresetMutationOptions, savePresetVersionMutationOptions } from '@/services/presets/queries';
+import {
+    deletePresetMutationOptions,
+    renamePresetMutationOptions,
+    savePresetVersionMutationOptions,
+} from '@/services/presets/queries';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
@@ -27,8 +31,10 @@ function ThresholdEditor({ preset, locale }: ThresholdEditorProps) {
         return preset.thresholds ? toThresholdDraft(preset.thresholds) : EMPTY_THRESHOLD_DRAFT;
     });
     const [name, setName] = useState(preset.name);
+    const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
     const { mutateAsync: saveVersion, isPending: isSaving } = useMutation(savePresetVersionMutationOptions());
     const { mutateAsync: rename, isPending: isRenaming } = useMutation(renamePresetMutationOptions());
+    const { mutateAsync: remove, isPending: isDeleting } = useMutation(deletePresetMutationOptions());
 
     function setPair(metric: ThresholdMetric, bound: 'gy' | 'yr', value: string) {
         setDraft((current) => {
@@ -71,6 +77,20 @@ function ThresholdEditor({ preset, locale }: ThresholdEditorProps) {
                 },
                 onError() {
                     toast.error('Failed to rename preset');
+                },
+            }
+        );
+    }
+
+    async function handleDelete() {
+        await remove(
+            { presetId: preset.id },
+            {
+                onSuccess() {
+                    toast.success(`${preset.geo} · ${preset.name}`);
+                },
+                onError() {
+                    toast.error('Failed to delete preset');
                 },
             }
         );
@@ -121,10 +141,48 @@ function ThresholdEditor({ preset, locale }: ThresholdEditorProps) {
             />
 
             {canEdit && (
-                <div>
+                <div className="flex items-center gap-2">
                     <Button type="button" size="sm" disabled={!isValid || isSaving} onClick={handleSave}>
                         {isSaving ? ui('saving', locale) : ui('save', locale)}
                     </Button>
+                    <span className="flex-1" />
+                    {!isConfirmingDelete && (
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            disabled={isDeleting}
+                            onClick={() => {
+                                setIsConfirmingDelete(true);
+                            }}
+                        >
+                            {ui('delete', locale)}
+                        </Button>
+                    )}
+                    {isConfirmingDelete && (
+                        <>
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="destructive"
+                                disabled={isDeleting}
+                                onClick={handleDelete}
+                            >
+                                {isDeleting ? ui('deleting', locale) : ui('confirmDelete', locale)}
+                            </Button>
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                disabled={isDeleting}
+                                onClick={() => {
+                                    setIsConfirmingDelete(false);
+                                }}
+                            >
+                                {ui('cancel', locale)}
+                            </Button>
+                        </>
+                    )}
                 </div>
             )}
         </section>

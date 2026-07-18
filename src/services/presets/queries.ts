@@ -1,7 +1,14 @@
-import type { CreatePresetInput, RenamePresetInput, SavePresetVersionInput, SaveSharedSettingsInput } from './schemas';
+import type {
+    CreatePresetInput,
+    DeletePresetInput,
+    RenamePresetInput,
+    SavePresetVersionInput,
+    SaveSharedSettingsInput,
+} from './schemas';
 import { mutationOptions, queryOptions } from '@tanstack/react-query';
 import {
     createPresetFn,
+    deletePresetFn,
     getSharedSettingsFn,
     listPresetsFn,
     renamePresetFn,
@@ -57,6 +64,18 @@ export const renamePresetMutationOptions = () => {
         mutationKey: presetKeys.renameMutationKey(),
         mutationFn(data: RenamePresetInput) {
             return renamePresetFn({ data });
+        },
+        onSuccess(_data, _variables, _onMutateResult, { client }) {
+            client.invalidateQueries({ queryKey: presetKeys.listQueryKey() });
+        },
+    });
+};
+
+export const deletePresetMutationOptions = () => {
+    return mutationOptions({
+        mutationKey: presetKeys.deleteMutationKey(),
+        mutationFn(data: DeletePresetInput) {
+            return deletePresetFn({ data });
         },
         onSuccess(_data, _variables, _onMutateResult, { client }) {
             client.invalidateQueries({ queryKey: presetKeys.listQueryKey() });

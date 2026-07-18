@@ -56,6 +56,11 @@ export const renamePresetInputSchema = z.object({
     name: nameSchema,
 });
 
+export type DeletePresetInput = z.infer<typeof deletePresetInputSchema>;
+export const deletePresetInputSchema = z.object({
+    presetId: z.uuid(),
+});
+
 export type SaveSharedSettingsInput = z.infer<typeof saveSharedSettingsInputSchema>;
 export const saveSharedSettingsInputSchema = z.object({
     payload: sharedSettingsPayloadSchema,

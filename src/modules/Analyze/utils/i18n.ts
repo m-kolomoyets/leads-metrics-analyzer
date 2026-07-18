@@ -53,6 +53,9 @@ const UI: Record<Locale, Record<string, string>> = {
         chooseImport: 'Оберіть пресет для імпорту',
         cancel: 'Скасувати',
         noResults: 'Нічого не знайдено',
+        delete: 'Видалити',
+        confirmDelete: 'Підтвердити видалення',
+        deleting: 'Видалення…',
     },
     en: {
         sales: 'WITH SALES',
@@ -91,6 +94,9 @@ const UI: Record<Locale, Record<string, string>> = {
         chooseImport: 'Choose a preset to import',
         cancel: 'Cancel',
         noResults: 'No results',
+        delete: 'Delete',
+        confirmDelete: 'Confirm delete',
+        deleting: 'Deleting…',
     },
 };
 
