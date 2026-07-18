@@ -1,27 +1,24 @@
-import type { VerdictReason, Zone } from '@/lib/domain/types';
+// Display formatters for the analyzer (S2). Money/cost show two decimals; a null cost-per (zero
+// denominator) shows an em dash. Reason/zone strings live at the i18n edge (`utils/i18n.ts`).
 
-// Raw display helpers for the slice-1 proof table (styling proper lands in S2). Money/cost show two
-// decimals; a null cost-per (zero denominator) shows an em dash.
 export function money(value: number): string {
     return value.toFixed(2);
 }
 
+// A dollar amount: $1234.56.
+export function usd(value: number): string {
+    return `$${value.toFixed(2)}`;
+}
+
+// A cost-per metric: em dash when the denominator was zero (metric "not shown", not zero).
 export function cost(value: number | null): string {
     return value === null ? '—' : value.toFixed(2);
 }
 
-// The structured verdict reason (ADR-0004) as a terse string: which stage decided, its metric+value.
-export function reasonText(reason: VerdictReason | null): string {
-    if (!reason) {
+// A percentage with sign, e.g. ROI +42% / −15%; null → em dash.
+export function pct(value: number | null): string {
+    if (value === null) {
         return '—';
     }
-    return `${reason.metric.toUpperCase()} ${reason.value.toFixed(2)}`;
+    return `${value >= 0 ? '+' : ''}${value.toFixed(0)}%`;
 }
-
-// Minimal traffic-light background per zone — enough to see grading, not the S2 glass styling.
-export const ZONE_CLASS: Record<Zone, string> = {
-    green: 'bg-green-500/15',
-    yellow: 'bg-yellow-500/15',
-    red: 'bg-red-500/15',
-    neutral: '',
-};
