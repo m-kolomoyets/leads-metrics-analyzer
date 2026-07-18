@@ -1,6 +1,12 @@
 import type { CreateSnapshotInput } from './schemas';
 import { mutationOptions, queryOptions } from '@tanstack/react-query';
-import { createSnapshotFn, getSnapshotFactsFn, getSnapshotFn, listSnapshotsFn } from './functions';
+import {
+    createSnapshotFn,
+    getDimensionRollupFn,
+    getSnapshotFactsFn,
+    getSnapshotFn,
+    listSnapshotsFn,
+} from './functions';
 import { snapshotKeys } from './queryKeys';
 
 export const snapshotsQueryOptions = () => {
@@ -26,6 +32,15 @@ export const snapshotFactsQueryOptions = (id: string) => {
         queryKey: snapshotKeys.factsQueryKey(id),
         queryFn() {
             return getSnapshotFactsFn({ data: { id } });
+        },
+    });
+};
+
+export const dimensionRollupQueryOptions = () => {
+    return queryOptions({
+        queryKey: snapshotKeys.dimensionRollupQueryKey(),
+        queryFn() {
+            return getDimensionRollupFn();
         },
     });
 };
