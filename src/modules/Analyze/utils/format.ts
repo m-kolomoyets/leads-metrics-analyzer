@@ -27,3 +27,22 @@ export function pct(value: number | null): string {
 export function ratioPct(value: number | null): string {
     return value === null ? '—' : `${value.toFixed(1)}%`;
 }
+
+// A CTR percentage, two decimals (#35 creative table): 1.34%; null (no impressions) → em dash.
+export function ctrPct(value: number | null): string {
+    return value === null ? '—' : `${value.toFixed(2)}%`;
+}
+
+// The flag emoji for a two-letter country code, via Unicode regional-indicator symbols (no lookup
+// table). "IN" → 🇮🇳. Non-AZ input falls back to the white flag.
+export function flagEmoji(cc: string): string {
+    const code = cc.toUpperCase();
+    if (!/^[A-Z]{2}$/.test(code)) {
+        return '🏳';
+    }
+    return String.fromCodePoint(
+        ...[...code].map((ch) => {
+            return 0x1f1e6 + ch.charCodeAt(0) - 65;
+        })
+    );
+}

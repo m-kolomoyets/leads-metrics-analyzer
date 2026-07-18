@@ -71,6 +71,10 @@ const UI: Record<Locale, Record<string, string>> = {
         wastePctOfSpend: '% від Spend⁺',
         wasteZone: 'Зона втрат',
         copyOffers: 'Копіювати офери',
+        creatives: '🎨 Аналіз креативів',
+        creative: 'Креатив',
+        creativeEstimate:
+            'Spend та покази — реальні на креатив; воронку (інстали/реги/продажі/кліки) розподілено пропорційно Spend (оцінка).',
     },
     en: {
         sales: 'WITH SALES',
@@ -128,6 +132,10 @@ const UI: Record<Locale, Record<string, string>> = {
         wastePctOfSpend: '% of Spend⁺',
         wasteZone: 'Waste zone',
         copyOffers: 'Copy offers',
+        creatives: '🎨 Creative analysis',
+        creative: 'Creative',
+        creativeEstimate:
+            'Spend and impressions are real per creative; the funnel (installs/regs/sales/clicks) is split across creatives in proportion to Spend (estimate).',
     },
 };
 

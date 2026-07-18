@@ -62,8 +62,15 @@ export type JoinResult = {
     geoUntagged: Map<string, RawTotals>;
     // Per-campaign Offer/OS funnel breakdown (doc 06). Keyed by campaign id; only tagged campaigns.
     campaignModels: Map<string, CampaignModel>;
+    // Per-campaign FB creative breakdown (#35): raw ad name → its real Spend + Impressions. FB is the
+    // only per-creative source; the funnel is allocated across these by Spend share in `creatives.ts`.
+    campaignCreatives: Map<string, CampaignCreatives>;
     warnings: IntegrityWarning[];
 };
+
+// One campaign's real per-creative Spend + Impressions, keyed by raw FB ad name (parsed to a creative
+// key downstream). Real FB numbers — never allocated.
+export type CampaignCreatives = Map<string, { spend: number; impressions: number }>;
 
 function zeroRaw(): RawTotals {
     return { spend: 0, revenue: 0, linkClicks: 0, installs: 0, regs: 0, sales: 0 };
@@ -96,7 +103,8 @@ type FbAgg = {
     account: string;
     reportStart: string;
     spend: number;
-    creativeSpend: Map<string, number>;
+    // Raw ad name → real Spend + Impressions (the per-creative source; #35 allocates the funnel over it).
+    creatives: CampaignCreatives;
 };
 
 function aggregateFb(fb: FbRow[]): Map<string, FbAgg> {
@@ -110,21 +118,24 @@ function aggregateFb(fb: FbRow[]): Map<string, FbAgg> {
                 account: row.account,
                 reportStart: row.reportStart,
                 spend: 0,
-                creativeSpend: new Map(),
+                creatives: new Map(),
             };
             map.set(row.campaign, agg);
         }
         agg.geos.add(row.geo);
         agg.spend += row.spend;
-        agg.creativeSpend.set(row.creative, (agg.creativeSpend.get(row.creative) ?? 0) + row.spend);
+        const creative = agg.creatives.get(row.creative) ?? { spend: 0, impressions: 0 };
+        creative.spend += row.spend;
+        creative.impressions += row.impressions;
+        agg.creatives.set(row.creative, creative);
     }
     return map;
 }
 
-function topCreative(creativeSpend: Map<string, number>): string {
+function topCreative(creatives: CampaignCreatives): string {
     let best = '';
     let bestSpend = -Infinity;
-    for (const [creative, spend] of creativeSpend) {
+    for (const [creative, { spend }] of creatives) {
         if (spend > bestSpend) {
             bestSpend = spend;
             best = creative;
@@ -277,7 +288,7 @@ export function join(parsed: ParsedFiles): JoinResult {
         const osValues = main ? [...main.osSet] : [];
         facts.push({
             campaign,
-            creative: topCreative(agg.creativeSpend),
+            creative: topCreative(agg.creatives),
             reportDate: agg.reportStart,
             geo: agg.geo,
             account: agg.account,
@@ -329,5 +340,12 @@ export function join(parsed: ParsedFiles): JoinResult {
         geoUntagged.set(geo, bucket);
     }
 
-    return { facts, geoUntagged, campaignModels, warnings };
+    // Per-campaign FB creative Spend/Impressions (#35). Straight from the FB agg — every attributed
+    // campaign, keyed by id; the funnel gets allocated over these downstream.
+    const campaignCreatives = new Map<string, CampaignCreatives>();
+    for (const [campaign, agg] of fb) {
+        campaignCreatives.set(campaign, agg.creatives);
+    }
+
+    return { facts, geoUntagged, campaignModels, campaignCreatives, warnings };
 }

@@ -1,7 +1,7 @@
 import type { Metrics } from './aggregate';
 import type { GeoAllocation } from './allocate';
 import type { CommissionConfig } from './commission';
-import type { RawFact, RawTotals } from './join';
+import type { CampaignCreatives, RawFact, RawTotals } from './join';
 import type { Fact, GeoThresholds, Totals } from './types';
 import type { ProblemAccount } from './verdict';
 import { metricsFor, spendPlus, sumTotals } from './aggregate';
@@ -34,6 +34,9 @@ export type GeoRollup = {
 export type AnalyzeResult = {
     facts: Fact[];
     geos: GeoRollup[];
+    // Per-campaign FB creative Spend/Impressions (#35). The per-Geo Creative table (`creativesFor`)
+    // allocates the funnel over these; kept raw here since grading depends on the UI-active preset.
+    campaignCreatives: Map<string, CampaignCreatives>;
     problemAccounts: ProblemAccount[];
     // Accounts no Seller claims → costed at the default (surface, doc 03 §Sellers).
     unclaimedAccounts: string[];
@@ -85,7 +88,7 @@ function untaggedTotals(raw: RawTotals): Totals {
 
 export function analyze(texts: string[], ruleset: Ruleset): AnalyzeResult {
     const parsed = parseFiles(texts);
-    const { facts: rawFacts, geoUntagged, campaignModels, warnings } = join(parsed);
+    const { facts: rawFacts, geoUntagged, campaignModels, campaignCreatives, warnings } = join(parsed);
     const facts = rawFacts.map((raw) => {
         return gradeFact(raw, ruleset);
     });
@@ -137,6 +140,7 @@ export function analyze(texts: string[], ruleset: Ruleset): AnalyzeResult {
     return {
         facts,
         geos,
+        campaignCreatives,
         problemAccounts,
         unclaimedAccounts: unclaimedAccounts(
             facts.map((f) => {
