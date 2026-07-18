@@ -1,9 +1,11 @@
 import type { Metrics } from './aggregate';
+import type { GeoAllocation } from './allocate';
 import type { CommissionConfig } from './commission';
 import type { RawFact, RawTotals } from './join';
 import type { Fact, GeoThresholds, Totals } from './types';
 import type { ProblemAccount } from './verdict';
 import { metricsFor, spendPlus, sumTotals } from './aggregate';
+import { allocateGeo } from './allocate';
 import { rateFor, unclaimedAccounts } from './commission';
 import { join } from './join';
 import { parseFiles } from './parse';
@@ -25,6 +27,8 @@ export type GeoRollup = {
     // The Attributed roll-up (matched campaigns only), excluding untagged — its divergence from
     // `metrics` (which includes untagged) is the Geo-Total gap (ADR-0003).
     attributed: Metrics;
+    // Offer/OS allocated-spend tables (doc 06). Estimated Spend⁺; installs reconcile to `attributed`.
+    allocation: GeoAllocation;
 };
 
 export type AnalyzeResult = {
@@ -81,7 +85,7 @@ function untaggedTotals(raw: RawTotals): Totals {
 
 export function analyze(texts: string[], ruleset: Ruleset): AnalyzeResult {
     const parsed = parseFiles(texts);
-    const { facts: rawFacts, geoUntagged, warnings } = join(parsed);
+    const { facts: rawFacts, geoUntagged, campaignModels, warnings } = join(parsed);
     const facts = rawFacts.map((raw) => {
         return gradeFact(raw, ruleset);
     });
@@ -99,7 +103,12 @@ export function analyze(texts: string[], ruleset: Ruleset): AnalyzeResult {
         const attributed = sumTotals(geoFacts);
         const untagged = geoUntagged.get(geo);
         const total = untagged ? sumTotals([attributed, untaggedTotals(untagged)]) : attributed;
-        geos.push({ geo, metrics: metricsFor(total), attributed: metricsFor(attributed) });
+        geos.push({
+            geo,
+            metrics: metricsFor(total),
+            attributed: metricsFor(attributed),
+            allocation: allocateGeo(geoFacts, campaignModels),
+        });
     }
 
     // Problem Accounts: aggregate per (geo, account), test against the geo's absolute K × installs.yr.

@@ -20,6 +20,9 @@ export type Verdict = {
     // The ROI/spend grade. ROI bands are deferred (slice 4); until then it mirrors the verdict grade.
     zone: Zone;
     reason: VerdictReason | null;
+    // Spend⁺ above the red line for the results achieved (doc 06). Non-zero only for a red verdict;
+    // 0 for every other grade — spend below the line is still working toward the next result.
+    waste: number;
 };
 
 // Stages checked deepest-first; the first with a result decides (doc 04). A clicks-only campaign can
@@ -46,6 +49,7 @@ export function verdictFor(totals: Totals, thresholds: GeoThresholds): Verdict {
                 verdict: zone,
                 zone,
                 reason: { stage: s.stage, metric: s.metric, value: cost, zone },
+                waste: zone === 'red' ? waste(totals.spendPlus, count, thresholds[s.pair].yr) : 0,
             };
         }
     }
@@ -58,10 +62,13 @@ export function verdictFor(totals: Totals, thresholds: GeoThresholds): Verdict {
                 verdict: 'red',
                 zone: 'red',
                 reason: { stage: s.stage, metric: s.metric, value: totals.spendPlus, zone: 'red' },
+                // Zero results past a red line: no achieved count, so the whole Spend⁺ is waste
+                // (formula with count 0). Prototype subtracted one red line; this is honest-strict.
+                waste: totals.spendPlus,
             };
         }
     }
-    return { verdict: 'neutral', zone: 'neutral', reason: null };
+    return { verdict: 'neutral', zone: 'neutral', reason: null, waste: 0 };
 }
 
 // Waste = spend above the red line for the results achieved — only for a red Verdict, else 0.

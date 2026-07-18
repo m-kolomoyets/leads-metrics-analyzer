@@ -28,7 +28,9 @@ import { toRuleset } from './utils/toRuleset';
 import { useClipboard } from './hooks/useClipboard';
 import { AccountBlock } from './components/AccountBlock';
 import { FileDropzones } from './components/FileDropzones';
+import { GeoStat } from './components/GeoStat';
 import { GeoTabs } from './components/GeoTabs';
+import { ModelTable } from './components/ModelTable';
 import { PresetCreator } from './components/PresetCreator';
 import { ProblemAccounts } from './components/ProblemAccounts';
 import { SharedSettingsEditor } from './components/SharedSettingsEditor';
@@ -121,6 +123,16 @@ function Analyze() {
             })
     );
     const accounts = accountsFor(geoFacts, thresholds, ruleset.reviewMultiplier, excludedInGeo);
+    // The active geo's market-level roll-up (Geo Total + Attributed + allocation, doc 06 / ADR-0003).
+    const geoRollup = result?.geos.find((geo) => {
+        return geo.geo === activeGeo;
+    });
+    // Geo waste = Σ each account's Spend⁺ wasted over the line — in lock-step with the shown verdicts.
+    const geoWaste = accounts.reduce((sum, account) => {
+        return sum + account.waste;
+    }, 0);
+    // Waste Zone band (% of Spend⁺) from the focused preset; verdict engine ignores it (S4-only).
+    const wasteZone = activePreset?.thresholds?.wasteZones;
 
     function toggleExcluded(campaign: string) {
         const key = `${activeGeo}:${campaign}`;
@@ -259,6 +271,10 @@ function Analyze() {
                             )}
                         </div>
 
+                        {geoRollup && (
+                            <GeoStat rollup={geoRollup} waste={geoWaste} wasteZone={wasteZone} locale={locale} />
+                        )}
+
                         <ProblemAccounts accounts={accounts} locale={locale} />
 
                         <div className="flex flex-col gap-4">
@@ -278,6 +294,32 @@ function Analyze() {
                                 );
                             })}
                         </div>
+
+                        {geoRollup && thresholds && (
+                            <div className="flex flex-col gap-6">
+                                <ModelTable
+                                    title={ui('offers', locale)}
+                                    firstCol={ui('offers', locale)}
+                                    rows={geoRollup.allocation.offers}
+                                    thresholds={thresholds}
+                                    locale={locale}
+                                    copiedKey={copied ?? ''}
+                                    onCopy={copy}
+                                    copyKey={`offers:${activeGeo}`}
+                                />
+                                <ModelTable
+                                    title={ui('osTable', locale)}
+                                    firstCol={ui('osTable', locale)}
+                                    rows={geoRollup.allocation.os}
+                                    thresholds={thresholds}
+                                    locale={locale}
+                                    showCpc
+                                    copiedKey={copied ?? ''}
+                                    onCopy={copy}
+                                    copyKey={`os:${activeGeo}`}
+                                />
+                            </div>
+                        )}
 
                         {result && result.unclaimedAccounts.length > 0 && (
                             <p className="text-muted-foreground text-xs">

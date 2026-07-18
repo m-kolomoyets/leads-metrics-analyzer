@@ -22,3 +22,8 @@ export function pct(value: number | null): string {
     }
     return `${value >= 0 ? '+' : ''}${value.toFixed(0)}%`;
 }
+
+// An unsigned conversion ratio, one decimal (I2R / R2S): 12.5%; null → em dash.
+export function ratioPct(value: number | null): string {
+    return value === null ? '—' : `${value.toFixed(1)}%`;
+}

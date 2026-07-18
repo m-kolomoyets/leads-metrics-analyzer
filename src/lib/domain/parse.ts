@@ -27,7 +27,10 @@ export type KtMainRow = {
     campaign: string;
     account: string;
     creative: string;
+    // `Offer ID` — the offer identity (doc 06). Allocation keys and reconciles on this.
     offer: string;
+    // The pipe-delimited `Offer` string — display attributes only, parsed at the allocation edge.
+    offerName: string;
     os: string;
     installs: number;
     regs: number;
@@ -169,6 +172,7 @@ export function parseFile(text: string): { type: FileType | null; parsed: Partia
                 account: (r['Sub ID 4'] ?? '').trim(),
                 creative: (r['Sub ID 5'] ?? '').trim(),
                 offer: (r['Offer ID'] ?? '').trim(),
+                offerName: (r['Offer'] ?? '').trim(),
                 os,
                 installs: num(r['UC (campaign)']),
                 regs: num(r['Conv.']),

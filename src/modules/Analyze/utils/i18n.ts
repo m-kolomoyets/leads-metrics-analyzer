@@ -58,6 +58,18 @@ const UI: Record<Locale, Record<string, string>> = {
         deleting: 'Видалення…',
         team: 'Команда',
         globalSettings: 'Глобальні (без команди)',
+        geoTotal: 'Гео тотал',
+        attributed: 'Атрибутовано',
+        untaggedGap: 'Без сабів (лише в гео тоталі)',
+        divergenceNote:
+            'Гео тотал включає дохід без сабів — реальні гроші, які FB не протегував (ADR-0003). Тому гео ≥ сума кампаній.',
+        offers: 'Офери',
+        osTable: 'OS',
+        allocEstimate: 'Spend оцінено: реальний Spend⁺ кампанії розподілено пропорційно інсталам (оцінка).',
+        wasteTitle: 'Злито поза нормою',
+        wastePctOfSpend: '% від Spend⁺',
+        wasteZone: 'Зона втрат',
+        copyOffers: 'Копіювати офери',
     },
     en: {
         sales: 'WITH SALES',
@@ -101,6 +113,19 @@ const UI: Record<Locale, Record<string, string>> = {
         deleting: 'Deleting…',
         team: 'Team',
         globalSettings: 'Global (no team)',
+        geoTotal: 'Geo total',
+        attributed: 'Attributed',
+        untaggedGap: 'Untagged (Geo total only)',
+        divergenceNote:
+            'Geo total includes untagged revenue — real money FB failed to tag (ADR-0003). So geo ≥ sum of campaigns.',
+        offers: 'Offers',
+        osTable: 'OS',
+        allocEstimate:
+            'Spend is estimated: each campaign real Spend⁺ split across offers/OS in proportion to installs (estimate).',
+        wasteTitle: 'Wasted over the line',
+        wastePctOfSpend: '% of Spend⁺',
+        wasteZone: 'Waste zone',
+        copyOffers: 'Copy offers',
     },
 };
 

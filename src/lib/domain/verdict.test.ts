@@ -51,6 +51,20 @@ describe('waste', () => {
     });
 });
 
+describe('verdictFor waste (doc 06)', () => {
+    it('non-zero only for a red verdict', () => {
+        // red on installs: cpi 5 > yr 4, over 10 installs → Spend⁺ 50 vs 4×10 → 10 waste.
+        expect(verdictFor(totals({ spendPlus: 50, installs: 10 }), TH).waste).toBe(10);
+        // green/yellow campaigns waste nothing.
+        expect(verdictFor(totals({ spendPlus: 20, installs: 10 }), TH).waste).toBe(0); // cpi 2 → yellow
+        expect(verdictFor(totals({ spendPlus: 10, installs: 10 }), TH).waste).toBe(0); // cpi 1 → green
+    });
+
+    it('zero-result red spends its whole Spend⁺ as waste (nothing achieved)', () => {
+        expect(verdictFor(totals({ spendPlus: 5 }), TH).waste).toBe(5); // > clicks.yr, 0 results
+    });
+});
+
 describe('problemAccount', () => {
     it('rule 1: money out, nothing tracked', () => {
         const p = problemAccount('a', totals({ spendPlus: 8, installs: 0 }), TH, 2); // 8 ≥ 2×4

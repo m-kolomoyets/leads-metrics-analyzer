@@ -122,3 +122,32 @@ describe('analyze — fact shape & hygiene', () => {
         ).toBe(false);
     });
 });
+
+describe('analyze — allocation reconciles (doc 06, S4)', () => {
+    it('offer installs sum back to the geo attributed installs', () => {
+        const g = geo('IN');
+        const offerInstalls = g.allocation.offers.reduce((sum, r) => {
+            return sum + r.metrics.installs;
+        }, 0);
+        expect(offerInstalls).toBe(g.attributed.installs);
+    });
+
+    it('OS installs sum back to the geo attributed installs', () => {
+        const g = geo('IN');
+        const osInstalls = g.allocation.os.reduce((sum, r) => {
+            return sum + r.metrics.installs;
+        }, 0);
+        expect(osInstalls).toBe(g.attributed.installs);
+    });
+
+    it('allocated Spend⁺ is a split of attributed, never an invention (≤ attributed, > 0)', () => {
+        const g = geo('IN');
+        const offerSpend = g.allocation.offers.reduce((sum, r) => {
+            return sum + r.metrics.spendPlus;
+        }, 0);
+        // Only install-bearing campaigns distribute Spend⁺; a spend-but-0-install campaign has no
+        // Offer to attribute to, so allocated ≤ attributed — allocation never conjures money.
+        expect(offerSpend).toBeGreaterThan(0);
+        expect(offerSpend).toBeLessThanOrEqual(g.attributed.spendPlus + 0.01);
+    });
+});
