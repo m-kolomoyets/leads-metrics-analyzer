@@ -1,12 +1,12 @@
-import type { AdminTeam, AdminUser, InvitedUser } from './types';
+import type { AdminTeam, AdminUser, AdminUserListItem, InvitedUser } from './types';
 import { randomBytes } from 'node:crypto';
 import { createServerFn } from '@tanstack/react-start';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { requireHead } from '@/lib/auth/guards';
 import { issueInvitation } from '@/lib/auth/invitation';
 import { hashPassword } from '@/lib/auth/password';
 import { db } from '@/lib/db';
-import { team, user } from '@/lib/db/schema';
+import { passwordReset, team, user } from '@/lib/db/schema';
 import {
     createTeamInputSchema,
     createUserInputSchema,
@@ -45,10 +45,17 @@ const TEAM_COLUMNS = {
 
 // Head-only reads backing the admin panel (T4b, #6). Same `requireHead` edge gate as the mutations —
 // the list is administrative data (every user, every team) that only the Head may see.
-export const listUsersFn = createServerFn({ method: 'GET' }).handler(async (): Promise<AdminUser[]> => {
+export const listUsersFn = createServerFn({ method: 'GET' }).handler(async (): Promise<AdminUserListItem[]> => {
     await requireHead();
 
-    return db.select(USER_COLUMNS).from(user).orderBy(user.email);
+    // Left-join the user's pending reset (a `password_reset` row with `used_at IS NULL`, filtered in
+    // the join so a redeemed row never matches) and project it to a boolean flag (#42). `user_id` is
+    // unique, so at most one row joins per user.
+    return db
+        .select({ ...USER_COLUMNS, hasPendingReset: sql<boolean>`${passwordReset.id} is not null` })
+        .from(user)
+        .leftJoin(passwordReset, and(eq(passwordReset.userId, user.id), isNull(passwordReset.usedAt)))
+        .orderBy(user.email);
 });
 
 export const listTeamsFn = createServerFn({ method: 'GET' }).handler(async (): Promise<AdminTeam[]> => {

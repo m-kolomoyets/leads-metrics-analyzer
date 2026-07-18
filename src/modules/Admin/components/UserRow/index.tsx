@@ -1,10 +1,12 @@
 import type { UserRowProps } from './types';
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { TriangleAlertIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { deleteUserMutationOptions } from '@/services/admin/queries';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/Tooltip';
 import { getTeamName } from '../../utils/teamOptions';
 
 const STATUS_VARIANT = {
@@ -23,7 +25,23 @@ function UserRow({ user, teams, currentUserId, onEdit, onInvite }: UserRowProps)
 
     return (
         <tr className="border-b last:border-b-0">
-            <td className="px-3 py-2">{user.email}</td>
+            <td className="px-3 py-2">
+                <span className="flex items-center gap-2">
+                    {user.email}
+                    {user.hasPendingReset && (
+                        <Tooltip>
+                            <TooltipTrigger
+                                render={
+                                    <span className="text-destructive" aria-label="Password reset requested">
+                                        <TriangleAlertIcon className="size-4" />
+                                    </span>
+                                }
+                            />
+                            <TooltipContent>Password reset requested</TooltipContent>
+                        </Tooltip>
+                    )}
+                </span>
+            </td>
             <td className="px-3 py-2">
                 <Badge variant="outline">{user.role}</Badge>
             </td>

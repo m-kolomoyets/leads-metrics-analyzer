@@ -1,7 +1,7 @@
-import type { AdminTeam, AdminUser } from '@/services/admin/types';
+import type { AdminTeam, AdminUser, AdminUserListItem } from '@/services/admin/types';
 
 export type UserRowProps = {
-    user: AdminUser;
+    user: AdminUserListItem;
     teams: AdminTeam[];
     // The signed-in Head — the delete control is hidden on their own row (server also blocks self-delete).
     currentUserId: string;

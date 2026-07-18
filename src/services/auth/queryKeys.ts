@@ -9,6 +9,9 @@ export const authKeys = {
     activateMutationKey() {
         return [...authKeys.all, 'activate'] as const;
     },
+    requestPasswordResetMutationKey() {
+        return [...authKeys.all, 'request-password-reset'] as const;
+    },
     logoutMutationKey() {
         return [...authKeys.all, 'logout'] as const;
     },

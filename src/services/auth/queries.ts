@@ -1,6 +1,6 @@
-import type { ActivateInput, LoginInput } from './schemas';
+import type { ActivateInput, LoginInput, RequestPasswordResetInput } from './schemas';
 import { mutationOptions, queryOptions } from '@tanstack/react-query';
-import { activateFn, loginFn, logoutFn, meFn } from './functions';
+import { activateFn, loginFn, logoutFn, meFn, requestPasswordResetFn } from './functions';
 import { authKeys } from './queryKeys';
 
 export const meQueryOptions = () => {
@@ -39,6 +39,15 @@ export const activateMutationOptions = () => {
         onSuccess(data, _variables, _onMutateResult, { client }) {
             // Activation signs the user in — prime the `me` cache so the auth guard passes on redirect.
             client.setQueryData(authKeys.meQueryKey(), data);
+        },
+    });
+};
+
+export const requestPasswordResetMutationOptions = () => {
+    return mutationOptions({
+        mutationKey: authKeys.requestPasswordResetMutationKey(),
+        mutationFn(data: RequestPasswordResetInput) {
+            return requestPasswordResetFn({ data });
         },
     });
 };
