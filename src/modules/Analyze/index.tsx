@@ -152,7 +152,7 @@ function Analyze() {
                             )}
                         </div>
 
-                        {geoPresets.length > 1 && (
+                        {geoPresets.length > 0 && (
                             <div className="flex items-center gap-2" role="group" aria-label={ui('preset', locale)}>
                                 <span className="text-muted-foreground text-xs">{ui('preset', locale)}</span>
                                 {geoPresets.map((preset) => {
