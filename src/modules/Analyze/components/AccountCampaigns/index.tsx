@@ -12,7 +12,7 @@ type AccountCampaignsProps = {
     onToggle: (campaign: string) => void;
 };
 
-const COLUMNS = ['Campaign', 'Spend⁺', 'Rev', 'Clicks', 'Inst', 'Reg', 'Sale', 'CPC', 'CPI', 'CPR', 'CPS'] as const;
+const COLUMNS = ['Campaign', 'Spend', 'Rev', 'Clicks', 'Inst', 'Reg', 'Sale', 'CPC', 'CPI', 'CPR', 'CPS'] as const;
 
 // The Account's campaigns at Campaign grain, one row each with an exclude toggle. Toggling a row
 // mutes it (parent recomputes the account/geo roll-ups) — the row stays visible, dimmed, so it can be
@@ -53,7 +53,7 @@ function AccountCampaigns({ campaigns, locale, isExcluded, onToggle }: AccountCa
                                 </td>
                                 <td className={cn('p-0', ZONE_ACCENT_CLASS[verdict.verdict])} />
                                 <td className="p-2 text-left font-mono text-xs">{campaign.campaign}</td>
-                                <td className="p-2 font-mono">{money(metrics.spendPlus)}</td>
+                                <td className="p-2 font-mono">{money(metrics.spend)}</td>
                                 <td className="p-2 font-mono">{metrics.revenue > 0 ? money(metrics.revenue) : '—'}</td>
                                 <td className="p-2 font-mono">{metrics.linkClicks}</td>
                                 <td className="p-2 font-mono">{metrics.installs}</td>

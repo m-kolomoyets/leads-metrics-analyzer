@@ -25,11 +25,16 @@ export function toRuleset(presets: PresetView[], shared: SharedSettingsView | nu
     }
 
     const payload = shared?.payload;
+    // Persistence + editor store commission as a percent (7 = 7%, matching the prototype export); the
+    // domain `Ruleset` wants a fraction. Convert both the default and every seller rate here — the
+    // single boundary between the human-facing % and the compute layer's Spend⁺ = Spend × (1 + rate).
     return {
         thresholds,
         commission: {
-            defaultCommission: payload?.defaultCommission ?? DEFAULT_COMMISSION,
-            sellers: payload?.sellers ?? [],
+            defaultCommission: (payload?.defaultCommission ?? DEFAULT_COMMISSION) / 100,
+            sellers: (payload?.sellers ?? []).map((seller) => {
+                return { rate: seller.rate / 100, accountIds: seller.accountIds };
+            }),
         },
         reviewMultiplier: payload?.reviewMultiplier ?? DEFAULT_REVIEW_MULTIPLIER,
     };

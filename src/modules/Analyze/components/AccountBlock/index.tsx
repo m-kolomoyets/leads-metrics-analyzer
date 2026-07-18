@@ -86,7 +86,7 @@ function AccountBlock({ account, locale, copiedKey, onCopy, isExcluded, onToggle
 
                 <span className="flex-1" />
 
-                <span className="font-mono text-sm">{usd(metrics.spendPlus)}</span>
+                <span className="font-mono text-sm">{usd(metrics.spend)}</span>
                 <span className="text-sm">
                     ROI <span className={cn('font-mono font-bold', roiClass(metrics.roi))}>{pct(metrics.roi)}</span>
                 </span>
@@ -136,6 +136,18 @@ function AccountBlock({ account, locale, copiedKey, onCopy, isExcluded, onToggle
                             />
                         )}
                     </div>
+
+                    {account.salesCampaigns.length > 0 && (
+                        <div className="flex flex-col gap-2 rounded-xl border border-violet-500/30 bg-violet-500/5 p-3">
+                            <span className="text-sm font-bold text-violet-400">{ui('salesCampaigns', locale)}</span>
+                            <AccountCampaigns
+                                campaigns={account.salesCampaigns}
+                                locale={locale}
+                                isExcluded={isExcluded}
+                                onToggle={onToggleExcluded}
+                            />
+                        </div>
+                    )}
 
                     <AccountCampaigns
                         campaigns={account.campaigns}

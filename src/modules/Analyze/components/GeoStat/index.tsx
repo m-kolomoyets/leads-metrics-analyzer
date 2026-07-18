@@ -44,7 +44,7 @@ function GeoStat({ rollup, waste, wasteZone, locale }: GeoStatProps) {
                 )}
             >
                 <div className="flex flex-wrap gap-x-8 gap-y-3">
-                    <Stat label="Spend⁺" value={usd(metrics.spendPlus)} />
+                    <Stat label="Spend" value={usd(metrics.spend)} />
                     <Stat label={ui('geoTotal', locale)} value={usd(metrics.revenue)} className="text-green-500" />
                     <Stat
                         label="Profit"
