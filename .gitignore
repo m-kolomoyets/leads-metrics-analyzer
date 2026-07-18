@@ -13,6 +13,8 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+.vercel
+.output
 *.local
 /tmp
 /storybook-static
