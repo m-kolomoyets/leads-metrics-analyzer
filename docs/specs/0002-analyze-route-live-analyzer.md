@@ -78,6 +78,11 @@ The dollar-free branch: `getDimensionRollupFn` summed by the viewer's single dim
 - A snapshot-viewer route (reading saved snapshots read-only) — a later, smaller sibling reusing
   S2's tables.
 - Charts (spec 0001 story 34 mentions them; facts carry enough to add later).
+- The per-geo **Creative analysis table** in the dollar analyzer (reference `🎨 Аналіз креативів`) —
+  needs per-creative allocation on the campaign-grain join. Deferred to [#35](https://github.com/m-kolomoyets/leads-metrics-analyzer/issues/35).
+  Distinct from S6's dollar-free Designer rollup.
+- The per-geo **Account summary** nav table (reference `Зведення по акаунтах`) — a jump-to-block
+  summary over the S2 account blocks. Deferred to [#36](https://github.com/m-kolomoyets/leads-metrics-analyzer/issues/36).
 
 ## Open questions (non-blocking)
 

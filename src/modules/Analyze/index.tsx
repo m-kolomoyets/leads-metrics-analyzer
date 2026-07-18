@@ -28,6 +28,7 @@ import { presetForGeo, presetsForGeo } from './utils/presetForGeo';
 import { toRuleset } from './utils/toRuleset';
 import { useClipboard } from './hooks/useClipboard';
 import { AccountBlock } from './components/AccountBlock';
+import { AccountSummary } from './components/AccountSummary';
 import { CreativeTable } from './components/CreativeTable';
 import { FileDropzones } from './components/FileDropzones';
 import { GeoStat } from './components/GeoStat';
@@ -84,6 +85,9 @@ function Analyze() {
     const [locale, setLocale] = useState<Locale>('uk');
     // Muted campaigns, keyed `${geo}:${campaign}` so the same id in two geos toggles independently.
     const [excluded, setExcluded] = useState<ReadonlySet<string>>(new Set());
+    // Collapsed AccountBlocks, keyed `${geo}:${account}` (membership = collapsed; default open). Lifted
+    // so the summary nav table can uncollapse a block on row click (#36).
+    const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
     const { copied, copy } = useClipboard();
 
     const ruleset = toRuleset(presets, shared);
@@ -150,6 +154,29 @@ function Analyze() {
             }
             return next;
         });
+    }
+
+    function toggleCollapsed(account: string) {
+        const key = `${activeGeo}:${account}`;
+        setCollapsed((current) => {
+            const next = new Set(current);
+            if (next.has(key)) {
+                next.delete(key);
+            } else {
+                next.add(key);
+            }
+            return next;
+        });
+    }
+
+    // Summary-row click: uncollapse the target block, then scroll its anchor into view.
+    function jumpToAccount(account: string) {
+        setCollapsed((current) => {
+            const next = new Set(current);
+            next.delete(`${activeGeo}:${account}`);
+            return next;
+        });
+        document.getElementById(`acc-${account}`)?.scrollIntoView({ block: 'start', behavior: 'smooth' });
     }
 
     return (
@@ -309,6 +336,13 @@ function Analyze() {
                             </div>
                         )}
 
+                        <AccountSummary
+                            accounts={accounts}
+                            thresholds={thresholds}
+                            locale={locale}
+                            onJump={jumpToAccount}
+                        />
+
                         <div className="flex flex-col gap-4">
                             {accounts.map((account) => {
                                 return (
@@ -322,6 +356,10 @@ function Analyze() {
                                             return excluded.has(`${activeGeo}:${campaign}`);
                                         }}
                                         onToggleExcluded={toggleExcluded}
+                                        open={!collapsed.has(`${activeGeo}:${account.account}`)}
+                                        onToggleOpen={() => {
+                                            toggleCollapsed(account.account);
+                                        }}
                                     />
                                 );
                             })}
