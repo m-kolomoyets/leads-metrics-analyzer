@@ -1,0 +1,320 @@
+import type { SQL } from 'drizzle-orm';
+import type { Viewer, VisibilityScope } from '@/lib/auth/scope';
+import type { MeData } from '@/services/auth/types';
+import type { PresetView, SharedSettingsView } from './types';
+import { createServerFn } from '@tanstack/react-start';
+import { eq } from 'drizzle-orm';
+import { FORBIDDEN_MESSAGE, requireUser } from '@/lib/auth/guards';
+import { presetAccessFor } from '@/lib/auth/presetAccess';
+import { scopeFor } from '@/lib/auth/scope';
+import { db } from '@/lib/db';
+import { preset, presetVersion, sharedSettings, sharedSettingsVersion } from '@/lib/db/schema';
+import {
+    createPresetInputSchema,
+    presetThresholdsSchema,
+    renamePresetInputSchema,
+    savePresetVersionInputSchema,
+    saveSharedSettingsInputSchema,
+    sharedSettingsPayloadSchema,
+} from './schemas';
+
+// Presets API (T5, #7). Every read runs through `scopeFor(viewer)` (ADR-0007) — no hand-rolled role
+// check — and every write appends an immutable version rather than mutating in place (ADR-0002).
+// Owner-only edit is enforced by `presetAccessFor`, which composes row/dimension scope with
+// ownership; `scopeFor` alone never encodes it.
+
+const viewerFrom = (me: MeData): Viewer => {
+    return { id: me.id, role: me.role, teamId: me.teamId };
+};
+
+const PRESET_COLUMNS = {
+    id: preset.id,
+    teamId: preset.teamId,
+    ownerUserId: preset.ownerUserId,
+    geo: preset.geo,
+    name: preset.name,
+    activeVersionId: preset.activeVersionId,
+} as const;
+
+// Translates the row-scope axis of the descriptor into a WHERE clause. `undefined` means "no filter"
+// (head/designer/bdm see every row); the dimension axis is applied separately by the caller.
+const presetRowFilter = (scope: VisibilityScope): SQL | undefined => {
+    switch (scope.rowScope) {
+        case 'all': {
+            return undefined;
+        }
+        case 'team': {
+            // A teamless lead is excluded upstream (see listPresetsFn), so a bound teamId is expected.
+            return eq(preset.teamId, scope.teamId ?? '');
+        }
+        case 'own': {
+            return eq(preset.ownerUserId, scope.userId ?? '');
+        }
+    }
+};
+
+// Parses a jsonb thresholds blob back into the typed shape; a version written by an incompatible
+// older shape yields null rather than a lie.
+const parseThresholds = (value: unknown): PresetView['thresholds'] => {
+    const parsed = presetThresholdsSchema.safeParse(value);
+
+    return parsed.success ? parsed.data : null;
+};
+
+const toPresetView = (
+    viewer: Viewer,
+    row: {
+        id: string;
+        teamId: string | null;
+        ownerUserId: string;
+        geo: string;
+        name: string;
+        activeVersionId: string | null;
+        thresholds: unknown;
+    }
+): PresetView => {
+    return {
+        id: row.id,
+        teamId: row.teamId,
+        ownerUserId: row.ownerUserId,
+        geo: row.geo,
+        name: row.name,
+        activeVersionId: row.activeVersionId,
+        thresholds: parseThresholds(row.thresholds),
+        access: presetAccessFor(viewer, { ownerUserId: row.ownerUserId, teamId: row.teamId }),
+    };
+};
+
+export const listPresetsFn = createServerFn({ method: 'GET' }).handler(async (): Promise<PresetView[]> => {
+    const me = await requireUser();
+    const viewer = viewerFrom(me);
+    const scope = scopeFor(viewer);
+
+    // Presets are a dollar-dimension table; a viewer without the Geo dimension (designer/bdm) sees none.
+    if (!scope.dimensions.includes('geo')) {
+        return [];
+    }
+
+    // A team-scoped viewer with no team bound (a lead not yet placed) can match no team's presets.
+    if (scope.rowScope === 'team' && !scope.teamId) {
+        return [];
+    }
+
+    const rows = await db
+        .select({ ...PRESET_COLUMNS, thresholds: presetVersion.thresholds })
+        .from(preset)
+        .leftJoin(presetVersion, eq(preset.activeVersionId, presetVersion.id))
+        .where(presetRowFilter(scope))
+        .orderBy(preset.geo, preset.name);
+
+    return rows.map((row) => {
+        return toPresetView(viewer, row);
+    });
+});
+
+// Reloads a preset joined to its active version and re-derives the view — the single shape returned by
+// every write, so the client always gets identity + current thresholds + access in one payload.
+const loadPresetView = async (viewer: Viewer, presetId: string): Promise<PresetView | undefined> => {
+    const [row] = await db
+        .select({ ...PRESET_COLUMNS, thresholds: presetVersion.thresholds })
+        .from(preset)
+        .leftJoin(presetVersion, eq(preset.activeVersionId, presetVersion.id))
+        .where(eq(preset.id, presetId))
+        .limit(1);
+
+    if (!row) {
+        return undefined;
+    }
+
+    return toPresetView(viewer, row);
+};
+
+export const createPresetFn = createServerFn({ method: 'POST' })
+    .inputValidator(createPresetInputSchema)
+    .handler(async ({ data }): Promise<PresetView> => {
+        const me = await requireUser();
+        const viewer = viewerFrom(me);
+
+        // The creator owns it and it is stamped with their current team. Preset + first version are
+        // written together, then the active pointer is set — all or nothing.
+        const presetId = await db.transaction(async (tx) => {
+            const [created] = await tx
+                .insert(preset)
+                .values({ ownerUserId: me.id, teamId: me.teamId, geo: data.geo, name: data.name })
+                .returning({ id: preset.id });
+
+            const [version] = await tx
+                .insert(presetVersion)
+                .values({ presetId: created.id, thresholds: data.thresholds })
+                .returning({ id: presetVersion.id });
+
+            await tx.update(preset).set({ activeVersionId: version.id }).where(eq(preset.id, created.id));
+
+            return created.id;
+        });
+
+        const view = await loadPresetView(viewer, presetId);
+
+        if (!view) {
+            throw new Error('Preset not found');
+        }
+
+        return view;
+    });
+
+export const savePresetVersionFn = createServerFn({ method: 'POST' })
+    .inputValidator(savePresetVersionInputSchema)
+    .handler(async ({ data }): Promise<PresetView> => {
+        const me = await requireUser();
+        const viewer = viewerFrom(me);
+
+        // Owner-only edit: a new version is minted and the pointer moved; the prior version is never
+        // touched (ADR-0002). The ownership check and the two writes share one transaction so a
+        // concurrent transfer cannot slip between the gate and the append.
+        await db.transaction(async (tx) => {
+            const [row] = await tx
+                .select({ ownerUserId: preset.ownerUserId, teamId: preset.teamId })
+                .from(preset)
+                .where(eq(preset.id, data.presetId))
+                .limit(1);
+
+            if (!row) {
+                throw new Error('Preset not found');
+            }
+
+            if (presetAccessFor(viewer, row) !== 'edit') {
+                throw new Error(FORBIDDEN_MESSAGE);
+            }
+
+            const [version] = await tx
+                .insert(presetVersion)
+                .values({ presetId: data.presetId, thresholds: data.thresholds })
+                .returning({ id: presetVersion.id });
+
+            await tx.update(preset).set({ activeVersionId: version.id }).where(eq(preset.id, data.presetId));
+        });
+
+        // Re-read after commit — loadPresetView runs on the pool, so it must run outside the tx.
+        const view = await loadPresetView(viewer, data.presetId);
+
+        if (!view) {
+            throw new Error('Preset not found');
+        }
+
+        return view;
+    });
+
+export const renamePresetFn = createServerFn({ method: 'POST' })
+    .inputValidator(renamePresetInputSchema)
+    .handler(async ({ data }): Promise<PresetView> => {
+        const me = await requireUser();
+        const viewer = viewerFrom(me);
+
+        // Rename touches identity, not thresholds, so it does not mint a version — but it is still an
+        // owner-only edit.
+        await db.transaction(async (tx) => {
+            const [row] = await tx
+                .select({ ownerUserId: preset.ownerUserId, teamId: preset.teamId })
+                .from(preset)
+                .where(eq(preset.id, data.presetId))
+                .limit(1);
+
+            if (!row) {
+                throw new Error('Preset not found');
+            }
+
+            if (presetAccessFor(viewer, row) !== 'edit') {
+                throw new Error(FORBIDDEN_MESSAGE);
+            }
+
+            await tx.update(preset).set({ name: data.name }).where(eq(preset.id, data.presetId));
+        });
+
+        const view = await loadPresetView(viewer, data.presetId);
+
+        if (!view) {
+            throw new Error('Preset not found');
+        }
+
+        return view;
+    });
+
+const parsePayload = (value: unknown): SharedSettingsView['payload'] => {
+    const parsed = sharedSettingsPayloadSchema.safeParse(value);
+
+    return parsed.success ? parsed.data : null;
+};
+
+export const getSharedSettingsFn = createServerFn({ method: 'GET' }).handler(
+    async (): Promise<SharedSettingsView | null> => {
+        const me = await requireUser();
+
+        // Shared settings are team-global; a teamless viewer (head/designer/bdm) has none to read.
+        if (!me.teamId) {
+            return null;
+        }
+
+        const [row] = await db
+            .select({
+                id: sharedSettings.id,
+                teamId: sharedSettings.teamId,
+                activeVersionId: sharedSettings.activeVersionId,
+                payload: sharedSettingsVersion.payload,
+            })
+            .from(sharedSettings)
+            .leftJoin(sharedSettingsVersion, eq(sharedSettings.activeVersionId, sharedSettingsVersion.id))
+            .where(eq(sharedSettings.teamId, me.teamId))
+            .limit(1);
+
+        if (!row) {
+            return null;
+        }
+
+        return {
+            id: row.id,
+            teamId: row.teamId,
+            activeVersionId: row.activeVersionId,
+            payload: parsePayload(row.payload),
+        };
+    }
+);
+
+export const saveSharedSettingsFn = createServerFn({ method: 'POST' })
+    .inputValidator(saveSharedSettingsInputSchema)
+    .handler(async ({ data }): Promise<SharedSettingsView> => {
+        const me = await requireUser();
+
+        // Team-global tunables are the Team Lead's to set, and only for a team they lead.
+        if (me.role !== 'team_lead' || !me.teamId) {
+            throw new Error(FORBIDDEN_MESSAGE);
+        }
+
+        const teamId = me.teamId;
+
+        const view = await db.transaction(async (tx) => {
+            // One `shared_settings` row per team (upsert-by-team); versions append beneath it.
+            const [existing] = await tx
+                .select({ id: sharedSettings.id })
+                .from(sharedSettings)
+                .where(eq(sharedSettings.teamId, teamId))
+                .limit(1);
+
+            const settingsId =
+                existing?.id ??
+                (await tx.insert(sharedSettings).values({ teamId }).returning({ id: sharedSettings.id }))[0].id;
+
+            const [version] = await tx
+                .insert(sharedSettingsVersion)
+                .values({ sharedSettingsId: settingsId, payload: data.payload })
+                .returning({ id: sharedSettingsVersion.id });
+
+            await tx
+                .update(sharedSettings)
+                .set({ activeVersionId: version.id })
+                .where(eq(sharedSettings.id, settingsId));
+
+            return { id: settingsId, teamId, activeVersionId: version.id, payload: data.payload };
+        });
+
+        return view;
+    });
