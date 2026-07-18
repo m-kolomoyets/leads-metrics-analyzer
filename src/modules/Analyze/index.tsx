@@ -183,9 +183,7 @@ function Analyze() {
                                     locale={locale}
                                 />
                             )}
-                            {canWritePresets && geoPresets.length === 0 && (
-                                <PresetCreator key={activeGeo} geo={activeGeo} locale={locale} />
-                            )}
+                            {canWritePresets && <PresetCreator key={activeGeo} geo={activeGeo} locale={locale} />}
                             {(shared || canEditShared) && (
                                 <SharedSettingsEditor
                                     key={shared?.activeVersionId ?? 'new'}

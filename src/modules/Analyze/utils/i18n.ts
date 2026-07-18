@@ -48,6 +48,10 @@ const UI: Record<Locale, Record<string, string>> = {
         rename: 'Перейменувати',
         renaming: 'Перейменування…',
         preset: 'Пресет',
+        newPreset: 'Новий пресет',
+        importPreset: 'Імпортувати пресет',
+        chooseImport: 'Оберіть пресет для імпорту',
+        cancel: 'Скасувати',
     },
     en: {
         sales: 'WITH SALES',
@@ -81,6 +85,10 @@ const UI: Record<Locale, Record<string, string>> = {
         rename: 'Rename',
         renaming: 'Renaming…',
         preset: 'Preset',
+        newPreset: 'New preset',
+        importPreset: 'Import preset',
+        chooseImport: 'Choose a preset to import',
+        cancel: 'Cancel',
     },
 };
 
