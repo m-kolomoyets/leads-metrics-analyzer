@@ -19,6 +19,10 @@ export const ROLES_PERMISSIONS = {
     admin: {
         view: [ROLES_IDS.head],
     },
+    // Live analyzer (spec 0002, S1). Dollar roles only; Designer/BDM get the rollup branch (S6).
+    analyze: {
+        view: [ROLES_IDS.head, ROLES_IDS.teamLead, ROLES_IDS.buyer],
+    },
     merchants: {
         view: [ROLES_IDS.teamLead, ROLES_IDS.head],
         item: {

@@ -14,6 +14,12 @@ export default defineConfig([
         '**/node_modules/**',
         '**/dist/**',
         '**/tmp/**',
+        // Git-ignored build output (see .gitignore). Bundled vendor code here (e.g. base-ui) makes
+        // ESLint spin, so it must never be traversed — the same reason node_modules/dist are ignored.
+        '.vercel/**',
+        '.output/**',
+        '.tanstack/**',
+        '.nitro/**',
         '/src/routeTree.gen.ts',
         '/public/mockServiceWorker.js',
     ]),
