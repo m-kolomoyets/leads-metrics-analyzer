@@ -2,6 +2,7 @@
 //   T2 (#3)  — user, session
 //   T4a (#5) — team (adds user.team_id FK)
 //   T4c (#14) — invitation (one-time activation token)
+//   (#41) — password_reset (hand-delivered password reset)
 //   T5 (#7)  — preset, preset_version, shared_settings, shared_settings_version ✓
 //   T6 (#8)  — applied_ruleset, applied_ruleset_geo, snapshot, snapshot_fact ✓
 // See docs/specs/0001-multi-user-auth-teams-persistence.md and docs/adr/0002, 0006, 0007.
@@ -84,6 +85,31 @@ export const invitation = pgTable('invitation', {
         ),
     tokenHash: text('token_hash').notNull(),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    // Null until redeemed; set to the redemption time so a token cannot be reused.
+    usedAt: timestamp('used_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Password reset (#41): a hand-delivered reset, mirroring `invitation`. A pending request is a row
+// with `used_at IS NULL`; a null `token_hash` means the Head has requested but not yet minted a link.
+// One row per user (`user_id` unique) — re-requesting upserts. `on delete cascade` drops the row with
+// the user. Only the sha256 hash of the token is ever stored, never the raw token.
+export const passwordReset = pgTable('password_reset', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+        .notNull()
+        .unique()
+        .references(
+            () => {
+                return user.id;
+            },
+            { onDelete: 'cascade' }
+        ),
+    requestedAt: timestamp('requested_at', { withTimezone: true }).notNull().defaultNow(),
+    // Null until the Head mints a link; set to the sha256 hash of the raw token then.
+    tokenHash: text('token_hash'),
+    // Null until a link is minted; bounds the token's lifetime once set.
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
     // Null until redeemed; set to the redemption time so a token cannot be reused.
     usedAt: timestamp('used_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -291,6 +317,7 @@ export type UserRow = typeof user.$inferSelect;
 export type SessionRow = typeof session.$inferSelect;
 export type TeamRow = typeof team.$inferSelect;
 export type InvitationRow = typeof invitation.$inferSelect;
+export type PasswordResetRow = typeof passwordReset.$inferSelect;
 export type PresetRow = typeof preset.$inferSelect;
 export type PresetVersionRow = typeof presetVersion.$inferSelect;
 export type SharedSettingsRow = typeof sharedSettings.$inferSelect;
