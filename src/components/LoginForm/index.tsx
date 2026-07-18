@@ -106,7 +106,10 @@ function LoginForm() {
                                             </>
                                         }
                                     >
-                                        <field.PasswordInputField placeholder="Enter password" />
+                                        <field.PasswordInputField
+                                            placeholder="Enter password"
+                                            autoComplete="current-password"
+                                        />
                                     </field.FormFieldWrapper>
                                 );
                             }}
