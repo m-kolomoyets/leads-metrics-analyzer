@@ -1,36 +1,82 @@
+import type { GeoThresholds } from '@/lib/domain/types';
+import type { PresetView } from '@/services/presets/types';
 import type { UploadedFile } from './types';
 import type { Locale } from './utils/i18n';
+import type { ImportedShared } from './utils/importPresets';
 import { useState } from 'react';
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 import { analyze } from '@/lib/domain';
 import { accountsFor } from '@/lib/domain/accounts';
+import { teamsQueryOptions } from '@/services/admin/queries';
 import { presetsQueryOptions, sharedSettingsQueryOptions } from '@/services/presets/queries';
 import { MainLayoutHeader } from '@/components/layouts/MainLayoutHeader';
 import { Button } from '@/components/ui/Button';
+import {
+    Combobox,
+    ComboboxContent,
+    ComboboxEmpty,
+    ComboboxInput,
+    ComboboxInputGroup,
+    ComboboxItem,
+    ComboboxList,
+    ComboboxTrigger,
+} from '@/components/ui/Combobox';
 import { LOCALES, ui } from './utils/i18n';
-import { presetForGeo } from './utils/presetForGeo';
+import { presetForGeo, presetsForGeo } from './utils/presetForGeo';
 import { toRuleset } from './utils/toRuleset';
 import { useClipboard } from './hooks/useClipboard';
 import { AccountBlock } from './components/AccountBlock';
 import { FileDropzones } from './components/FileDropzones';
 import { GeoTabs } from './components/GeoTabs';
+import { PresetCreator } from './components/PresetCreator';
 import { ProblemAccounts } from './components/ProblemAccounts';
 import { SharedSettingsEditor } from './components/SharedSettingsEditor';
+import { TeamScopePicker } from './components/TeamScopePicker';
 import { ThresholdEditor } from './components/ThresholdEditor';
+
+// Roles that hold the Geo dollar dimension and so may own presets (designer/bdm see none).
+const PRESET_WRITE_ROLES = ['buyer', 'team_lead', 'head'];
+
+// The GeoThresholds the active geo grades against: the focused preset's four pairs (dropping the
+// slice-4 `wasteZones` the verdict engine ignores), or the ruleset's first-wins fallback.
+function thresholdsFor(
+    activePreset: PresetView | undefined,
+    fallback: GeoThresholds | undefined
+): GeoThresholds | undefined {
+    if (!activePreset?.thresholds) {
+        return fallback;
+    }
+    const { installs, regs, sales, clicks } = activePreset.thresholds;
+    return { installs, regs, sales, clicks };
+}
 
 const routeApi = getRouteApi('/_authenticated');
 
 function Analyze() {
     const { data: presets } = useSuspenseQuery(presetsQueryOptions());
-    const { data: shared } = useSuspenseQuery(sharedSettingsQueryOptions());
     const role = routeApi.useRouteContext({
         select(context) {
             return context.auth.me.role;
         },
     });
+    const isHead = role === 'head';
     const [files, setFiles] = useState<UploadedFile[]>([]);
     const [selectedGeo, setSelectedGeo] = useState<string | null>(null);
+    // Which shared-settings scope a Head is viewing/editing: null = the global row, a UUID = that
+    // team's. Ignored for every other role (server pins them to their own team).
+    const [sharedTeamId, setSharedTeamId] = useState<string | null>(null);
+    // Non-suspense so a Head switching teams re-fetches without a suspense boundary; the default
+    // (null) scope shares the loader-preloaded key, so first render is already warm.
+    const { data: sharedData } = useQuery(sharedSettingsQueryOptions(isHead ? sharedTeamId : null));
+    const shared = sharedData ?? null;
+    // Team list backs the Head-only scope picker (head-gated query, so only enabled for a Head).
+    const { data: teams } = useQuery({ ...teamsQueryOptions(), enabled: isHead });
+    // Which preset drives grading for a Geo that carries several — owner's pick, keyed by Geo.
+    const [selectedPresetByGeo, setSelectedPresetByGeo] = useState<Record<string, string>>({});
+    // Shared tunables lifted from an imported file, with a bump counter so each import re-seeds the
+    // shared-settings editor even when the values repeat.
+    const [importedShared, setImportedShared] = useState<{ seed: ImportedShared; n: number } | null>(null);
     const [locale, setLocale] = useState<Locale>('uk');
     // Muted campaigns, keyed `${geo}:${campaign}` so the same id in two geos toggles independently.
     const [excluded, setExcluded] = useState<ReadonlySet<string>>(new Set());
@@ -50,11 +96,16 @@ function Analyze() {
         return geo.geo;
     });
     const activeGeo = geos.includes(selectedGeo ?? '') ? selectedGeo : (geos[0] ?? null);
-    const thresholds = activeGeo ? ruleset.thresholds[activeGeo] : undefined;
     // The very preset that fed this geo's grading — the inline editor mutates it so edits and
-    // verdicts stay in lock-step. Team Leads own the team-global shared-settings write.
-    const activePreset = activeGeo ? presetForGeo(presets, activeGeo) : undefined;
-    const canEditShared = ['team_lead', 'head', 'buyer'].includes(role);
+    // verdicts stay in lock-step. When the geo carries several, the owner's pick wins (else first
+    // active). Team Leads own the team-global shared-settings write.
+    const geoPresets = activeGeo ? presetsForGeo(presets, activeGeo) : [];
+    const activePreset = activeGeo ? presetForGeo(presets, activeGeo, selectedPresetByGeo[activeGeo]) : undefined;
+    // Grade against the focused preset's thresholds (dropping `wasteZones`), overriding the ruleset's
+    // first-wins pick when the owner selected a different one; else fall back to that first-wins pick.
+    const thresholds = thresholdsFor(activePreset, activeGeo ? ruleset.thresholds[activeGeo] : undefined);
+    const canEditShared = PRESET_WRITE_ROLES.includes(role);
+    const canWritePresets = PRESET_WRITE_ROLES.includes(role);
 
     const geoFacts =
         result?.facts.filter((fact) => {
@@ -126,21 +177,85 @@ function Analyze() {
                             )}
                         </div>
 
+                        {geoPresets.length > 0 && (
+                            <div className="flex items-center gap-2">
+                                <span className="text-muted-foreground text-xs">{ui('preset', locale)}</span>
+                                <Combobox
+                                    items={geoPresets}
+                                    value={activePreset ?? null}
+                                    onValueChange={(preset) => {
+                                        if (preset) {
+                                            setSelectedPresetByGeo((current) => {
+                                                return { ...current, [activeGeo]: preset.id };
+                                            });
+                                        }
+                                    }}
+                                    itemToStringLabel={(preset) => {
+                                        return preset.name;
+                                    }}
+                                >
+                                    <ComboboxInputGroup className="w-64">
+                                        <ComboboxInput placeholder={ui('preset', locale)} />
+                                        <ComboboxTrigger />
+                                    </ComboboxInputGroup>
+                                    <ComboboxContent>
+                                        <ComboboxEmpty>{ui('noResults', locale)}</ComboboxEmpty>
+                                        <ComboboxList>
+                                            {(preset) => {
+                                                return (
+                                                    <ComboboxItem key={preset.id} value={preset}>
+                                                        {preset.name}
+                                                    </ComboboxItem>
+                                                );
+                                            }}
+                                        </ComboboxList>
+                                    </ComboboxContent>
+                                </Combobox>
+                            </div>
+                        )}
+
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
                             {activePreset && (
                                 <ThresholdEditor
-                                    key={`${activePreset.id}:${activePreset.activeVersionId}`}
+                                    key={`${activePreset.id}:${activePreset.activeVersionId}:${activePreset.name}`}
                                     preset={activePreset}
                                     locale={locale}
                                 />
                             )}
-                            {(shared || canEditShared) && (
-                                <SharedSettingsEditor
-                                    key={shared?.activeVersionId ?? 'new'}
-                                    shared={shared}
-                                    canEdit={canEditShared}
+                            {canWritePresets && (
+                                <PresetCreator
+                                    key={activeGeo}
+                                    geo={activeGeo}
                                     locale={locale}
+                                    onImportShared={(seed) => {
+                                        setImportedShared((current) => {
+                                            return { seed, n: (current?.n ?? 0) + 1 };
+                                        });
+                                    }}
                                 />
+                            )}
+                            {(shared || canEditShared) && (
+                                <div className="flex flex-col gap-2">
+                                    {isHead && (
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-muted-foreground text-xs">{ui('team', locale)}</span>
+                                            <TeamScopePicker
+                                                teams={teams ?? []}
+                                                value={sharedTeamId}
+                                                locale={locale}
+                                                onChange={setSharedTeamId}
+                                            />
+                                        </div>
+                                    )}
+                                    <SharedSettingsEditor
+                                        key={`${sharedTeamId ?? 'global'}:${shared?.activeVersionId ?? 'new'}:${importedShared?.n ?? 0}`}
+                                        shared={shared}
+                                        canEdit={canEditShared}
+                                        locale={locale}
+                                        seed={importedShared?.seed}
+                                        saveTeamId={isHead ? sharedTeamId : undefined}
+                                    />
+                                </div>
                             )}
                         </div>
 

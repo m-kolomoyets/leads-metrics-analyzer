@@ -7,6 +7,8 @@ function preset(geo: string, thresholds: PresetView['thresholds']): PresetView {
         id: `p-${geo}`,
         teamId: null,
         ownerUserId: 'u',
+        ownerEmail: 'u@x.io',
+        teamName: null,
         geo,
         name: geo,
         activeVersionId: 'v',

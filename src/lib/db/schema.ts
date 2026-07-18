@@ -144,11 +144,12 @@ export const presetVersion = pgTable('preset_version', {
 
 // Shared settings (T5, #7): team-global tunables (Review Multiplier, default Commission, Seller
 // rules — domain doc 05) versioned immutably the same way as presets. One row per team (`team_id`
-// unique); its `active_version_id` points at the current append-only version.
+// unique); its `active_version_id` points at the current append-only version. `team_id` is nullable
+// for the single global row a teamless Head owns — Postgres treats NULLs as distinct, so the unique
+// constraint still binds real teams while leaving the global row unconstrained (the writer upserts it).
 export const sharedSettings = pgTable('shared_settings', {
     id: uuid('id').primaryKey().defaultRandom(),
     teamId: uuid('team_id')
-        .notNull()
         .unique()
         .references(
             () => {

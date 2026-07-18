@@ -1,0 +1,1 @@
+ALTER TABLE "shared_settings" ALTER COLUMN "team_id" DROP NOT NULL;

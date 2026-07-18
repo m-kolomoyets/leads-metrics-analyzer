@@ -39,6 +39,11 @@ export type PresetView = {
     id: string;
     teamId: string | null;
     ownerUserId: string;
+    // The creator's email and the owning team's name, resolved for the management table. A preset
+    // whose owner/team row is gone reads null (owner is `set null`? no — email always present; team
+    // is nullable for a teamless creator).
+    ownerEmail: string;
+    teamName: string | null;
     geo: string;
     name: string;
     activeVersionId: string | null;
@@ -48,7 +53,8 @@ export type PresetView = {
 
 export type SharedSettingsView = {
     id: string;
-    teamId: string;
+    // Null for the global row a teamless Head owns; a team's UUID otherwise.
+    teamId: string | null;
     activeVersionId: string | null;
     payload: SharedSettingsPayload | null;
 };

@@ -3,19 +3,21 @@ import type { Viewer, VisibilityScope } from '@/lib/auth/scope';
 import type { MeData } from '@/services/auth/types';
 import type { PresetView, SharedSettingsView } from './types';
 import { createServerFn } from '@tanstack/react-start';
-import { eq } from 'drizzle-orm';
+import { eq, isNull } from 'drizzle-orm';
 import { FORBIDDEN_MESSAGE, requireUser } from '@/lib/auth/guards';
 import { presetAccessFor } from '@/lib/auth/presetAccess';
 import { scopeFor } from '@/lib/auth/scope';
 import { db } from '@/lib/db';
-import { preset, presetVersion, sharedSettings, sharedSettingsVersion } from '@/lib/db/schema';
+import { preset, presetVersion, sharedSettings, sharedSettingsVersion, team, user } from '@/lib/db/schema';
 import {
     createPresetInputSchema,
+    deletePresetInputSchema,
     presetThresholdsSchema,
     renamePresetInputSchema,
     savePresetVersionInputSchema,
     saveSharedSettingsInputSchema,
     sharedSettingsPayloadSchema,
+    sharedSettingsScopeSchema,
 } from './schemas';
 
 // Presets API (T5, #7). Every read runs through `scopeFor(viewer)` (ADR-0007) — no hand-rolled role
@@ -26,6 +28,10 @@ import {
 const viewerFrom = (me: MeData): Viewer => {
     return { id: me.id, role: me.role, teamId: me.teamId };
 };
+
+// Team-global shared settings are writable by the dollar-dimension roles (they carry the Geo/account
+// dimensions the tunables feed); designer/bdm never touch them. Gated further by team membership.
+const SHARED_SETTINGS_WRITE_ROLES: MeData['role'][] = ['team_lead', 'head', 'buyer'];
 
 const PRESET_COLUMNS = {
     id: preset.id,
@@ -67,6 +73,8 @@ const toPresetView = (
         id: string;
         teamId: string | null;
         ownerUserId: string;
+        ownerEmail: string | null;
+        teamName: string | null;
         geo: string;
         name: string;
         activeVersionId: string | null;
@@ -77,6 +85,9 @@ const toPresetView = (
         id: row.id,
         teamId: row.teamId,
         ownerUserId: row.ownerUserId,
+        // The owner FK cascades on user delete, so a listed preset always has one; guard anyway.
+        ownerEmail: row.ownerEmail ?? '',
+        teamName: row.teamName,
         geo: row.geo,
         name: row.name,
         activeVersionId: row.activeVersionId,
@@ -84,6 +95,13 @@ const toPresetView = (
         access: presetAccessFor(viewer, { ownerUserId: row.ownerUserId, teamId: row.teamId }),
     };
 };
+
+// The owner email + team name every read joins in, so the management table has creator + team without
+// a second round-trip.
+const PRESET_META_COLUMNS = {
+    ownerEmail: user.email,
+    teamName: team.name,
+} as const;
 
 export const listPresetsFn = createServerFn({ method: 'GET' }).handler(async (): Promise<PresetView[]> => {
     const me = await requireUser();
@@ -101,9 +119,11 @@ export const listPresetsFn = createServerFn({ method: 'GET' }).handler(async ():
     }
 
     const rows = await db
-        .select({ ...PRESET_COLUMNS, thresholds: presetVersion.thresholds })
+        .select({ ...PRESET_COLUMNS, ...PRESET_META_COLUMNS, thresholds: presetVersion.thresholds })
         .from(preset)
         .leftJoin(presetVersion, eq(preset.activeVersionId, presetVersion.id))
+        .leftJoin(user, eq(preset.ownerUserId, user.id))
+        .leftJoin(team, eq(preset.teamId, team.id))
         .where(presetRowFilter(scope))
         .orderBy(preset.geo, preset.name);
 
@@ -116,9 +136,11 @@ export const listPresetsFn = createServerFn({ method: 'GET' }).handler(async ():
 // every write, so the client always gets identity + current thresholds + access in one payload.
 const loadPresetView = async (viewer: Viewer, presetId: string): Promise<PresetView | undefined> => {
     const [row] = await db
-        .select({ ...PRESET_COLUMNS, thresholds: presetVersion.thresholds })
+        .select({ ...PRESET_COLUMNS, ...PRESET_META_COLUMNS, thresholds: presetVersion.thresholds })
         .from(preset)
         .leftJoin(presetVersion, eq(preset.activeVersionId, presetVersion.id))
+        .leftJoin(user, eq(preset.ownerUserId, user.id))
+        .leftJoin(team, eq(preset.teamId, team.id))
         .where(eq(preset.id, presetId))
         .limit(1);
 
@@ -239,20 +261,57 @@ export const renamePresetFn = createServerFn({ method: 'POST' })
         return view;
     });
 
+export const deletePresetFn = createServerFn({ method: 'POST' })
+    .inputValidator(deletePresetInputSchema)
+    .handler(async ({ data }): Promise<{ id: string }> => {
+        const me = await requireUser();
+        const viewer = viewerFrom(me);
+
+        // Owner-only delete — same gate as edit. `preset_version` rows cascade off the FK, and any
+        // Snapshot that pinned one of those versions keeps it (`snapshot_geo_preset.preset_version_id`
+        // is `set null`, ADR-0002), so a past judgement is never silently rewritten.
+        await db.transaction(async (tx) => {
+            const [row] = await tx
+                .select({ ownerUserId: preset.ownerUserId, teamId: preset.teamId })
+                .from(preset)
+                .where(eq(preset.id, data.presetId))
+                .limit(1);
+
+            if (!row) {
+                throw new Error('Preset not found');
+            }
+
+            if (presetAccessFor(viewer, row) !== 'edit') {
+                throw new Error(FORBIDDEN_MESSAGE);
+            }
+
+            await tx.delete(preset).where(eq(preset.id, data.presetId));
+        });
+
+        return { id: data.presetId };
+    });
+
 const parsePayload = (value: unknown): SharedSettingsView['payload'] => {
     const parsed = sharedSettingsPayloadSchema.safeParse(value);
 
     return parsed.success ? parsed.data : null;
 };
 
-export const getSharedSettingsFn = createServerFn({ method: 'GET' }).handler(
-    async (): Promise<SharedSettingsView | null> => {
+export const getSharedSettingsFn = createServerFn({ method: 'GET' })
+    .inputValidator(sharedSettingsScopeSchema)
+    .handler(async ({ data }): Promise<SharedSettingsView | null> => {
         const me = await requireUser();
 
-        // Shared settings are team-global; a teamless viewer (head/designer/bdm) has none to read.
-        if (!me.teamId) {
+        // Which row applies: a Head may read any team's (or the global, null-team row) via `teamId`,
+        // defaulting to global; every other role is pinned to their own team, and a teamless non-Head
+        // (designer/bdm/unplaced) has none.
+        const isHead = me.role === 'head';
+        const teamId = isHead ? (data.teamId ?? null) : (me.teamId ?? null);
+        if (teamId === null && !isHead) {
             return null;
         }
+
+        const teamFilter = teamId === null ? isNull(sharedSettings.teamId) : eq(sharedSettings.teamId, teamId);
 
         const [row] = await db
             .select({
@@ -263,7 +322,7 @@ export const getSharedSettingsFn = createServerFn({ method: 'GET' }).handler(
             })
             .from(sharedSettings)
             .leftJoin(sharedSettingsVersion, eq(sharedSettings.activeVersionId, sharedSettingsVersion.id))
-            .where(eq(sharedSettings.teamId, me.teamId))
+            .where(teamFilter)
             .limit(1);
 
         if (!row) {
@@ -276,27 +335,34 @@ export const getSharedSettingsFn = createServerFn({ method: 'GET' }).handler(
             activeVersionId: row.activeVersionId,
             payload: parsePayload(row.payload),
         };
-    }
-);
+    });
 
 export const saveSharedSettingsFn = createServerFn({ method: 'POST' })
     .inputValidator(saveSharedSettingsInputSchema)
     .handler(async ({ data }): Promise<SharedSettingsView> => {
         const me = await requireUser();
 
-        // Team-global tunables are the Team Lead's to set, and only for a team they lead.
-        if (me.role !== 'team_lead' || !me.teamId) {
+        // Team-global tunables are set by the dollar-dimension roles (team_lead / head / buyer). A Head
+        // may write any team's row (or the global, null-team row) via `data.teamId`; team_lead / buyer
+        // are pinned to their own team's row and so must belong to one.
+        if (!SHARED_SETTINGS_WRITE_ROLES.includes(me.role)) {
             throw new Error(FORBIDDEN_MESSAGE);
         }
 
-        const teamId = me.teamId;
+        const isHead = me.role === 'head';
+        const teamId = isHead ? (data.teamId ?? null) : (me.teamId ?? null);
+        if (teamId === null && !isHead) {
+            throw new Error(FORBIDDEN_MESSAGE);
+        }
+
+        const teamFilter = teamId === null ? isNull(sharedSettings.teamId) : eq(sharedSettings.teamId, teamId);
 
         const view = await db.transaction(async (tx) => {
-            // One `shared_settings` row per team (upsert-by-team); versions append beneath it.
+            // One `shared_settings` row per scope (upsert-by-team, or the global row); versions append.
             const [existing] = await tx
                 .select({ id: sharedSettings.id })
                 .from(sharedSettings)
-                .where(eq(sharedSettings.teamId, teamId))
+                .where(teamFilter)
                 .limit(1);
 
             const settingsId =
