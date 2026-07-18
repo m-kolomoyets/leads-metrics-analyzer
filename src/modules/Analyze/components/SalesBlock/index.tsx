@@ -41,7 +41,7 @@ function SalesBlock({ campaigns, locale, copiedKey, onCopy, copyKey }: SalesBloc
             </div>
 
             <p className="text-muted-foreground font-mono text-[11px] leading-relaxed">
-                Spend⁺ {usd(stat.spendPlus)} · Clicks {stat.linkClicks} · Inst {stat.installs} · Reg {stat.regs} · Sales{' '}
+                Spend {usd(stat.spend)} · Clicks {stat.linkClicks} · Inst {stat.installs} · Reg {stat.regs} · Sales{' '}
                 {stat.sales}
             </p>
 

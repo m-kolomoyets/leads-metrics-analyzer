@@ -28,7 +28,7 @@ function ProblemAccounts({ accounts, locale }: ProblemAccountsProps) {
                     return (
                         <li key={account.account} className="text-muted-foreground">
                             <span className="text-foreground font-mono">{account.account}</span>{' '}
-                            {usd(account.metrics.spendPlus)} ·{' '}
+                            {usd(account.metrics.spend)} ·{' '}
                             {problemReason(account.problem!, account.metrics.spendPlus, account.metrics.cpi, locale)}
                         </li>
                     );

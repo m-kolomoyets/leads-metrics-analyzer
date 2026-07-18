@@ -54,8 +54,9 @@ describe('toRuleset', () => {
             activeVersionId: 'v',
             payload: {
                 reviewMultiplier: 3,
-                defaultCommission: 0.06,
-                sellers: [{ rate: 0.1, accountIds: ['acc-1'] }],
+                // Stored as percents; toRuleset converts to fractions for the domain.
+                defaultCommission: 6,
+                sellers: [{ rate: 10, accountIds: ['acc-1'] }],
             },
         };
         const ruleset = toRuleset([], shared);

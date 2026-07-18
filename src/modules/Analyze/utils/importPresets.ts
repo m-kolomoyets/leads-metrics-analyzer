@@ -96,6 +96,8 @@ export function importedSharedFrom(file: ImportPresetsFile): ImportedShared | nu
 
     return {
         reviewMultiplier: shared.reviewMult ?? 1,
+        // Commission stays a percent through the persistence + editor layers (human-facing, matches the
+        // prototype export); `toRuleset` converts percent → fraction at the domain boundary.
         defaultCommission: shared.commission ?? 0,
     };
 }
