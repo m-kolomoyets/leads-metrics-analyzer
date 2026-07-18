@@ -18,8 +18,9 @@ export type SnapshotSubject = {
 export type SnapshotAccess = 'read' | 'none';
 
 // A Snapshot rolls up across the dollar dimensions; a Designer/BDM carries only its creative/offer
-// dimension (never a dollar table), so it sees no whole Snapshot here. Fact-level dimension-scoping
-// for those roles is T7 (#9). `campaign` is a dollar dimension they lack — the gate.
+// dimension (never a dollar table), so it sees no whole Snapshot here. Their company-wide roll-up
+// lives in a separate read path (`getDimensionRollupFn`, T7 #9). `campaign` is a dollar dimension
+// they lack — the gate.
 const SNAPSHOT_DIMENSION = 'campaign';
 
 export const snapshotAccessFor = (viewer: Viewer, subject: SnapshotSubject): SnapshotAccess => {

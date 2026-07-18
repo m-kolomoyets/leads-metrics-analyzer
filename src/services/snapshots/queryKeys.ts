@@ -9,6 +9,9 @@ export const snapshotKeys = {
     factsQueryKey(id: string) {
         return [...snapshotKeys.all, 'facts', id] as const;
     },
+    dimensionRollupQueryKey() {
+        return [...snapshotKeys.all, 'dimension-rollup'] as const;
+    },
     createMutationKey() {
         return [...snapshotKeys.all, 'create'] as const;
     },

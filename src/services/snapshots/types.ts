@@ -1,3 +1,4 @@
+import type { RollupDimension } from '@/lib/auth/dimensionRollup';
 import type { SnapshotAccess } from '@/lib/auth/snapshotAccess';
 import type { FactZone } from './schemas';
 
@@ -47,4 +48,19 @@ export type SnapshotFactView = {
     sales: number;
     verdict: FactZone;
     zone: FactZone;
+};
+
+// A company-wide roll-up row for a dimension-scoped viewer (T7, #9). Designer/BDM never see dollar
+// facts; they read all Snapshot facts summed by their single dimension — Creative for a Designer,
+// Offer for a BDM. `dimension` names which axis `key` indexes so the client renders one table.
+export type DimensionRollupView = {
+    dimension: RollupDimension;
+    key: string;
+    spend: number;
+    spendPlus: number;
+    revenue: number;
+    linkClicks: number;
+    installs: number;
+    regs: number;
+    sales: number;
 };

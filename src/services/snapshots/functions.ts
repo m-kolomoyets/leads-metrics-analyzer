@@ -2,9 +2,10 @@ import type { SQL } from 'drizzle-orm';
 import type { Viewer, VisibilityScope } from '@/lib/auth/scope';
 import type { SnapshotSubject } from '@/lib/auth/snapshotAccess';
 import type { MeData } from '@/services/auth/types';
-import type { AppliedGeo, SnapshotFactView, SnapshotView } from './types';
+import type { AppliedGeo, DimensionRollupView, SnapshotFactView, SnapshotView } from './types';
 import { createServerFn } from '@tanstack/react-start';
-import { eq, inArray } from 'drizzle-orm';
+import { asc, eq, inArray, sum } from 'drizzle-orm';
+import { rollupDimensionFor } from '@/lib/auth/dimensionRollup';
 import { FORBIDDEN_MESSAGE, requireUser } from '@/lib/auth/guards';
 import { scopeFor } from '@/lib/auth/scope';
 import { snapshotAccessFor } from '@/lib/auth/snapshotAccess';
@@ -125,8 +126,8 @@ export const listSnapshotsFn = createServerFn({ method: 'GET' }).handler(async (
     const viewer = viewerFrom(me);
     const scope = scopeFor(viewer);
 
-    // Snapshots roll up into the dollar dimensions; a viewer without them (designer/bdm) sees none —
-    // fact-level dimension-scoping for those roles is T7 (#9).
+    // Snapshots roll up into the dollar dimensions; a viewer without them (designer/bdm) sees no whole
+    // Snapshot — their company-wide dimension roll-up is `getDimensionRollupFn` (T7, #9).
     if (!scope.dimensions.includes('campaign')) {
         return [];
     }
@@ -229,6 +230,54 @@ export const getSnapshotFactsFn = createServerFn({ method: 'GET' })
             };
         });
     });
+
+// The company-wide dimension roll-up (T7, #9). A dollar-barred viewer (Designer/BDM) reads no dollar
+// fact — instead every Snapshot fact is summed by their one dimension (`rollupDimensionFor`, driven
+// by `scopeFor`, ADR-0007). Company-wide because those roles carry `rowScope: 'all'`, so no Snapshot
+// row filter applies. A viewer holding a dollar dimension has no roll-up here and is Forbidden — they
+// use the fact path instead.
+export const getDimensionRollupFn = createServerFn({ method: 'GET' }).handler(
+    async (): Promise<DimensionRollupView[]> => {
+        const me = await requireUser();
+        const viewer = viewerFrom(me);
+        const dimension = rollupDimensionFor(viewer);
+
+        if (dimension === null) {
+            throw new Error(FORBIDDEN_MESSAGE);
+        }
+
+        const keyColumn = dimension === 'creative' ? snapshotFact.creative : snapshotFact.offer;
+
+        const rows = await db
+            .select({
+                key: keyColumn,
+                spend: sum(snapshotFact.spend).mapWith(Number),
+                spendPlus: sum(snapshotFact.spendPlus).mapWith(Number),
+                revenue: sum(snapshotFact.revenue).mapWith(Number),
+                linkClicks: sum(snapshotFact.linkClicks).mapWith(Number),
+                installs: sum(snapshotFact.installs).mapWith(Number),
+                regs: sum(snapshotFact.regs).mapWith(Number),
+                sales: sum(snapshotFact.sales).mapWith(Number),
+            })
+            .from(snapshotFact)
+            .groupBy(keyColumn)
+            .orderBy(asc(keyColumn));
+
+        return rows.map((row): DimensionRollupView => {
+            return {
+                dimension,
+                key: row.key,
+                spend: row.spend ?? 0,
+                spendPlus: row.spendPlus ?? 0,
+                revenue: row.revenue ?? 0,
+                linkClicks: row.linkClicks ?? 0,
+                installs: row.installs ?? 0,
+                regs: row.regs ?? 0,
+                sales: row.sales ?? 0,
+            };
+        });
+    }
+);
 
 // Asserts every referenced ruleset version already exists (spec story 35 — "push forces save first").
 // A missing preset/shared-settings version means the client tried to snapshot unsaved edits.
