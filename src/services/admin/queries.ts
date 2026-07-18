@@ -3,6 +3,7 @@ import type {
     CreateUserInput,
     DeleteTeamInput,
     DeleteUserInput,
+    GenerateResetLinkInput,
     ResendInvitationInput,
     UpdateTeamInput,
     UpdateTeamLeadInput,
@@ -14,6 +15,7 @@ import {
     createUserFn,
     deleteTeamFn,
     deleteUserFn,
+    generateResetLinkFn,
     listTeamsFn,
     listUsersFn,
     resendInvitationFn,
@@ -73,6 +75,17 @@ export const resendInvitationMutationOptions = () => {
         mutationFn(data: ResendInvitationInput) {
             return resendInvitationFn({ data });
         },
+    });
+};
+
+export const generateResetLinkMutationOptions = () => {
+    return mutationOptions({
+        mutationKey: adminKeys.generateResetLinkMutationKey(),
+        mutationFn(data: GenerateResetLinkInput) {
+            return generateResetLinkFn({ data });
+        },
+        // No invalidation: the pending flag persists until the user redeems the link (story 13), so
+        // the users list is unchanged by minting.
     });
 };
 

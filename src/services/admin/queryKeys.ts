@@ -12,6 +12,9 @@ export const adminKeys = {
     resendInvitationMutationKey() {
         return [...adminKeys.all, 'resend-invitation'] as const;
     },
+    generateResetLinkMutationKey() {
+        return [...adminKeys.all, 'generate-reset-link'] as const;
+    },
     updateUserMutationKey() {
         return [...adminKeys.all, 'update-user'] as const;
     },

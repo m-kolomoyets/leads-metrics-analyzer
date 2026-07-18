@@ -1,10 +1,12 @@
-import type { AdminTeam, AdminUser, AdminUserListItem, InvitedUser } from './types';
+import type { AdminTeam, AdminUser, AdminUserListItem, InvitedUser, ResetLinkUser } from './types';
 import { randomBytes } from 'node:crypto';
 import { createServerFn } from '@tanstack/react-start';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { requireHead } from '@/lib/auth/guards';
 import { issueInvitation } from '@/lib/auth/invitation';
 import { hashPassword } from '@/lib/auth/password';
+import { canRequestPasswordReset } from '@/lib/auth/passwordResetPolicy';
+import { issueResetToken } from '@/lib/auth/passwordResetToken';
 import { db } from '@/lib/db';
 import { passwordReset, team, user } from '@/lib/db/schema';
 import {
@@ -12,6 +14,7 @@ import {
     createUserInputSchema,
     deleteTeamInputSchema,
     deleteUserInputSchema,
+    generateResetLinkInputSchema,
     resendInvitationInputSchema,
     updateTeamInputSchema,
     updateTeamLeadInputSchema,
@@ -162,6 +165,30 @@ export const resendInvitationFn = createServerFn({ method: 'POST' })
         const activationToken = await issueInvitation(row.id);
 
         return { ...row, activationToken };
+    });
+
+// Mint (or re-mint) a hand-delivered reset link for an `active` user who raised a reset request (#43).
+// Head-only. The raw token is returned once; only its sha256 hash is ever persisted (in `issueResetToken`).
+// The status gate is the same pure predicate the public request path uses — an invited / disabled
+// account cannot be minted a reset. Re-minting invalidates any prior link.
+export const generateResetLinkFn = createServerFn({ method: 'POST' })
+    .inputValidator(generateResetLinkInputSchema)
+    .handler(async ({ data }): Promise<ResetLinkUser> => {
+        await requireHead();
+
+        const [row] = await db.select(USER_COLUMNS).from(user).where(eq(user.id, data.id)).limit(1);
+
+        if (!row) {
+            throw new Error('User not found');
+        }
+
+        if (!canRequestPasswordReset(row.status)) {
+            throw new Error('Only active users can be sent a reset link');
+        }
+
+        const resetToken = await issueResetToken(row.id);
+
+        return { ...row, resetToken };
     });
 
 export const updateUserFn = createServerFn({ method: 'POST' })

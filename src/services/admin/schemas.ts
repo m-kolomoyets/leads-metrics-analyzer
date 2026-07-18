@@ -49,6 +49,11 @@ export const resendInvitationInputSchema = z.object({
     id: z.uuid(),
 });
 
+export type GenerateResetLinkInput = z.infer<typeof generateResetLinkInputSchema>;
+export const generateResetLinkInputSchema = z.object({
+    id: z.uuid(),
+});
+
 export type CreateTeamInput = z.infer<typeof createTeamInputSchema>;
 export const createTeamInputSchema = z.object({
     name: z.string().trim().min(1, { error: 'This field is required' }),

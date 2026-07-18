@@ -21,6 +21,12 @@ export type InvitedUser = AdminUser & {
     activationToken: string | null;
 };
 
+// Returned when the Head mints a reset link for an `active` user (#43). `resetToken` is the raw,
+// shown-once token — the panel builds the `/reset-password?token=...` link from it.
+export type ResetLinkUser = AdminUser & {
+    resetToken: string;
+};
+
 export type AdminTeam = {
     id: string;
     name: string;
