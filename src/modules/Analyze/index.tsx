@@ -1,18 +1,29 @@
 import type { UploadedFile } from './types';
+import type { Locale } from './utils/i18n';
 import { useState } from 'react';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { analyze } from '@/lib/domain';
+import { accountsFor } from '@/lib/domain/accounts';
 import { presetsQueryOptions, sharedSettingsQueryOptions } from '@/services/presets/queries';
 import { MainLayoutHeader } from '@/components/layouts/MainLayoutHeader';
+import { Button } from '@/components/ui/Button';
+import { LOCALES, ui } from './utils/i18n';
 import { toRuleset } from './utils/toRuleset';
-import { CampaignTable } from './components/CampaignTable';
+import { useClipboard } from './hooks/useClipboard';
+import { AccountBlock } from './components/AccountBlock';
 import { FileDropzones } from './components/FileDropzones';
+import { GeoTabs } from './components/GeoTabs';
+import { ProblemAccounts } from './components/ProblemAccounts';
 
 function Analyze() {
     const { data: presets } = useSuspenseQuery(presetsQueryOptions());
     const { data: shared } = useSuspenseQuery(sharedSettingsQueryOptions());
     const [files, setFiles] = useState<UploadedFile[]>([]);
     const [selectedGeo, setSelectedGeo] = useState<string | null>(null);
+    const [locale, setLocale] = useState<Locale>('uk');
+    // Muted campaigns, keyed `${geo}:${campaign}` so the same id in two geos toggles independently.
+    const [excluded, setExcluded] = useState<ReadonlySet<string>>(new Set());
+    const { copied, copy } = useClipboard();
 
     const ruleset = toRuleset(presets, shared);
     const result = files.length
@@ -24,22 +35,62 @@ function Analyze() {
           )
         : null;
 
-    const geos = result?.geos ?? [];
-    const activeGeo = geos.some((geo) => {
-        return geo.geo === selectedGeo;
-    })
-        ? selectedGeo
-        : (geos[0]?.geo ?? null);
+    const geos = (result?.geos ?? []).map((geo) => {
+        return geo.geo;
+    });
+    const activeGeo = geos.includes(selectedGeo ?? '') ? selectedGeo : (geos[0] ?? null);
+    const thresholds = activeGeo ? ruleset.thresholds[activeGeo] : undefined;
 
-    const facts =
+    const geoFacts =
         result?.facts.filter((fact) => {
             return fact.geo === activeGeo;
         }) ?? [];
+    const excludedInGeo = new Set(
+        geoFacts
+            .filter((fact) => {
+                return excluded.has(`${activeGeo}:${fact.campaign}`);
+            })
+            .map((fact) => {
+                return fact.campaign;
+            })
+    );
+    const accounts = accountsFor(geoFacts, thresholds, ruleset.reviewMultiplier, excludedInGeo);
+
+    function toggleExcluded(campaign: string) {
+        const key = `${activeGeo}:${campaign}`;
+        setExcluded((current) => {
+            const next = new Set(current);
+            if (next.has(key)) {
+                next.delete(key);
+            } else {
+                next.add(key);
+            }
+            return next;
+        });
+    }
 
     return (
         <>
             <MainLayoutHeader>
                 <h1 className="text-xl">Analyze</h1>
+                <span className="flex-1" />
+                <div className="flex gap-1" role="group" aria-label="Language">
+                    {LOCALES.map((code) => {
+                        return (
+                            <Button
+                                key={code}
+                                type="button"
+                                size="xs"
+                                variant={code === locale ? 'default' : 'ghost'}
+                                onClick={() => {
+                                    setLocale(code);
+                                }}
+                            >
+                                {code.toUpperCase()}
+                            </Button>
+                        );
+                    })}
+                </div>
             </MainLayoutHeader>
 
             <div className="flex flex-col gap-6">
@@ -52,31 +103,33 @@ function Analyze() {
                 )}
 
                 {activeGeo && (
-                    <div className="flex flex-col gap-3">
-                        <div className="flex items-center gap-2 text-sm">
-                            <label htmlFor="geo-select">Geo</label>
-                            <select
-                                id="geo-select"
-                                className="rounded border px-2 py-1"
-                                value={activeGeo}
-                                onChange={(event) => {
-                                    setSelectedGeo(event.target.value);
-                                }}
-                            >
-                                {geos.map((geo) => {
-                                    return (
-                                        <option key={geo.geo} value={geo.geo}>
-                                            {geo.geo}
-                                        </option>
-                                    );
-                                })}
-                            </select>
-                            {!ruleset.thresholds[activeGeo] && (
-                                <span className="text-muted-foreground">no preset — ungraded</span>
+                    <div className="flex flex-col gap-4">
+                        <div className="flex items-center gap-3">
+                            <GeoTabs geos={geos} active={activeGeo} onSelect={setSelectedGeo} />
+                            {!thresholds && (
+                                <span className="text-muted-foreground text-xs">{ui('noPreset', locale)}</span>
                             )}
                         </div>
 
-                        <CampaignTable facts={facts} thresholds={ruleset.thresholds[activeGeo]} />
+                        <ProblemAccounts accounts={accounts} locale={locale} />
+
+                        <div className="flex flex-col gap-4">
+                            {accounts.map((account) => {
+                                return (
+                                    <AccountBlock
+                                        key={account.account}
+                                        account={account}
+                                        locale={locale}
+                                        copiedKey={copied ?? ''}
+                                        onCopy={copy}
+                                        isExcluded={(campaign) => {
+                                            return excluded.has(`${activeGeo}:${campaign}`);
+                                        }}
+                                        onToggleExcluded={toggleExcluded}
+                                    />
+                                );
+                            })}
+                        </div>
 
                         {result && result.unclaimedAccounts.length > 0 && (
                             <p className="text-muted-foreground text-xs">
