@@ -5,9 +5,9 @@ import { metricsFor } from './aggregate';
 import { mobileOs } from './join';
 
 // 6 · Allocation (doc 06). Offer and OS live below the join — Facebook never measures their Spend, so
-// each Campaign's real Spend⁺ is split across its Offers / OS in proportion to that Campaign's own
-// Installs. The resulting rows carry the standard metric family, computed on ALLOCATED (estimated)
-// Spend⁺. Pure — no React, no DB. The "estimate" label is enforced at the UI edge.
+// it is imputed: the Geo's own unit cost (its whole Spend⁺ ÷ its whole Installs) times each row's
+// Installs (ADR-0013). The resulting rows carry the standard metric family, computed on ALLOCATED
+// (estimated) Spend⁺. Pure — no React, no DB. The "estimate" label is enforced at the UI edge.
 
 // One Offer or OS row: its identity, a display label, and metrics on allocated Spend⁺.
 export type ModelRow = {
@@ -22,10 +22,10 @@ export type ModelRow = {
 export type GeoAllocation = {
     offers: ModelRow[];
     os: ModelRow[];
-    // Spend⁺ of campaigns that bought nothing: zero Installs (no share denominator) or no Keitaro
-    // model at all. Real money spent, so it must stay in the Geo's Spend⁺ — it just has no Offer to
-    // hang on. Carried out separately and rendered as its own row so the Offers footer reconciles
-    // to the Geo Total exactly instead of silently under-reporting.
+    // Spend⁺ no Offer could absorb. Normally 0: Offer Installs sum to the Geo's, so pricing them at
+    // the Geo unit cost hands back exactly the Geo's Spend⁺. It is non-zero only when the Geo bought
+    // no Installs at all — there is then no unit cost to price anything with, and every dollar is a
+    // remainder. Rendered as its own row so the Offers footer reconciles to the Geo Total.
     unallocated: Totals;
 };
 
@@ -66,26 +66,28 @@ export function allocateGeo(facts: Fact[], models: Map<string, CampaignModel>): 
     const osTotals = new Map<string, Totals>();
     const unallocated = zeroTotals();
 
+    // Pass 1 — the Geo's unit cost. Numerator is ALL the Geo's money, including campaigns that bought
+    // no Installs at all; denominator is all its Installs. That is what an Install in this market
+    // actually cost (ADR-0013).
+    let geoSpend = 0;
+    let geoSpendPlus = 0;
+    let geoInstalls = 0;
+    for (const fact of facts) {
+        geoSpend += fact.spend;
+        geoSpendPlus += fact.spendPlus;
+        geoInstalls += fact.installs;
+    }
+    const unitSpend = geoInstalls > 0 ? geoSpend / geoInstalls : 0;
+    const unitSpendPlus = geoInstalls > 0 ? geoSpendPlus / geoInstalls : 0;
+
+    // Pass 2 — the funnel per dimension. Real Keitaro counts, summed; no money touched yet.
     for (const fact of facts) {
         const model = models.get(fact.campaign);
         if (!model) {
-            // No Keitaro rows joined: the campaign spent and bought nothing measurable.
-            unallocated.spend += fact.spend;
-            unallocated.spendPlus += fact.spendPlus;
             continue;
         }
-        const campaignInstalls = fact.installs;
-        // Every Offer's share of a zero-Install campaign is 0, so its whole Spend⁺ falls through.
-        let allocatedShare = 0;
-
         for (const [offerId, funnel] of model.offer) {
             const acc = bucket(offerTotals, offerId);
-            // Proportional Spend⁺(c) × installs(o within c) / installs(c). Zero-install campaigns
-            // contribute no spend to any offer (and no installs either).
-            const share = campaignInstalls > 0 ? funnel.installs / campaignInstalls : 0;
-            allocatedShare += share;
-            acc.spend += fact.spend * share;
-            acc.spendPlus += fact.spendPlus * share;
             acc.revenue += funnel.revenue;
             acc.installs += funnel.installs;
             acc.regs += funnel.regs;
@@ -95,22 +97,12 @@ export function allocateGeo(facts: Fact[], models: Map<string, CampaignModel>): 
                 offerLabels.set(offerId, funnel.label);
             }
         }
-
-        // Shares sum to exactly 1 whenever the campaign had Installs (the Offer split comes from the
-        // very rows that produced the campaign's Install count), so the remainder is 0 or everything.
-        const leftover = Math.max(0, 1 - allocatedShare);
-        unallocated.spend += fact.spend * leftover;
-        unallocated.spendPlus += fact.spendPlus * leftover;
-
         for (const [os, funnel] of model.os) {
             const label = mobileOs(os);
             if (!label) {
                 continue;
             }
             const acc = bucket(osTotals, label);
-            const share = campaignInstalls > 0 ? funnel.installs / campaignInstalls : 0;
-            acc.spend += fact.spend * share;
-            acc.spendPlus += fact.spendPlus * share;
             acc.revenue += funnel.revenue;
             acc.installs += funnel.installs;
             acc.regs += funnel.regs;
@@ -118,6 +110,25 @@ export function allocateGeo(facts: Fact[], models: Map<string, CampaignModel>): 
             acc.linkClicks += funnel.linkClicks;
         }
     }
+
+    // Pass 3 — price each row's Installs at the Geo unit cost.
+    let offerSpend = 0;
+    let offerSpendPlus = 0;
+    for (const acc of offerTotals.values()) {
+        acc.spend = acc.installs * unitSpend;
+        acc.spendPlus = acc.installs * unitSpendPlus;
+        offerSpend += acc.spend;
+        offerSpendPlus += acc.spendPlus;
+    }
+    for (const acc of osTotals.values()) {
+        acc.spend = acc.installs * unitSpend;
+        acc.spendPlus = acc.installs * unitSpendPlus;
+    }
+
+    // Offer Installs sum to the Geo's, so pricing them at the Geo rate returns the Geo's Spend⁺ and
+    // this is 0 — except when the Geo bought no Installs anywhere, where every dollar is a remainder.
+    unallocated.spend = geoSpend - offerSpend;
+    unallocated.spendPlus = geoSpendPlus - offerSpendPlus;
 
     return {
         offers: toRows(offerTotals, offerLabels),

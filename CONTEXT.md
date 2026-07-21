@@ -127,10 +127,18 @@ Allocated, never measured. Every value present in the data is a valid OS — the
 _Avoid_: Platform, device
 
 **Allocated Spend**:
-Spend attributed to an Offer or OS in proportion to that Campaign's own Installs, because those
-dimensions sit below the Fact Grain and have no measured Spend of their own. Always an estimate;
-must be labelled as such wherever it is shown.
+Spend imputed to an Offer or OS, because those dimensions sit below the Fact Grain and have no
+measured Spend of their own. Priced at the **Geo Unit Cost** — that row's Installs × the Geo's own
+Spend⁺ ÷ Installs (ADR-0013). Always an estimate; must be labelled as such wherever it is shown.
 _Avoid_: Estimated spend, est. spend, modelled spend
+
+**Geo Unit Cost**:
+A Geo's whole Spend⁺ divided by its whole Installs — including campaigns that spent and bought
+nothing, whose money was still spent trying to buy Installs. What one Install actually cost in this
+market. It is the basis for all Allocated Spend, so CPI is uniform down an Offer or OS table by
+construction: a costing basis, never a comparison axis. Offers are separated by EPC/ROI/CPR/CPS,
+which ride on real Keitaro counts (ADR-0013).
+_Avoid_: Average CPI, blended CPI, effective CPI
 
 > **Offers table shows Spend⁺, not raw Spend.** Its `Spend` column carries the commission-inclusive
 > figure, so `Profit = Rev − Spend` reads true in that row and the footer's cost/ROI totals match

@@ -55,11 +55,12 @@ describe('allocateGeo', () => {
         const b = offers.find((r) => {
             return r.key === 'B';
         });
-        expect(a?.metrics.spendPlus).toBeCloseTo(63.6, 5); // 106 × 6/10
-        expect(b?.metrics.spendPlus).toBeCloseTo(42.4, 5); // 106 × 4/10
-        // CPI is a REAL per-offer number, not the geo average (the prototype→change).
-        expect(a?.metrics.cpi).toBeCloseTo(10.6, 5); // 63.6 / 6
-        // 42.4 / 4 — equal to A only because spend split ∝ installs here.
+        expect(a?.metrics.spendPlus).toBeCloseTo(63.6, 5); // 6 × 10.6
+        expect(b?.metrics.spendPlus).toBeCloseTo(42.4, 5); // 4 × 10.6
+        // Every Offer prices at the same Geo rate (ADR-0013), so CPI is uniform across the table by
+        // construction. What separates Offers is Revenue per Install — EPC, ROI and CPR/CPS, which
+        // ride on real Keitaro counts. CPI is a costing basis here, never a comparison axis.
+        expect(a?.metrics.cpi).toBeCloseTo(10.6, 5); // 106 / 10
         expect(b?.metrics.cpi).toBeCloseTo(10.6, 5);
     });
 
@@ -95,7 +96,36 @@ describe('allocateGeo', () => {
             return r.key === 'A';
         });
         expect(a?.metrics.installs).toBe(7); // 5 + 2
-        expect(a?.metrics.spendPlus).toBeCloseTo(90, 5); // 50×5/5 + 100×2/5
+        // One Geo rate, not each campaign's own: (50+100)/10 = 15, so A is 7 × 15 (ADR-0013). The
+        // per-campaign split would have said 90 (50×5/5 + 100×2/5) — deliberately given up, because
+        // it makes the Offer table's CPI disagree with the Geo header's over the same traffic.
+        expect(a?.metrics.spendPlus).toBeCloseTo(105, 5);
+        expect(a?.metrics.cpi).toBeCloseTo(15, 5);
+    });
+
+    it('prices Offers at the Geo rate even when some campaigns bought nothing', () => {
+        // The whole point (ADR-0013): a campaign that spent and bought no Installs still spent that
+        // money trying to. Its cost belongs in the unit rate, not stranded in `unallocated`.
+        const models = new Map<string, CampaignModel>([
+            ['c1', { offer: new Map([['A', { ...funnel({ installs: 10 }), label: 'A' }]]), os: new Map() }],
+        ]);
+        const facts = [
+            fact({ campaign: 'c1', spend: 100, spendPlus: 100, installs: 10 }),
+            fact({ campaign: 'dead', spend: 50, spendPlus: 50, installs: 0 }),
+        ];
+        const { offers, unallocated } = allocateGeo(facts, models);
+
+        expect(offers[0].metrics.spendPlus).toBeCloseTo(150, 5); // 10 × (150/10)
+        expect(offers[0].metrics.cpi).toBeCloseTo(15, 5); // the Geo's true CPI, not 10
+        expect(unallocated.spendPlus).toBeCloseTo(0, 5);
+    });
+
+    it('a Geo that bought no Installs strands all its Spend⁺ in unallocated', () => {
+        // No unit cost exists, so nothing can be priced — the money must still show up somewhere.
+        const facts = [fact({ campaign: 'dead', spend: 80, spendPlus: 80, installs: 0 })];
+        const { offers, unallocated } = allocateGeo(facts, new Map());
+        expect(offers).toHaveLength(0);
+        expect(unallocated.spendPlus).toBeCloseTo(80, 5);
     });
 
     it('OS rows carry clicks (CPC), offers do not', () => {
