@@ -35,10 +35,10 @@ function GeoTabs({ geos, active, spendByGeo, onSelect }: GeoTabsProps) {
                         role="tab"
                         aria-selected={selected}
                         className={cn(
-                            'rounded-lg border px-3.5 py-2 text-sm transition-colors flex items-center',
+                            'rounded-lg border px-3.5 py-2 text-sm font-bold transition-colors flex items-center',
                             selected
-                                ? 'surface-accent border-primary font-bold text-white'
-                                : 'text-muted-foreground hover:text-foreground border-border bg-transparent'
+                                ? 'surface-accent border-primary  text-white'
+                                : 'text-muted-foreground hover:text-foreground border-border bg-[#162036]'
                         )}
                         onClick={() => {
                             onSelect(geo);
@@ -51,7 +51,7 @@ function GeoTabs({ geos, active, spendByGeo, onSelect }: GeoTabsProps) {
                         )}
                         {geo}
                         {spend !== undefined && (
-                            <span className="ml-1.5 font-mono text-[11px] opacity-80">${spend.toFixed(0)}</span>
+                            <span className="ml-1.5 font-mono  opacity-80">${spend.toFixed(0)}</span>
                         )}
                     </button>
                 );

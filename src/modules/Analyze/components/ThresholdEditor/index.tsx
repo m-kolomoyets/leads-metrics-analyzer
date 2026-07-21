@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { PresetView } from '@/services/presets/types';
 import type { Locale, ThresholdMetric } from '../../utils/i18n';
 import type { ThresholdDraft } from '../ThresholdFields';
@@ -18,6 +19,9 @@ import { EMPTY_THRESHOLD_DRAFT, parseThresholdDraft, ThresholdFields, toThreshol
 type ThresholdEditorProps = {
     preset: PresetView;
     locale: Locale;
+    // Left-column header slot (section title + preset picker). When given, the save button joins it on
+    // the same row so the header reads "title · geo … preset … save" as in the reference layout.
+    header?: ReactNode;
 };
 
 // Inline threshold-pair + rename editor for one Geo's active preset (S3, #23/#30). Anyone who can see
@@ -25,7 +29,7 @@ type ThresholdEditorProps = {
 // thresholds mints a new immutable preset version and moves the active pointer; rename touches
 // identity only (no version). Either invalidates the list query, `toRuleset` re-derives, grading
 // re-runs. Parent remounts this on `activeVersionId`/name change, so local drafts reset with no effect.
-function ThresholdEditor({ preset, locale }: ThresholdEditorProps) {
+function ThresholdEditor({ preset, locale, header }: ThresholdEditorProps) {
     const canEdit = preset.access === 'edit';
     const [draft, setDraft] = useState<ThresholdDraft>(() => {
         return preset.thresholds ? toThresholdDraft(preset.thresholds) : EMPTY_THRESHOLD_DRAFT;
@@ -96,8 +100,21 @@ function ThresholdEditor({ preset, locale }: ThresholdEditorProps) {
         );
     }
 
+    const saveButton = canEdit && (
+        <Button type="button" size="sm" disabled={!isValid || isSaving} onClick={handleSave}>
+            {isSaving ? ui('saving', locale) : ui('save', locale)}
+        </Button>
+    );
+
     return (
         <section className="flex flex-col gap-3">
+            {header && (
+                <div className="flex flex-wrap items-center gap-3">
+                    {header}
+                    {saveButton}
+                </div>
+            )}
+
             <div className="flex items-center gap-2">
                 <h4 className="text-muted-foreground text-[11px] font-normal tracking-wider uppercase">
                     {ui('thresholds', locale)} · {preset.name}
@@ -141,16 +158,13 @@ function ThresholdEditor({ preset, locale }: ThresholdEditorProps) {
             />
 
             {canEdit && (
-                <div className="flex items-center gap-2">
-                    <Button type="button" size="sm" disabled={!isValid || isSaving} onClick={handleSave}>
-                        {isSaving ? ui('saving', locale) : ui('save', locale)}
-                    </Button>
-                    <span className="flex-1" />
+                <div className="flex items-center gap-2 justify-start">
+                    {!header && saveButton}
                     {!isConfirmingDelete && (
                         <Button
                             type="button"
                             size="sm"
-                            variant="ghost"
+                            variant="destructive"
                             disabled={isDeleting}
                             onClick={() => {
                                 setIsConfirmingDelete(true);

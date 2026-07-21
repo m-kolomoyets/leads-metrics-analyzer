@@ -6,9 +6,10 @@ import type { ImportedShared } from './utils/importPresets';
 import { useState } from 'react';
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
-import { analyze } from '@/lib/domain';
+import { analyzeParsed } from '@/lib/domain';
 import { accountsFor } from '@/lib/domain/accounts';
 import { creativesFor } from '@/lib/domain/creatives';
+import { mergeParsed } from '@/lib/domain/parse';
 import { teamsQueryOptions } from '@/services/admin/queries';
 import { presetsQueryOptions, sharedSettingsQueryOptions } from '@/services/presets/queries';
 import { MainLayoutHeader } from '@/components/layouts/MainLayoutHeader';
@@ -97,14 +98,14 @@ function Analyze() {
     const { copied, copy } = useClipboard();
 
     const ruleset = toRuleset(presets, shared);
-    const result = files.length
-        ? analyze(
-              files.map((file) => {
-                  return file.text;
-              }),
-              ruleset
-          )
-        : null;
+    // Files are parsed once at ingest; here we only merge their rows (cheap) and grade. A preset/shared
+    // edit re-runs `analyzeParsed` but never Papa.parse — the reference's parse-once, grade-many split.
+    const parsed = mergeParsed(
+        files.map((file) => {
+            return file.parsed;
+        })
+    );
+    const result = files.length ? analyzeParsed(parsed, ruleset) : null;
 
     const geos = (result?.geos ?? []).map((geo) => {
         return geo.geo;
@@ -239,6 +240,53 @@ function Analyze() {
         document.getElementById(`acc-${account}`)?.scrollIntoView({ block: 'start', behavior: 'smooth' });
     }
 
+    // Zone-metrics header: title · geo plus the preset picker. It heads the left (thresholds) column
+    // only — the shared-settings column on the right is its own panel — and the threshold save button
+    // joins this row inside ThresholdEditor.
+    const zoneHeader = activeGeo && (
+        <>
+            <h3 className="text-muted-foreground text-[13px] font-normal tracking-widest uppercase">
+                {ui('zoneMetrics', locale)} · {activeGeo}
+            </h3>
+            {geoPresets.length > 0 && (
+                <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground text-xs">{ui('preset', locale)}</span>
+                    <Combobox
+                        items={geoPresets}
+                        value={activePreset ?? null}
+                        onValueChange={(preset) => {
+                            if (preset) {
+                                setSelectedPresetByGeo((current) => {
+                                    return { ...current, [activeGeo]: preset.id };
+                                });
+                            }
+                        }}
+                        itemToStringLabel={(preset) => {
+                            return preset.name;
+                        }}
+                    >
+                        <ComboboxInputGroup className="w-56">
+                            <ComboboxInput placeholder={ui('preset', locale)} />
+                            <ComboboxTrigger />
+                        </ComboboxInputGroup>
+                        <ComboboxContent>
+                            <ComboboxEmpty>{ui('noResults', locale)}</ComboboxEmpty>
+                            <ComboboxList>
+                                {(preset) => {
+                                    return (
+                                        <ComboboxItem key={preset.id} value={preset}>
+                                            {preset.name}
+                                        </ComboboxItem>
+                                    );
+                                }}
+                            </ComboboxList>
+                        </ComboboxContent>
+                    </Combobox>
+                </div>
+            )}
+        </>
+    );
+
     return (
         <>
             <MainLayoutHeader>
@@ -282,58 +330,18 @@ function Analyze() {
                         </div>
 
                         {(activePreset || canWritePresets || shared || canEditShared) && (
-                            <SectionCard
-                                tone="blue"
-                                title={`${ui('zoneMetrics', locale)} · ${activeGeo}`}
-                                actions={
-                                    geoPresets.length > 0 && (
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-muted-foreground text-xs">
-                                                {ui('preset', locale)}
-                                            </span>
-                                            <Combobox
-                                                items={geoPresets}
-                                                value={activePreset ?? null}
-                                                onValueChange={(preset) => {
-                                                    if (preset) {
-                                                        setSelectedPresetByGeo((current) => {
-                                                            return { ...current, [activeGeo]: preset.id };
-                                                        });
-                                                    }
-                                                }}
-                                                itemToStringLabel={(preset) => {
-                                                    return preset.name;
-                                                }}
-                                            >
-                                                <ComboboxInputGroup className="w-56">
-                                                    <ComboboxInput placeholder={ui('preset', locale)} />
-                                                    <ComboboxTrigger />
-                                                </ComboboxInputGroup>
-                                                <ComboboxContent>
-                                                    <ComboboxEmpty>{ui('noResults', locale)}</ComboboxEmpty>
-                                                    <ComboboxList>
-                                                        {(preset) => {
-                                                            return (
-                                                                <ComboboxItem key={preset.id} value={preset}>
-                                                                    {preset.name}
-                                                                </ComboboxItem>
-                                                            );
-                                                        }}
-                                                    </ComboboxList>
-                                                </ComboboxContent>
-                                            </Combobox>
-                                        </div>
-                                    )
-                                }
-                            >
+                            <SectionCard tone="blue">
                                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
                                     <div className="flex flex-1 flex-col gap-4">
-                                        {activePreset && (
+                                        {activePreset ? (
                                             <ThresholdEditor
                                                 key={`${activePreset.id}:${activePreset.activeVersionId}:${activePreset.name}`}
                                                 preset={activePreset}
                                                 locale={locale}
+                                                header={zoneHeader}
                                             />
+                                        ) : (
+                                            <div className="flex flex-wrap items-center gap-3">{zoneHeader}</div>
                                         )}
                                         {canWritePresets && (
                                             <div className="border-border/60 border-t pt-4">

@@ -3,11 +3,13 @@ import type { Locale } from '../../utils/i18n';
 import type { ImportedShared } from '../../utils/importPresets';
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { InfoIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { saveSharedSettingsMutationOptions } from '@/services/presets/queries';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/Tooltip';
 import { ui } from '../../utils/i18n';
 
 type SharedSettingsEditorProps = {
@@ -156,7 +158,25 @@ function SharedSettingsEditor({ shared, canEdit, locale, seed, saveTeamId }: Sha
 
             <div className="flex flex-wrap gap-4">
                 <div className="flex flex-col gap-1">
-                    <Label htmlFor="ss-review">{ui('reviewMultiplier', locale)}</Label>
+                    <div className="flex items-center gap-1">
+                        <Label htmlFor="ss-review">{ui('reviewMultiplier', locale)}</Label>
+                        <Tooltip>
+                            <TooltipTrigger
+                                render={
+                                    <button
+                                        type="button"
+                                        className="text-muted-foreground hover:text-foreground"
+                                        aria-label={ui('reviewMultiplier', locale)}
+                                    >
+                                        <InfoIcon className="size-3.5" />
+                                    </button>
+                                }
+                            />
+                            <TooltipContent>
+                                Коефіцієнт показує у скільки разів метрики акаунту більші за встановленні пороги
+                            </TooltipContent>
+                        </Tooltip>
+                    </div>
                     <Input
                         id="ss-review"
                         type="number"

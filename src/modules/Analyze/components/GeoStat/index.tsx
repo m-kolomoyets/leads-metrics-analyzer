@@ -118,16 +118,6 @@ function GeoStat({ geo, rollup, thresholds, waste, wasteZone, locale }: GeoStatP
                         />
                         <Stat label="ROI" value={pct(metrics.roi)} size="lg" className={ZONE_TEXT_CLASS[roi]} />
                     </div>
-                    <div className="text-muted-foreground flex flex-wrap gap-x-6 gap-y-1 text-xs">
-                        <span>
-                            {ui('attributed', locale)}: <span className="font-mono">{usd(attributed.revenue)}</span>
-                        </span>
-                        {untaggedRevenue > 0.01 && (
-                            <span>
-                                {ui('untaggedGap', locale)}: <span className="font-mono">{usd(untaggedRevenue)}</span>
-                            </span>
-                        )}
-                    </div>
                 </div>
 
                 <div

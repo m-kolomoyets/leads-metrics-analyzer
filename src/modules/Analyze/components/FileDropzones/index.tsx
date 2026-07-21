@@ -25,8 +25,10 @@ const TYPE_LABEL: Record<FileType, string> = {
 function toUploaded(picked: File[]): Promise<UploadedFile[]> {
     return Promise.all(
         picked.map(async (file) => {
-            const text = await file.text();
-            return { name: file.name, text, type: parseFile(text).type };
+            // Parse once here, at ingest — store the rows, not the raw text. `analyzeParsed` merges
+            // these on every recompute without re-running Papa.parse (parse-once, grade-many).
+            const { type, parsed } = parseFile(await file.text());
+            return { name: file.name, type, parsed };
         })
     );
 }
