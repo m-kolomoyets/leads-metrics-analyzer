@@ -10,19 +10,19 @@
 :root {
     /* Light theme — derived from the dark reference (paler, deeper-blue accent for contrast). */
     --background: rgb(248 250 253);
-    --foreground: rgb(25 32 45);
+    --foreground: rgb(11 16 26);
     --card: rgb(255 255 255);
-    --card-foreground: rgb(25 32 45);
+    --card-foreground: rgb(11 16 26);
     --popover: rgb(255 255 255);
-    --popover-foreground: rgb(25 32 45);
+    --popover-foreground: rgb(11 16 26);
     --primary: rgb(37 99 235);
     --primary-foreground: rgb(255 255 255);
     --secondary: rgb(241 245 249);
-    --secondary-foreground: rgb(25 32 45);
+    --secondary-foreground: rgb(11 16 26);
     --muted: rgb(241 245 249);
-    --muted-foreground: rgb(100 116 139);
+    --muted-foreground: rgb(51 65 85);
     --accent: rgb(226 236 254);
-    --accent-foreground: rgb(25 32 45);
+    --accent-foreground: rgb(11 16 26);
     --destructive: rgb(220 38 38);
     --destructive-foreground: rgb(255 255 255);
     --border: rgb(226 232 240);
@@ -34,11 +34,11 @@
     --chart-4: rgb(59 130 246);
     --chart-5: rgb(96 165 250);
     --sidebar: rgb(255 255 255 / 0.82);
-    --sidebar-foreground: rgb(25 32 45);
+    --sidebar-foreground: rgb(11 16 26);
     --sidebar-primary: rgb(37 99 235);
     --sidebar-primary-foreground: rgb(255 255 255);
     --sidebar-accent: rgb(226 236 254);
-    --sidebar-accent-foreground: rgb(25 32 45);
+    --sidebar-accent-foreground: rgb(11 16 26);
     --sidebar-border: rgb(226 232 240);
     --sidebar-ring: rgb(37 99 235);
     --radius: 0.625rem;
@@ -55,7 +55,7 @@
     --success: rgb(22 163 74);
     --warning: rgb(202 138 4);
     --danger: rgb(220 38 38);
-    --neutral: rgb(100 116 139);
+    --neutral: rgb(51 65 85);
 
     /* Reference status/accent RGB triples (bare, for `rgb(x / a)` tints on glass + pills). */
     --success-rgb: 22 163 74;
@@ -69,19 +69,19 @@
 .dark {
     /* Dark theme — faithful to references/analizator-kampaniy-blue. */
     --background: rgb(8 11 20);
-    --foreground: rgb(230 237 243);
+    --foreground: rgb(255 255 255);
     --card: rgb(14 20 34);
-    --card-foreground: rgb(230 237 243);
+    --card-foreground: rgb(255 255 255);
     --popover: rgb(18 24 38);
-    --popover-foreground: rgb(230 237 243);
+    --popover-foreground: rgb(255 255 255);
     --primary: rgb(77 159 255);
     --primary-foreground: rgb(255 255 255);
     --secondary: rgb(30 41 64);
-    --secondary-foreground: rgb(201 209 217);
+    --secondary-foreground: rgb(244 248 252);
     --muted: rgb(20 26 40);
-    --muted-foreground: rgb(139 148 158);
+    --muted-foreground: rgb(196 205 217);
     --accent: rgb(30 41 64);
-    --accent-foreground: rgb(230 237 243);
+    --accent-foreground: rgb(255 255 255);
     --destructive: rgb(240 85 107);
     --destructive-foreground: rgb(255 255 255);
     --border: rgb(42 42 48);
@@ -93,11 +93,11 @@
     --chart-4: rgb(59 130 246);
     --chart-5: rgb(96 165 250);
     --sidebar: rgb(10 14 24 / 0.72);
-    --sidebar-foreground: rgb(230 237 243);
+    --sidebar-foreground: rgb(255 255 255);
     --sidebar-primary: rgb(77 159 255);
     --sidebar-primary-foreground: rgb(255 255 255);
     --sidebar-accent: rgb(30 41 64);
-    --sidebar-accent-foreground: rgb(230 237 243);
+    --sidebar-accent-foreground: rgb(255 255 255);
     --sidebar-border: rgb(42 42 48);
     --sidebar-ring: rgb(77 159 255);
     --card-top: 30 41 64;
@@ -111,7 +111,7 @@
     --success: rgb(61 220 132);
     --warning: rgb(224 184 58);
     --danger: rgb(240 85 107);
-    --neutral: rgb(154 160 168);
+    --neutral: rgb(196 205 217);
     --success-rgb: 61 220 132;
     --warning-rgb: 224 184 58;
     --danger-rgb: 240 85 107;
@@ -187,41 +187,73 @@
     box-shadow: 0 0 12px rgb(var(--accent-rgb) / 0.35);
 }
 
-@keyframes pulse-red {
+/* Compositor-only fade: static box-shadow lives on a pseudo-element, only its opacity animates.
+   Opacity runs on the GPU with no repaint, so the glass `backdrop-filter` below never re-blurs
+   per frame — same look, far less CPU/GPU heat than animating `box-shadow` directly. */
+@keyframes glow-fade {
     0%,
     100% {
-        box-shadow: 0 0 0 0 rgb(240 85 107 / 0);
+        opacity: 0;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}
+
+@keyframes pulse-red-border {
+    0%,
+    100% {
         border-color: rgb(240 85 107);
     }
 
     50% {
-        box-shadow: 0 0 16px 2px rgb(240 85 107 / 0.5);
         border-color: rgb(255 112 133);
     }
 }
 
-@keyframes glow-soft {
-    0%,
-    100% {
-        box-shadow: 0 0 0 0 rgb(var(--glow-rgb, var(--tint-rgb, var(--accent-rgb))) / 0);
-    }
-
-    50% {
-        box-shadow: 0 0 20px 3px rgb(var(--glow-rgb, var(--tint-rgb, var(--accent-rgb))) / 0.4);
-    }
+/* The glow now lives on ::after, so drop the glass depth shadow the old box-shadow animation
+   used to override — keeps the animated pills looking exactly as before. */
+.glass-tint.pulse-red,
+.glass-tint.glow-soft {
+    box-shadow: none;
 }
 
-@utility pulse-red {
-    animation: pulse-red 3.6s ease-in-out infinite;
+.pulse-red {
+    position: relative;
+    animation: pulse-red-border 3.6s ease-in-out infinite;
 }
 
-@utility glow-soft {
-    animation: glow-soft 4.8s ease-in-out infinite;
+.pulse-red::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: 0 0 16px 2px rgb(240 85 107 / 0.5);
+    opacity: 0;
+    pointer-events: none;
+    animation: glow-fade 3.6s ease-in-out infinite;
+}
+
+.glow-soft {
+    position: relative;
+}
+
+.glow-soft::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: 0 0 20px 3px rgb(var(--glow-rgb, var(--tint-rgb, var(--accent-rgb))) / 0.4);
+    opacity: 0;
+    pointer-events: none;
+    animation: glow-fade 4.8s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
     .pulse-red,
-    .glow-soft {
+    .pulse-red::after,
+    .glow-soft::after {
         animation: none !important;
     }
 }

@@ -9,11 +9,6 @@ import { useTheme } from '@/context/ThemeContext';
 type Blob = { hue: number; sat: number; base: number };
 
 const BLOBS: Blob[] = [
-    { hue: 214, sat: 100, base: 0.18 },
-    { hue: 214, sat: 100, base: 0.14 },
-    { hue: 224, sat: 90, base: 0.15 },
-    { hue: 205, sat: 95, base: 0.12 },
-    { hue: 230, sat: 80, base: 0.11 },
     { hue: 210, sat: 90, base: 0.13 },
     { hue: 218, sat: 100, base: 0.1 },
     { hue: 240, sat: 60, base: 0.08 },
@@ -42,6 +37,15 @@ const LIGHT_CONFIG: ThemeConfig = {
     alphaMul: 2.4,
 };
 
+// Perf budget (mirrors the reference): render into a half-res buffer that CSS stretches back up, and
+// cap to 30fps. The blobs are soft gradients, so neither is visible — but together they cut the
+// per-second fill work ~30× vs. full-DPR/60fps, which is what was heating the GPU.
+const SCALE = 0.5;
+const FPS = 30;
+const FRAME_MS = 1000 / FPS;
+// Drift step per rendered frame. Doubled to offset the halved frame rate → same on-screen speed.
+const T_STEP = 0.6;
+
 export function BackgroundCanvas() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const { isDarkTheme } = useTheme();
@@ -58,7 +62,9 @@ export function BackgroundCanvas() {
                 return;
             }
 
-            const ctx = canvas.getContext('2d');
+            // Opaque context: the gradient fills every pixel each frame, so we never need alpha
+            // compositing against the page — cheaper to composite.
+            const ctx = canvas.getContext('2d', { alpha: false });
 
             if (!ctx) {
                 return;
@@ -69,14 +75,14 @@ export function BackgroundCanvas() {
             let height = 0;
             let raf = 0;
             let t = 0;
+            let last = 0;
 
             function resize() {
-                const dpr = Math.min(window.devicePixelRatio || 1, 2);
-                width = canvas!.clientWidth;
-                height = canvas!.clientHeight;
-                canvas!.width = width * dpr;
-                canvas!.height = height * dpr;
-                ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
+                // Half-res internal buffer; the CSS `w-screen h-screen` on the element stretches it.
+                width = Math.round(canvas!.clientWidth * SCALE);
+                height = Math.round(canvas!.clientHeight * SCALE);
+                canvas!.width = width;
+                canvas!.height = height;
             }
 
             const paths = BLOBS.map((blob, i) => {
@@ -95,8 +101,7 @@ export function BackgroundCanvas() {
             });
 
             function draw() {
-                t += 0.3;
-                ctx!.clearRect(0, 0, width, height);
+                t += T_STEP;
                 const bg = ctx!.createLinearGradient(0, 0, width, height);
                 bg.addColorStop(0, config.grad[0]);
                 bg.addColorStop(0.5, config.grad[1]);
@@ -121,16 +126,40 @@ export function BackgroundCanvas() {
                 }
 
                 ctx!.globalCompositeOperation = 'source-over';
-                raf = window.requestAnimationFrame(draw);
+            }
+
+            function loop(now: number) {
+                raf = window.requestAnimationFrame(loop);
+
+                // Throttle to FPS: skip frames the monitor offers beyond our budget.
+                if (now - last < FRAME_MS) {
+                    return;
+                }
+
+                last = now;
+                draw();
+            }
+
+            function handleVisibility() {
+                // Freeze on hidden tabs (0% CPU in the background); resume on return.
+                if (document.hidden) {
+                    window.cancelAnimationFrame(raf);
+                    raf = 0;
+                } else if (raf === 0) {
+                    last = 0;
+                    raf = window.requestAnimationFrame(loop);
+                }
             }
 
             resize();
             window.addEventListener('resize', resize);
-            draw();
+            document.addEventListener('visibilitychange', handleVisibility);
+            raf = window.requestAnimationFrame(loop);
 
             return function cleanup() {
                 window.cancelAnimationFrame(raf);
                 window.removeEventListener('resize', resize);
+                document.removeEventListener('visibilitychange', handleVisibility);
             };
         },
         [active, isDarkTheme]
