@@ -45,10 +45,15 @@ export function verdictFor(totals: Totals, thresholds: GeoThresholds): Verdict {
             if (s.clicksOnly && zone === 'green') {
                 zone = 'yellow';
             }
+            // A non-red clicks verdict is the "чекаємо інстал" hold; everything else is a plain grade.
+            const reason: VerdictReason =
+                s.clicksOnly && zone !== 'red'
+                    ? { kind: 'clicksWaiting', stage: 'clicks', metric: 'cpc', value: cost, zone: 'yellow' }
+                    : { kind: 'graded', stage: s.stage, metric: s.metric, value: cost, zone };
             return {
                 verdict: zone,
                 zone,
-                reason: { stage: s.stage, metric: s.metric, value: cost, zone },
+                reason,
                 waste: zone === 'red' ? waste(totals.spendPlus, count, thresholds[s.pair].yr) : 0,
             };
         }
@@ -61,14 +66,17 @@ export function verdictFor(totals: Totals, thresholds: GeoThresholds): Verdict {
             return {
                 verdict: 'red',
                 zone: 'red',
-                reason: { stage: s.stage, metric: s.metric, value: totals.spendPlus, zone: 'red' },
+                reason: { kind: 'zeroResult', stage: s.stage, metric: s.metric, value: totals.spendPlus },
                 // Zero results past a red line: no achieved count, so the whole Spend⁺ is waste
                 // (formula with count 0). Prototype subtracted one red line; this is honest-strict.
                 waste: totals.spendPlus,
             };
         }
     }
-    return { verdict: 'neutral', zone: 'neutral', reason: null, waste: 0 };
+    // Nothing judged: Spend⁺ = 0 is nothing to analyse; otherwise it is spent-but-too-early.
+    const reason: VerdictReason =
+        totals.spendPlus === 0 ? { kind: 'spendZero' } : { kind: 'tooEarly', value: totals.spendPlus };
+    return { verdict: 'neutral', zone: 'neutral', reason, waste: 0 };
 }
 
 // Waste = spend above the red line for the results achieved — only for a red Verdict, else 0.

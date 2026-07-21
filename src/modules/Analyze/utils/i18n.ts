@@ -1,4 +1,4 @@
-import type { VerdictReason, Zone } from '@/lib/domain/types';
+import type { Stage, VerdictReason, Zone } from '@/lib/domain/types';
 import type { ProblemAccount, Verdict } from '@/lib/domain/verdict';
 
 // i18n at the UI edge (ADR-0004): the domain returns structured verdicts/reasons; every display
@@ -12,6 +12,18 @@ export type Locale = (typeof LOCALES)[number];
 const ACTION: Record<Locale, Record<Zone, string>> = {
     uk: { red: 'СТОП', yellow: 'ТРИМАЄМО', green: 'БУСТ', neutral: 'рано' },
     en: { red: 'STOP', yellow: 'HOLD', green: 'BOOST', neutral: 'early' },
+};
+
+// The funnel stage a verdict was decided at, in the team's words (doc 04 "why" column).
+const STAGE_LABEL: Record<Locale, Record<Stage, string>> = {
+    uk: { sales: 'Продажі', regs: 'Реєстрації', installs: 'Інстали', clicks: 'Кліки' },
+    en: { sales: 'Sales', regs: 'Regs', installs: 'Installs', clicks: 'Clicks' },
+};
+
+// Zone as an adjective for the "why" line (distinct from the ACTION verb).
+const ZONE_LABEL: Record<Locale, Record<Zone, string>> = {
+    uk: { green: 'зелена', yellow: 'жовта', red: 'червона', neutral: 'нейтр.' },
+    en: { green: 'green', yellow: 'yellow', red: 'red', neutral: 'neutral' },
 };
 
 // Sales-block heading and account chrome.
@@ -31,6 +43,10 @@ const UI: Record<Locale, Record<string, string>> = {
         thresholds: 'Пороги',
         gy: 'зел→жовт',
         yr: 'жовт→черв',
+        zGreen: 'зел <',
+        zYellow: 'жовт ≤',
+        zRed: '< черв',
+        zoneMetrics: 'Метрики зон',
         save: 'Зберегти',
         saving: 'Збереження…',
         readonly: 'лише читання',
@@ -95,6 +111,10 @@ const UI: Record<Locale, Record<string, string>> = {
         thresholds: 'Thresholds',
         gy: 'green→yellow',
         yr: 'yellow→red',
+        zGreen: 'grn <',
+        zYellow: 'ylw ≤',
+        zRed: '< red',
+        zoneMetrics: 'Zone metrics',
         save: 'Save',
         saving: 'Saving…',
         readonly: 'read-only',
@@ -169,20 +189,38 @@ export function ui(key: string, locale: Locale): string {
     return UI[locale][key] ?? key;
 }
 
-// The structured reason as a terse cost line: METRIC $value. Null (too early) → em dash.
-export function reasonText(reason: VerdictReason | null): string {
+// The structured reason as the reference "why" line — the criteria that decided, per locale, never
+// the action word (the row's colour bar already carries the verdict). Null reason (no preset) → dash.
+export function reasonText(reason: VerdictReason | null, locale: Locale): string {
     if (!reason) {
         return '—';
     }
-    return `${reason.metric.toUpperCase()} $${reason.value.toFixed(2)}`;
+    const money = `$${'value' in reason ? reason.value.toFixed(2) : '0.00'}`;
+    switch (reason.kind) {
+        case 'graded': {
+            const line = `${STAGE_LABEL[locale][reason.stage]}: ${reason.metric.toUpperCase()} ${money}`;
+            return `${line} — ${ZONE_LABEL[locale][reason.zone]}`;
+        }
+        case 'clicksWaiting': {
+            const line = `${STAGE_LABEL[locale].clicks}: CPC ${money} — ${ZONE_LABEL[locale].yellow}`;
+            return locale === 'uk' ? `${line}, чекаємо інстал` : `${line}, awaiting install`;
+        }
+        case 'zeroResult': {
+            const stage = STAGE_LABEL[locale][reason.stage];
+            return locale === 'uk' ? `${stage}: 0 за ${money} (понад черв.)` : `${stage}: 0 on ${money} (over red)`;
+        }
+        case 'tooEarly': {
+            return locale === 'uk' ? `Рано судити (spend ${money})` : `Too early (spend ${money})`;
+        }
+        case 'spendZero': {
+            return locale === 'uk' ? 'Spend 0 — не аналізується' : 'Spend 0 — not analyzed';
+        }
+    }
 }
 
-// A campaign's full "why": action word + the cost line that decided it.
+// A campaign's "why": the criteria the domain decided on, rendered per locale.
 export function verdictWhy(verdict: Verdict, locale: Locale): string {
-    if (!verdict.reason) {
-        return actionLabel(verdict.verdict, locale);
-    }
-    return `${actionLabel(verdict.verdict, locale)} · ${reasonText(verdict.reason)}`;
+    return reasonText(verdict.reason, locale);
 }
 
 // Problem-account reason per rule (doc 04). Rule 1: spend out, nothing tracked. Rule 2: unics dear.

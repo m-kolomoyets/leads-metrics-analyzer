@@ -62,30 +62,31 @@ type ThresholdFieldsProps = {
 // save live in the parent (ThresholdEditor edits a version, PresetCreator mints v1).
 function ThresholdFields({ draft, idPrefix, disabled, locale, onChange }: ThresholdFieldsProps) {
     return (
-        <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-3 gap-y-2">
-            <span />
-            <span className="text-muted-foreground text-xs">{ui('gy', locale)}</span>
-            <span className="text-muted-foreground text-xs">{ui('yr', locale)}</span>
+        <div className="flex flex-col gap-2">
             {THRESHOLD_METRICS.map((metric) => {
                 return (
-                    <div key={metric} className="contents">
-                        <Label htmlFor={`${idPrefix}-${metric}-gy`}>{metricLabel(metric, locale)}</Label>
+                    <div key={metric} className="flex flex-wrap items-center gap-2.5">
+                        <Label htmlFor={`${idPrefix}-${metric}-gy`} className="w-24 text-sm font-normal">
+                            {metricLabel(metric, locale)}
+                        </Label>
+                        <span className="text-success text-[11px]">{ui('zGreen', locale)}</span>
                         <Input
                             id={`${idPrefix}-${metric}-gy`}
                             type="number"
                             inputMode="decimal"
-                            className="w-24"
+                            className="h-8 w-16 font-mono text-[13px]"
                             disabled={disabled}
                             value={draft[metric].gy}
                             onChange={(event) => {
                                 onChange(metric, 'gy', event.target.value);
                             }}
                         />
+                        <span className="text-warning text-[11px]">{ui('zYellow', locale)}</span>
                         <Input
                             id={`${idPrefix}-${metric}-yr`}
                             type="number"
                             inputMode="decimal"
-                            className="w-24"
+                            className="h-8 w-16 font-mono text-[13px]"
                             aria-label={`${metricLabel(metric, locale)} ${ui('yr', locale)}`}
                             disabled={disabled}
                             value={draft[metric].yr}
@@ -93,6 +94,7 @@ function ThresholdFields({ draft, idPrefix, disabled, locale, onChange }: Thresh
                                 onChange(metric, 'yr', event.target.value);
                             }}
                         />
+                        <span className="text-danger text-[11px]">{ui('zRed', locale)}</span>
                     </div>
                 );
             })}

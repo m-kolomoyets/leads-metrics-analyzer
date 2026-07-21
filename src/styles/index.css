@@ -56,6 +56,14 @@
     --warning: rgb(202 138 4);
     --danger: rgb(220 38 38);
     --neutral: rgb(100 116 139);
+
+    /* Reference status/accent RGB triples (bare, for `rgb(x / a)` tints on glass + pills). */
+    --success-rgb: 22 163 74;
+    --warning-rgb: 202 138 4;
+    --danger-rgb: 220 38 38;
+    --violet: rgb(163 113 247);
+    --violet-rgb: 163 113 247;
+    --chip-ink: rgb(255 255 255);
 }
 
 .dark {
@@ -104,6 +112,14 @@
     --warning: rgb(224 184 58);
     --danger: rgb(240 85 107);
     --neutral: rgb(154 160 168);
+    --success-rgb: 61 220 132;
+    --warning-rgb: 224 184 58;
+    --danger-rgb: 240 85 107;
+    --violet: rgb(163 113 247);
+    --violet-rgb: 163 113 247;
+
+    /* Pill glyph chips sit on solid colour → near-black ink like the reference. */
+    --chip-ink: rgb(10 14 24);
 }
 
 @theme inline {
@@ -187,11 +203,11 @@
 @keyframes glow-soft {
     0%,
     100% {
-        box-shadow: 0 0 0 0 rgb(var(--accent-rgb) / 0);
+        box-shadow: 0 0 0 0 rgb(var(--glow-rgb, var(--tint-rgb, var(--accent-rgb))) / 0);
     }
 
     50% {
-        box-shadow: 0 0 20px 3px rgb(var(--accent-rgb) / 0.35);
+        box-shadow: 0 0 20px 3px rgb(var(--glow-rgb, var(--tint-rgb, var(--accent-rgb))) / 0.4);
     }
 }
 
@@ -208,6 +224,107 @@
     .glow-soft {
         animation: none !important;
     }
+}
+
+/* ── Reference glass tint — glassTint(color, strength): colour gradient + tinted border + colour glow.
+   Compose `glass-tint` with a `tint-*` colour and an optional `tint-s*` strength (default 1). ── */
+.glass-tint {
+    --tint-strength: 1;
+
+    background-image: linear-gradient(
+        180deg,
+        rgb(var(--tint-rgb) / calc(0.1 * var(--tint-strength))) 0%,
+        rgb(var(--card-base) / 0.72) 100%
+    );
+    border: 1px solid rgb(var(--tint-rgb) / calc(0.35 * var(--tint-strength)));
+    box-shadow:
+        0 8px 32px var(--shadow),
+        0 0 24px rgb(var(--tint-rgb) / calc(0.18 * var(--tint-strength))),
+        inset 0 1px 0 rgb(255 255 255 / 0.08);
+    backdrop-filter: blur(8px);
+}
+
+.tint-blue {
+    --tint-rgb: var(--accent-rgb);
+}
+
+.tint-violet {
+    --tint-rgb: var(--violet-rgb);
+}
+
+.tint-red {
+    --tint-rgb: var(--danger-rgb);
+}
+
+.tint-green {
+    --tint-rgb: var(--success-rgb);
+}
+
+.tint-s4 {
+    --tint-strength: 0.4;
+}
+
+.tint-s5 {
+    --tint-strength: 0.5;
+}
+
+.tint-s6 {
+    --tint-strength: 0.6;
+}
+
+/* ── Reference Pill — glass pill: colour gradient + glow + solid glyph chip + count. ── */
+.pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px 6px 6px;
+    border-radius: 999px;
+    background-image: linear-gradient(135deg, rgb(var(--pill-rgb) / 0.28) 0%, rgb(var(--pill-rgb) / 0.1) 100%);
+    border: 1px solid rgb(var(--pill-rgb) / 0.45);
+    box-shadow:
+        0 0 18px rgb(var(--pill-rgb) / 0.28),
+        inset 0 1px 0 rgb(255 255 255 / 0.12);
+    backdrop-filter: blur(6px);
+}
+
+.pill-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    background: rgb(var(--pill-rgb));
+    color: var(--chip-ink);
+    font-size: 12px;
+    font-weight: 700;
+    box-shadow: 0 0 10px rgb(var(--pill-rgb) / 0.6);
+}
+
+.pill-count {
+    color: rgb(var(--pill-rgb));
+    font-weight: 700;
+    filter: brightness(1.5);
+}
+
+.pill-blue {
+    --pill-rgb: var(--accent-rgb);
+}
+
+.pill-violet {
+    --pill-rgb: var(--violet-rgb);
+}
+
+.pill-red {
+    --pill-rgb: var(--danger-rgb);
+}
+
+.pill-green {
+    --pill-rgb: var(--success-rgb);
+}
+
+.pill-yellow {
+    --pill-rgb: var(--warning-rgb);
 }
 
 @layer base {

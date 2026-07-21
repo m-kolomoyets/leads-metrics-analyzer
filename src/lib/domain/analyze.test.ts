@@ -13,9 +13,9 @@ function fixture(name: string): string {
     return readFileSync(resolve(REF, name), 'utf-8');
 }
 
-const FB = fixture('Fb-big-report.csv');
-const KT_MAIN = fixture('Big Main KT.csv');
-const KT_CLICKS = fixture('Big Clicks KT Report.csv');
+const FB = fixture('FB.csv');
+const KT_MAIN = fixture('KT_main.csv');
+const KT_CLICKS = fixture('KT_Clicks.csv');
 
 // The reference thresholds (presets_big.json). Commission is 6 % — the sheet's verified rate; the
 // file's 7 % is a data-entry error (doc 05, prototype→change).

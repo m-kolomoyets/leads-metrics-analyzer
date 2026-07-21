@@ -123,11 +123,11 @@ function PresetCreator({ geo, locale, onImportShared }: PresetCreatorProps) {
     }
 
     return (
-        <section className="border-border flex flex-col gap-3 rounded-lg border border-dashed p-4">
+        <section className="flex flex-col gap-3">
             <div className="flex items-center gap-2">
-                <h3 className="text-sm font-medium">
+                <h4 className="text-muted-foreground text-[11px] font-normal tracking-wider uppercase">
                     {ui('createPreset', locale)} · {geo}
-                </h3>
+                </h4>
             </div>
 
             <input ref={fileInputRef} type="file" accept="application/json,.json" hidden onChange={handleFile} />

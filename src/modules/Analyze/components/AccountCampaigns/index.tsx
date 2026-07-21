@@ -1,12 +1,16 @@
 import type { CampaignRollup } from '@/lib/domain/accounts';
+import type { GeoThresholds, ThresholdPair } from '@/lib/domain/types';
 import type { Locale } from '../../utils/i18n';
+import { zoneFor } from '@/lib/domain/verdict';
 import { cn } from '@/lib/utils/cn';
-import { ZONE_ACCENT_CLASS } from '../../constants';
-import { cost, money } from '../../utils/format';
+import { ZONE_ACCENT_CLASS, ZONE_TEXT_CLASS } from '../../constants';
+import { cost, usd } from '../../utils/format';
 import { ui, verdictWhy } from '../../utils/i18n';
 
 type AccountCampaignsProps = {
     campaigns: CampaignRollup[];
+    // Grades the CPC/CPI/CPR/CPS cells by band (reference `<Metric>`); undefined → plain neutral.
+    thresholds: GeoThresholds | undefined;
     locale: Locale;
     isExcluded: (campaign: string) => boolean;
     onToggle: (campaign: string) => void;
@@ -14,10 +18,25 @@ type AccountCampaignsProps = {
 
 const COLUMNS = ['Campaign', 'Spend', 'Rev', 'Clicks', 'Inst', 'Reg', 'Sale', 'CPC', 'CPI', 'CPR', 'CPS'] as const;
 
+// A zone-graded cost cell (CPC/CPI/CPR/CPS): em dash on null, else `$x.xx` tinted by its band and
+// bolded in the red zone — the reference `<Metric>`.
+function CostCell({ value, pair }: { value: number | null; pair: ThresholdPair | undefined }) {
+    if (value === null) {
+        return <td className="text-muted-foreground p-2 font-mono">—</td>;
+    }
+    if (!pair) {
+        return <td className="p-2 font-mono">${cost(value)}</td>;
+    }
+    const zone = zoneFor(value, pair);
+    return (
+        <td className={cn('p-2 font-mono', zone === 'red' && 'font-bold', ZONE_TEXT_CLASS[zone])}>${cost(value)}</td>
+    );
+}
+
 // The Account's campaigns at Campaign grain, one row each with an exclude toggle. Toggling a row
 // mutes it (parent recomputes the account/geo roll-ups) — the row stays visible, dimmed, so it can be
 // brought back. The "Чому" column renders the structured verdict per locale.
-function AccountCampaigns({ campaigns, locale, isExcluded, onToggle }: AccountCampaignsProps) {
+function AccountCampaigns({ campaigns, thresholds, locale, isExcluded, onToggle }: AccountCampaignsProps) {
     return (
         <div className="overflow-x-auto">
             <table className="w-full border-collapse text-right text-sm">
@@ -52,17 +71,26 @@ function AccountCampaigns({ campaigns, locale, isExcluded, onToggle }: AccountCa
                                     />
                                 </td>
                                 <td className={cn('p-0', ZONE_ACCENT_CLASS[verdict.verdict])} />
-                                <td className="p-2 text-left font-mono text-xs">{campaign.campaign}</td>
-                                <td className="p-2 font-mono">{money(metrics.spend)}</td>
-                                <td className="p-2 font-mono">{metrics.revenue > 0 ? money(metrics.revenue) : '—'}</td>
+                                <td className="text-muted-foreground p-2 text-left font-mono text-xs">
+                                    {campaign.campaign}
+                                </td>
+                                <td className="p-2 font-mono">{usd(metrics.spend)}</td>
+                                <td
+                                    className={cn(
+                                        'p-2 font-mono',
+                                        metrics.revenue > 0 ? 'text-success' : 'text-muted-foreground'
+                                    )}
+                                >
+                                    {metrics.revenue > 0 ? usd(metrics.revenue) : '—'}
+                                </td>
                                 <td className="p-2 font-mono">{metrics.linkClicks}</td>
                                 <td className="p-2 font-mono">{metrics.installs}</td>
                                 <td className="p-2 font-mono">{metrics.regs}</td>
                                 <td className="p-2 font-mono">{metrics.sales}</td>
-                                <td className="p-2 font-mono">{cost(metrics.cpc)}</td>
-                                <td className="p-2 font-mono">{cost(metrics.cpi)}</td>
-                                <td className="p-2 font-mono">{cost(metrics.cpr)}</td>
-                                <td className="p-2 font-mono">{cost(metrics.cps)}</td>
+                                <CostCell value={metrics.cpc} pair={thresholds?.clicks} />
+                                <CostCell value={metrics.cpi} pair={thresholds?.installs} />
+                                <CostCell value={metrics.cpr} pair={thresholds?.regs} />
+                                <CostCell value={metrics.cps} pair={thresholds?.sales} />
                                 <td className="text-muted-foreground p-2 text-left text-xs">
                                     {verdictWhy(verdict, locale)}
                                 </td>

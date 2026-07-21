@@ -3,7 +3,6 @@ import type { GeoThresholds, ThresholdPair } from '@/lib/domain/types';
 import type { Locale } from '../../utils/i18n';
 import { zoneFor } from '@/lib/domain/verdict';
 import { cn } from '@/lib/utils/cn';
-import { Card } from '@/components/ui/Card';
 import { ZONE_TEXT_CLASS } from '../../constants';
 import { cost, pct } from '../../utils/format';
 import { ui } from '../../utils/i18n';
@@ -13,6 +12,8 @@ type AccountSummaryProps = {
     // Grades the cost cells by band; undefined (no preset) → plain cost, no tint.
     thresholds: GeoThresholds | undefined;
     locale: Locale;
+    // Triage state, owned by the parent — drives the ✓ marker and drops the alarm styling.
+    isReviewed: (account: string) => boolean;
     // Uncollapse the target block + scroll it into view (anchor `id="acc-<account>"`).
     onJump: (account: string) => void;
 };
@@ -32,21 +33,23 @@ function CostCell({ value, pair }: { value: number | null; pair: ThresholdPair |
 // Per-geo jump-to-block nav table over the S2 account roll-ups (#36). Pure UI — every figure comes from
 // the same `accountsFor` compute the AccountBlocks render, so totals / zone counts / problem flag match
 // exactly. A row click uncollapses + scrolls to its AccountBlock. Waste reuses the S4 estimate.
-function AccountSummary({ accounts, thresholds, locale, onJump }: AccountSummaryProps) {
+function AccountSummary({ accounts, thresholds, locale, isReviewed, onJump }: AccountSummaryProps) {
     if (accounts.length === 0) {
         return null;
     }
 
     return (
-        <Card variant="flat" className="gap-2 border-primary/30 bg-primary/5 p-4">
-            <h3 className="text-sm font-semibold">
-                {ui('accountSummary', locale)}{' '}
-                <span className="text-muted-foreground font-normal">· {ui('summaryHint', locale)}</span>
+        <section className="glass-tint tint-blue tint-s5 flex flex-col gap-2 rounded-2xl p-4">
+            <h3 className="text-muted-foreground text-[13px] font-normal tracking-widest uppercase">
+                {ui('accountSummary', locale)} <span className="normal-case">· {ui('summaryHint', locale)}</span>
             </h3>
             <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-right text-xs">
                     <thead>
                         <tr className="text-muted-foreground border-b">
+                            <th className="w-6 p-2 text-left font-normal">
+                                <span className="sr-only">{ui('reviewed', locale)}</span>
+                            </th>
                             <th className="p-2 text-left font-normal whitespace-nowrap">Account ID</th>
                             {['Spend', 'Rev', 'ROI', ui('wasteCol', locale), 'CPC', 'CPI', 'CPR', 'CPS'].map((col) => {
                                 return (
@@ -64,24 +67,24 @@ function AccountSummary({ accounts, thresholds, locale, onJump }: AccountSummary
                     <tbody>
                         {accounts.map((account) => {
                             const { metrics, counts, problem, waste } = account;
+                            const reviewed = isReviewed(account.account);
+                            // Reviewed rows keep full contrast — the figures stay readable so a call can
+                            // be revisited; only the alarm styling (tint, rule, 🚨) is retired.
+                            const alarm = problem !== null && !reviewed;
                             return (
                                 <tr
                                     key={account.account}
                                     className={cn(
                                         'hover:bg-muted/30 cursor-pointer border-b',
-                                        problem && 'bg-danger/5'
+                                        alarm && 'bg-danger/15 border-l-2 border-l-danger'
                                     )}
                                     onClick={() => {
                                         onJump(account.account);
                                     }}
                                 >
-                                    <td
-                                        className={cn(
-                                            'p-2 text-left font-mono',
-                                            problem ? 'font-bold text-danger' : ''
-                                        )}
-                                    >
-                                        {account.account} {problem && '🚨'}
+                                    <td className="text-success w-6 p-2 text-left">{reviewed && '✓'}</td>
+                                    <td className={cn('p-2 text-left font-mono', alarm && 'font-bold text-danger')}>
+                                        {account.account} {alarm && '🚨'}
                                     </td>
                                     <td className="p-2 font-mono font-bold">${metrics.spend.toFixed(2)}</td>
                                     <td className={cn('p-2 font-mono', metrics.revenue > 0 && 'text-success')}>
@@ -118,7 +121,7 @@ function AccountSummary({ accounts, thresholds, locale, onJump }: AccountSummary
                 </table>
             </div>
             <p className="text-muted-foreground text-[10px]">{ui('wasteEstimate', locale)}</p>
-        </Card>
+        </section>
     );
 }
 

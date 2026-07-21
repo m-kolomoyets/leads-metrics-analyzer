@@ -206,6 +206,18 @@ Global multiplier applied to a Geo's install `yr` threshold to detect a Problem 
 An Account whose Spend has outrun its results badly enough to suggest broken tracking or a broken
 launch rather than merely poor performance. Demands investigation, not a Verdict.
 
+**Reviewed**:
+An analyst's mark that they have looked at an Account and dealt with it. Purely a record of the
+analyst's own progress through a Geo — it changes no figure, no Verdict and no Problem Account
+flag, only which accounts still demand attention. Session-scoped per Geo, and void the moment new
+files are uploaded, since the facts it was a judgement about are gone.
+_Avoid_: checked, acknowledged, done, resolved
+
+> **Reviewed is not Excluded.** Both are per-analyst toggles in the same screen, and they are
+> opposites. **Excluded** is an analysis input — a muted Campaign leaves its Account's metrics,
+> zone counts, Waste and Problem rules, so the numbers change. **Reviewed** is presentation only.
+> If a toggle moves a figure, it is Excluded; if it only moves attention, it is Reviewed.
+
 ### Data hygiene
 
 **Totals Row**:

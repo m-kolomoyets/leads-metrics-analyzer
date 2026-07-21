@@ -3,8 +3,9 @@ import type { BucketZone } from '../../constants';
 import type { Locale } from '../../utils/i18n';
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/Button';
-import { ZONE_ACCENT_CLASS, ZONE_CARD_CLASS, ZONE_GLYPH } from '../../constants';
+import { ZONE_CARD_CLASS, ZONE_GLYPH } from '../../constants';
 import { actionLabel, ui } from '../../utils/i18n';
+import { Pill } from '../Pill';
 
 type BucketBlockProps = {
     zone: BucketZone;
@@ -31,19 +32,7 @@ function BucketBlock({ zone, campaigns, locale, copiedKey, onCopy, copyKey }: Bu
                 ZONE_CARD_CLASS[zone]
             )}
         >
-            <div className="flex items-center gap-2">
-                <span
-                    className={cn(
-                        'flex size-5 items-center justify-center rounded-full text-[10px] font-bold text-black',
-                        ZONE_ACCENT_CLASS[zone]
-                    )}
-                    aria-hidden="true"
-                >
-                    {ZONE_GLYPH[zone]}
-                </span>
-                <span className="text-sm font-semibold">{actionLabel(zone, locale)}</span>
-                <span className="text-muted-foreground font-mono text-xs">{campaigns.length}</span>
-            </div>
+            <Pill color={zone} glyph={ZONE_GLYPH[zone]} label={actionLabel(zone, locale)} count={campaigns.length} />
 
             <textarea
                 readOnly

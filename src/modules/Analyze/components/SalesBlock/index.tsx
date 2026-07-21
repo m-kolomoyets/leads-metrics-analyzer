@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { usd } from '../../utils/format';
 import { ui } from '../../utils/i18n';
+import { Pill } from '../Pill';
 
 type SalesBlockProps = {
     campaigns: CampaignRollup[];
@@ -30,16 +31,7 @@ function SalesBlock({ campaigns, locale, copiedKey, onCopy, copyKey }: SalesBloc
 
     return (
         <Card className="min-w-48 flex-1 gap-3 border-violet-500/30 bg-violet-500/5 p-3 backdrop-blur">
-            <div className="flex items-center gap-2">
-                <span
-                    className="flex size-5 items-center justify-center rounded-full bg-violet-500 text-[10px] font-bold text-black"
-                    aria-hidden="true"
-                >
-                    $
-                </span>
-                <span className="text-sm font-semibold">{ui('sales', locale)}</span>
-                <span className="text-muted-foreground font-mono text-xs">{campaigns.length}</span>
-            </div>
+            <Pill color="violet" glyph="$" label={ui('sales', locale)} count={campaigns.length} />
 
             <p className="text-muted-foreground font-mono text-[11px] leading-relaxed">
                 Spend {usd(stat.spend)} · Clicks {stat.linkClicks} · Inst {stat.installs} · Reg {stat.regs} · Sales{' '}

@@ -36,6 +36,7 @@ import { GeoTabs } from './components/GeoTabs';
 import { ModelTable } from './components/ModelTable';
 import { PresetCreator } from './components/PresetCreator';
 import { ProblemAccounts } from './components/ProblemAccounts';
+import { SectionCard } from './components/SectionCard';
 import { SharedSettingsEditor } from './components/SharedSettingsEditor';
 import { TeamScopePicker } from './components/TeamScopePicker';
 import { ThresholdEditor } from './components/ThresholdEditor';
@@ -85,9 +86,14 @@ function Analyze() {
     const [locale, setLocale] = useState<Locale>('uk');
     // Muted campaigns, keyed `${geo}:${campaign}` so the same id in two geos toggles independently.
     const [excluded, setExcluded] = useState<ReadonlySet<string>>(new Set());
-    // Collapsed AccountBlocks, keyed `${geo}:${account}` (membership = collapsed; default open). Lifted
-    // so the summary nav table can uncollapse a block on row click (#36).
+    // AccountBlocks whose open state is *flipped from its default*, keyed `${geo}:${account}`. Stored as
+    // a flip rather than "is collapsed" because the default differs per account — Problem Accounts start
+    // collapsed (their campaign tables are noise until the account itself is checked by hand), everything
+    // else starts open. Lifted so the summary nav table can open a block on row click (#36).
     const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
+    // Accounts the analyst has triaged this session, keyed `${geo}:${account}`. Pure view state — it
+    // changes no figure (unlike `excluded`), only the pulse and the tint.
+    const [reviewed, setReviewed] = useState<ReadonlySet<string>>(new Set());
     const { copied, copy } = useClipboard();
 
     const ruleset = toRuleset(presets, shared);
@@ -103,6 +109,11 @@ function Analyze() {
     const geos = (result?.geos ?? []).map((geo) => {
         return geo.geo;
     });
+    // Spend⁺ per geo, stamped on each nav tab (reference).
+    const spendByGeo: Record<string, number> = {};
+    for (const geo of result?.geos ?? []) {
+        spendByGeo[geo.geo] = geo.metrics.spend;
+    }
     const activeGeo = geos.includes(selectedGeo ?? '') ? selectedGeo : (geos[0] ?? null);
     // The very preset that fed this geo's grading — the inline editor mutates it so edits and
     // verdicts stay in lock-step. When the geo carries several, the owner's pick wins (else first
@@ -136,6 +147,26 @@ function Analyze() {
     const geoRollup = result?.geos.find((geo) => {
         return geo.geo === activeGeo;
     });
+    // Triage state, view-only — the account order stays exactly as the compute layer returns it (Spend⁺
+    // desc) in both the summary table and the block list, so a review never moves a row under the cursor.
+    const isReviewed = (account: string) => {
+        return reviewed.has(`${activeGeo}:${account}`);
+    };
+
+    // Problem Accounts start collapsed — the alarm strip and the red header already say what is wrong,
+    // and their campaign tables only matter once the account itself has been checked by hand.
+    const startsOpen = (account: string) => {
+        return (
+            accounts.find((rollup) => {
+                return rollup.account === account;
+            })?.problem === null
+        );
+    };
+    const isOpen = (account: string) => {
+        const flipped = collapsed.has(`${activeGeo}:${account}`);
+        return flipped ? !startsOpen(account) : startsOpen(account);
+    };
+
     // Geo waste = Σ each account's Spend⁺ wasted over the line — in lock-step with the shown verdicts.
     const geoWaste = accounts.reduce((sum, account) => {
         return sum + account.waste;
@@ -169,11 +200,40 @@ function Analyze() {
         });
     }
 
-    // Summary-row click: uncollapse the target block, then scroll its anchor into view.
+    function toggleReviewed(account: string) {
+        const key = `${activeGeo}:${account}`;
+        setReviewed((current) => {
+            const next = new Set(current);
+            if (next.has(key)) {
+                next.delete(key);
+            } else {
+                next.add(key);
+            }
+            return next;
+        });
+    }
+
+    // A new upload replaces the facts, so every per-campaign / per-account toggle taken against the old
+    // ones is void. `excluded` matters most: a stale mute silently drops campaigns from account metrics,
+    // counts, waste and the Problem rules with no visible cue.
+    function replaceFiles(next: UploadedFile[]) {
+        setFiles(next);
+        setExcluded(new Set());
+        setCollapsed(new Set());
+        setReviewed(new Set());
+    }
+
+    // Summary-row click: force the target block open, then scroll its anchor into view. "Open" is the
+    // flipped state for a Problem Account and the default one for everything else.
     function jumpToAccount(account: string) {
+        const key = `${activeGeo}:${account}`;
         setCollapsed((current) => {
             const next = new Set(current);
-            next.delete(`${activeGeo}:${account}`);
+            if (startsOpen(account)) {
+                next.delete(key);
+            } else {
+                next.add(key);
+            }
             return next;
         });
         document.getElementById(`acc-${account}`)?.scrollIntoView({ block: 'start', behavior: 'smooth' });
@@ -204,7 +264,7 @@ function Analyze() {
             </MainLayoutHeader>
 
             <div className="flex flex-col gap-6">
-                <FileDropzones files={files} onChange={setFiles} />
+                <FileDropzones files={files} onChange={replaceFiles} />
 
                 {result && geos.length === 0 && (
                     <p className="text-muted-foreground text-sm">
@@ -215,124 +275,156 @@ function Analyze() {
                 {activeGeo && (
                     <div className="flex flex-col gap-4">
                         <div className="flex items-center gap-3">
-                            <GeoTabs geos={geos} active={activeGeo} onSelect={setSelectedGeo} />
+                            <GeoTabs geos={geos} active={activeGeo} spendByGeo={spendByGeo} onSelect={setSelectedGeo} />
                             {!thresholds && (
                                 <span className="text-muted-foreground text-xs">{ui('noPreset', locale)}</span>
                             )}
                         </div>
 
-                        {geoPresets.length > 0 && (
-                            <div className="flex items-center gap-2">
-                                <span className="text-muted-foreground text-xs">{ui('preset', locale)}</span>
-                                <Combobox
-                                    items={geoPresets}
-                                    value={activePreset ?? null}
-                                    onValueChange={(preset) => {
-                                        if (preset) {
-                                            setSelectedPresetByGeo((current) => {
-                                                return { ...current, [activeGeo]: preset.id };
-                                            });
-                                        }
-                                    }}
-                                    itemToStringLabel={(preset) => {
-                                        return preset.name;
-                                    }}
-                                >
-                                    <ComboboxInputGroup className="w-64">
-                                        <ComboboxInput placeholder={ui('preset', locale)} />
-                                        <ComboboxTrigger />
-                                    </ComboboxInputGroup>
-                                    <ComboboxContent>
-                                        <ComboboxEmpty>{ui('noResults', locale)}</ComboboxEmpty>
-                                        <ComboboxList>
-                                            {(preset) => {
-                                                return (
-                                                    <ComboboxItem key={preset.id} value={preset}>
-                                                        {preset.name}
-                                                    </ComboboxItem>
-                                                );
-                                            }}
-                                        </ComboboxList>
-                                    </ComboboxContent>
-                                </Combobox>
-                            </div>
-                        )}
-
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-                            {activePreset && (
-                                <ThresholdEditor
-                                    key={`${activePreset.id}:${activePreset.activeVersionId}:${activePreset.name}`}
-                                    preset={activePreset}
-                                    locale={locale}
-                                />
-                            )}
-                            {canWritePresets && (
-                                <PresetCreator
-                                    key={activeGeo}
-                                    geo={activeGeo}
-                                    locale={locale}
-                                    onImportShared={(seed) => {
-                                        setImportedShared((current) => {
-                                            return { seed, n: (current?.n ?? 0) + 1 };
-                                        });
-                                    }}
-                                />
-                            )}
-                            {(shared || canEditShared) && (
-                                <div className="flex flex-col gap-2">
-                                    {isHead && (
+                        {(activePreset || canWritePresets || shared || canEditShared) && (
+                            <SectionCard
+                                tone="blue"
+                                title={`${ui('zoneMetrics', locale)} · ${activeGeo}`}
+                                actions={
+                                    geoPresets.length > 0 && (
                                         <div className="flex items-center gap-2">
-                                            <span className="text-muted-foreground text-xs">{ui('team', locale)}</span>
-                                            <TeamScopePicker
-                                                teams={teams ?? []}
-                                                value={sharedTeamId}
+                                            <span className="text-muted-foreground text-xs">
+                                                {ui('preset', locale)}
+                                            </span>
+                                            <Combobox
+                                                items={geoPresets}
+                                                value={activePreset ?? null}
+                                                onValueChange={(preset) => {
+                                                    if (preset) {
+                                                        setSelectedPresetByGeo((current) => {
+                                                            return { ...current, [activeGeo]: preset.id };
+                                                        });
+                                                    }
+                                                }}
+                                                itemToStringLabel={(preset) => {
+                                                    return preset.name;
+                                                }}
+                                            >
+                                                <ComboboxInputGroup className="w-56">
+                                                    <ComboboxInput placeholder={ui('preset', locale)} />
+                                                    <ComboboxTrigger />
+                                                </ComboboxInputGroup>
+                                                <ComboboxContent>
+                                                    <ComboboxEmpty>{ui('noResults', locale)}</ComboboxEmpty>
+                                                    <ComboboxList>
+                                                        {(preset) => {
+                                                            return (
+                                                                <ComboboxItem key={preset.id} value={preset}>
+                                                                    {preset.name}
+                                                                </ComboboxItem>
+                                                            );
+                                                        }}
+                                                    </ComboboxList>
+                                                </ComboboxContent>
+                                            </Combobox>
+                                        </div>
+                                    )
+                                }
+                            >
+                                <div className="flex flex-col gap-4">
+                                    {activePreset && (
+                                        <ThresholdEditor
+                                            key={`${activePreset.id}:${activePreset.activeVersionId}:${activePreset.name}`}
+                                            preset={activePreset}
+                                            locale={locale}
+                                        />
+                                    )}
+                                    {canWritePresets && (
+                                        <div className="border-border/60 border-t pt-4">
+                                            <PresetCreator
+                                                key={activeGeo}
+                                                geo={activeGeo}
                                                 locale={locale}
-                                                onChange={setSharedTeamId}
+                                                onImportShared={(seed) => {
+                                                    setImportedShared((current) => {
+                                                        return { seed, n: (current?.n ?? 0) + 1 };
+                                                    });
+                                                }}
                                             />
                                         </div>
                                     )}
-                                    <SharedSettingsEditor
-                                        key={`${sharedTeamId ?? 'global'}:${shared?.activeVersionId ?? 'new'}:${importedShared?.n ?? 0}`}
-                                        shared={shared}
-                                        canEdit={canEditShared}
-                                        locale={locale}
-                                        seed={importedShared?.seed}
-                                        saveTeamId={isHead ? sharedTeamId : undefined}
-                                    />
+                                    {(shared || canEditShared) && (
+                                        <div className="border-border/60 flex flex-col gap-2 border-t pt-4">
+                                            {isHead && (
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-muted-foreground text-xs">
+                                                        {ui('team', locale)}
+                                                    </span>
+                                                    <TeamScopePicker
+                                                        teams={teams ?? []}
+                                                        value={sharedTeamId}
+                                                        locale={locale}
+                                                        onChange={setSharedTeamId}
+                                                    />
+                                                </div>
+                                            )}
+                                            <SharedSettingsEditor
+                                                key={`${sharedTeamId ?? 'global'}:${shared?.activeVersionId ?? 'new'}:${importedShared?.n ?? 0}`}
+                                                shared={shared}
+                                                canEdit={canEditShared}
+                                                locale={locale}
+                                                seed={importedShared?.seed}
+                                                saveTeamId={isHead ? sharedTeamId : undefined}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
-                            )}
-                        </div>
-
-                        {geoRollup && (
-                            <GeoStat rollup={geoRollup} waste={geoWaste} wasteZone={wasteZone} locale={locale} />
+                            </SectionCard>
                         )}
 
-                        <ProblemAccounts accounts={accounts} locale={locale} />
+                        {geoRollup && (
+                            <GeoStat
+                                geo={activeGeo}
+                                rollup={geoRollup}
+                                thresholds={thresholds}
+                                waste={geoWaste}
+                                wasteZone={wasteZone}
+                                locale={locale}
+                            />
+                        )}
+
+                        <ProblemAccounts accounts={accounts} locale={locale} isReviewed={isReviewed} />
 
                         {geoRollup && thresholds && (
                             <div className="flex flex-col gap-6">
-                                <ModelTable
-                                    title={ui('offers', locale)}
-                                    firstCol={ui('offers', locale)}
-                                    rows={geoRollup.allocation.offers}
-                                    thresholds={thresholds}
-                                    locale={locale}
-                                    copiedKey={copied ?? ''}
-                                    onCopy={copy}
-                                    copyKey={`offers:${activeGeo}`}
-                                />
-                                <ModelTable
-                                    title={ui('osTable', locale)}
-                                    firstCol={ui('osTable', locale)}
-                                    rows={geoRollup.allocation.os}
-                                    thresholds={thresholds}
-                                    locale={locale}
-                                    showCpc
-                                    copiedKey={copied ?? ''}
-                                    onCopy={copy}
-                                    copyKey={`os:${activeGeo}`}
-                                />
-                                <CreativeTable rows={creatives} thresholds={thresholds} locale={locale} />
+                                <SectionCard tone="violet">
+                                    <ModelTable
+                                        title={`📦 ${ui('offers', locale)} · ${activeGeo}`}
+                                        firstCol={ui('offers', locale)}
+                                        rows={geoRollup.allocation.offers}
+                                        thresholds={thresholds}
+                                        locale={locale}
+                                        copiedKey={copied ?? ''}
+                                        onCopy={copy}
+                                        copyKey={`offers:${activeGeo}`}
+                                    />
+                                </SectionCard>
+                                <SectionCard tone="blue">
+                                    <ModelTable
+                                        title={`💻 ${ui('osTable', locale)} · ${activeGeo}`}
+                                        firstCol={ui('osTable', locale)}
+                                        rows={geoRollup.allocation.os}
+                                        thresholds={thresholds}
+                                        locale={locale}
+                                        showCpc
+                                        copiedKey={copied ?? ''}
+                                        onCopy={copy}
+                                        copyKey={`os:${activeGeo}`}
+                                    />
+                                </SectionCard>
+                                <SectionCard tone="blue">
+                                    <CreativeTable
+                                        rows={creatives}
+                                        thresholds={thresholds}
+                                        locale={locale}
+                                        geo={activeGeo}
+                                    />
+                                </SectionCard>
                             </div>
                         )}
 
@@ -340,6 +432,7 @@ function Analyze() {
                             accounts={accounts}
                             thresholds={thresholds}
                             locale={locale}
+                            isReviewed={isReviewed}
                             onJump={jumpToAccount}
                         />
 
@@ -349,6 +442,7 @@ function Analyze() {
                                     <AccountBlock
                                         key={account.account}
                                         account={account}
+                                        thresholds={thresholds}
                                         locale={locale}
                                         copiedKey={copied ?? ''}
                                         onCopy={copy}
@@ -356,9 +450,13 @@ function Analyze() {
                                             return excluded.has(`${activeGeo}:${campaign}`);
                                         }}
                                         onToggleExcluded={toggleExcluded}
-                                        open={!collapsed.has(`${activeGeo}:${account.account}`)}
+                                        open={isOpen(account.account)}
                                         onToggleOpen={() => {
                                             toggleCollapsed(account.account);
+                                        }}
+                                        reviewed={isReviewed(account.account)}
+                                        onToggleReviewed={() => {
+                                            toggleReviewed(account.account);
                                         }}
                                     />
                                 );

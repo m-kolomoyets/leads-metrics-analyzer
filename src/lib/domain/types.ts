@@ -32,13 +32,24 @@ export type Totals = {
     sales: number;
 };
 
+// The funnel stage a verdict was decided at, and its per-stage cost metric.
+export type Stage = 'sales' | 'regs' | 'installs' | 'clicks';
+export type Metric = 'cps' | 'cpr' | 'cpi' | 'cpc';
+
 // A structured verdict reason — never a display string (doc 04). The UI renders it per locale.
-export type VerdictReason = {
-    stage: 'sales' | 'regs' | 'installs' | 'clicks';
-    metric: 'cps' | 'cpr' | 'cpi' | 'cpc';
-    value: number;
-    zone: Zone;
-};
+// A discriminated union: `kind` says WHICH situation decided, so the UI can name the criteria
+// (stage word, zone label, situational note) instead of restating the action word.
+//  - graded:        a stage produced results; `value` is Spend⁺ cost-per, graded to `zone`.
+//  - clicksWaiting: judged on clicks, non-red; holds at yellow ("чекаємо інстал").
+//  - zeroResult:    zero results but Spend⁺ past a stage's red line; `value` is raw Spend⁺.
+//  - tooEarly:      spent under every red line, nothing yet; `value` is raw Spend⁺.
+//  - spendZero:     Spend⁺ = 0 — nothing to analyse.
+export type VerdictReason =
+    | { kind: 'graded'; stage: Stage; metric: Metric; value: number; zone: Zone }
+    | { kind: 'clicksWaiting'; stage: 'clicks'; metric: 'cpc'; value: number; zone: 'yellow' }
+    | { kind: 'zeroResult'; stage: Stage; metric: Metric; value: number }
+    | { kind: 'tooEarly'; value: number }
+    | { kind: 'spendZero' };
 
 // One fact at grain Campaign × Creative × Date. Field-for-field the shape of `snapshot_fact`
 // (ADR-0010) so a save is a straight map. `offer`/`os` are representative attributes of the

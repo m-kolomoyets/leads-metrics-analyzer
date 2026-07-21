@@ -1,33 +1,43 @@
 import type { AccountRollup } from '@/lib/domain/accounts';
 import type { Locale } from '../../utils/i18n';
-import { Card } from '@/components/ui/Card';
+import { cn } from '@/lib/utils/cn';
 import { usd } from '../../utils/format';
 import { problemReason, ui } from '../../utils/i18n';
 
 type ProblemAccountsProps = {
     accounts: AccountRollup[];
     locale: Locale;
+    isReviewed: (account: string) => boolean;
 };
 
 // Top-of-geo alarm strip: the accounts flagged Problem (doc 04), so a buyer sees broken tracking /
 // launches before scrolling the roll-up. Recomputes with exclusions since it reads the same rollups.
-function ProblemAccounts({ accounts, locale }: ProblemAccountsProps) {
+// It is a worklist, so reviewing an account strikes it through rather than removing it — the pass
+// stays auditable, and the header counts what is still outstanding.
+function ProblemAccounts({ accounts, locale, isReviewed }: ProblemAccountsProps) {
     const flagged = accounts.filter((account) => {
         return account.problem !== null;
     });
     if (flagged.length === 0) {
         return null;
     }
+    const outstanding = flagged.filter((account) => {
+        return !isReviewed(account.account);
+    }).length;
 
     return (
-        <Card className="rounded-xl border-danger/40 bg-danger/5 p-3">
-            <p className="mb-2 text-sm font-semibold text-danger">
-                🚨 {ui('problemAccounts', locale)} ({flagged.length})
+        <section className="glass-tint tint-red rounded-2xl p-4">
+            <p className="text-danger mb-2.5 text-[13px] font-normal tracking-widest uppercase">
+                🚨 {ui('problemAccounts', locale)} ({outstanding}/{flagged.length})
             </p>
             <ul className="flex flex-col gap-1 text-xs">
                 {flagged.map((account) => {
+                    const reviewed = isReviewed(account.account);
                     return (
-                        <li key={account.account} className="text-muted-foreground">
+                        <li
+                            key={account.account}
+                            className={cn('text-muted-foreground', reviewed && 'line-through opacity-60')}
+                        >
                             <span className="text-foreground font-mono">{account.account}</span>{' '}
                             {usd(account.metrics.spend)} ·{' '}
                             {problemReason(account.problem!, account.metrics.spendPlus, account.metrics.cpi, locale)}
@@ -35,7 +45,7 @@ function ProblemAccounts({ accounts, locale }: ProblemAccountsProps) {
                     );
                 })}
             </ul>
-        </Card>
+        </section>
     );
 }
 

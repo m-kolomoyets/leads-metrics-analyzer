@@ -146,9 +146,11 @@ function SharedSettingsEditor({ shared, canEdit, locale, seed, saveTeamId }: Sha
     }
 
     return (
-        <section className="border-border flex flex-col gap-3 rounded-lg border p-4">
+        <section className="flex flex-col gap-3">
             <div className="flex items-center gap-2">
-                <h3 className="text-sm font-medium">{ui('sharedSettings', locale)}</h3>
+                <h4 className="text-muted-foreground text-[11px] font-normal tracking-wider uppercase">
+                    {ui('sharedSettings', locale)}
+                </h4>
                 {!canEdit && <span className="text-muted-foreground text-xs">{ui('readonly', locale)}</span>}
             </div>
 

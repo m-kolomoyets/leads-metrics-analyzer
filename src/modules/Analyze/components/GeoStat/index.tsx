@@ -1,15 +1,17 @@
 import type { GeoRollup } from '@/lib/domain';
-import type { ThresholdPair } from '@/lib/domain/types';
+import type { GeoThresholds, ThresholdPair, Zone } from '@/lib/domain/types';
 import type { Locale } from '../../utils/i18n';
 import { zoneFor } from '@/lib/domain/verdict';
 import { cn } from '@/lib/utils/cn';
-import { Card } from '@/components/ui/Card';
-import { ZONE_CARD_CLASS, ZONE_TEXT_CLASS } from '../../constants';
-import { pct, usd } from '../../utils/format';
+import { ZONE_TEXT_CLASS } from '../../constants';
+import { cost, flagEmoji, pct, usd } from '../../utils/format';
 import { ui } from '../../utils/i18n';
 
 type GeoStatProps = {
+    geo: string;
     rollup: GeoRollup;
+    // Grades the header CPC/CPI/CPR/CPS line by band; undefined (no preset) → plain neutral.
+    thresholds: GeoThresholds | undefined;
     // Σ Spend⁺ wasted over the geo's included red campaigns (from the account roll-ups).
     waste: number;
     // The active preset's Waste Zones band (% of Spend⁺), or undefined when the geo has no preset.
@@ -17,77 +19,150 @@ type GeoStatProps = {
     locale: Locale;
 };
 
-function Stat({ label, value, className }: { label: string; value: string; className?: string }) {
+// Reference ROI bands (fixed, unlike the tunable cost zones): loss → red, thin → yellow, healthy → green.
+function roiTone(roi: number | null): Zone {
+    if (roi === null) {
+        return 'neutral';
+    }
+    if (roi < -20) {
+        return 'red';
+    }
+    return roi <= 30 ? 'yellow' : 'green';
+}
+
+// The glass-tint classes for a zone (index.css). Yellow/neutral keep the plain blue tint.
+const TONE_TINT: Record<Zone, string> = {
+    green: 'glass-tint tint-green',
+    yellow: 'glass-tint tint-blue',
+    red: 'glass-tint tint-red',
+    neutral: 'glass-tint tint-blue tint-s5',
+};
+
+// A band-tinted CPC/CPI/CPR/CPS value, mirroring the reference `<Metric>`.
+function Metric({ value, pair }: { value: number | null; pair: ThresholdPair | undefined }) {
+    const graded = value !== null && pair;
+    const tone: Zone = graded ? zoneFor(value, pair) : 'neutral';
+    return (
+        <span className={cn('font-mono', graded ? ZONE_TEXT_CLASS[tone] : 'text-muted-foreground')}>
+            ${cost(value)}
+        </span>
+    );
+}
+
+function Stat({
+    label,
+    value,
+    size,
+    className,
+}: {
+    label: string;
+    value: string;
+    size: 'md' | 'lg';
+    className?: string;
+}) {
     return (
         <div className="flex flex-col">
-            <span className="text-muted-foreground text-[10px] tracking-wide uppercase">{label}</span>
-            <span className={cn('font-mono text-lg font-bold', className)}>{value}</span>
+            <span className="text-muted-foreground text-[11px] tracking-widest uppercase">{label}</span>
+            <span className={cn('font-mono font-bold', size === 'lg' ? 'text-2xl' : 'text-xl', className)}>
+                {value}
+            </span>
         </div>
     );
 }
 
-// The market-level totals (S4): the Geo Total (Spend⁺ / Revenue / Profit / ROI, untagged included),
-// the Attributed figures beside it, and the honest gap between them (ADR-0003) — untagged revenue is
-// real money, shown, not hidden. A second card grades the geo's waste against its Waste Zone band.
-function GeoStat({ rollup, waste, wasteZone, locale }: GeoStatProps) {
+// The market-level hero (S4): a blue-tinted glass panel with the geo label + graded cost line, then two
+// glowing stat pills — Spend/Revenue/Profit/ROI (glow tinted by the ROI band) and the waste readout
+// (glow tinted by its Waste-Zone band). Attributed / untagged gap (ADR-0003) rides under the first pill.
+function GeoStat({ geo, rollup, thresholds, waste, wasteZone, locale }: GeoStatProps) {
     const { metrics, attributed } = rollup;
-    // Untagged = the deliberate divergence: Geo Total minus Attributed (revenue FB failed to tag).
     const untaggedRevenue = metrics.revenue - attributed.revenue;
     const wastePct = metrics.spendPlus > 0 ? (waste / metrics.spendPlus) * 100 : 0;
-    const wasteZoneGrade = wasteZone ? zoneFor(wastePct, wasteZone) : 'neutral';
+    const wasteTone: Zone = wasteZone ? zoneFor(wastePct, wasteZone) : 'neutral';
+    const roi = roiTone(metrics.roi);
 
     return (
-        <div className="flex flex-col gap-3 lg:flex-row">
-            <Card
-                className={cn(
-                    'flex-1 gap-3 p-4',
-                    ZONE_CARD_CLASS[metrics.roi !== null && metrics.roi >= 0 ? 'green' : 'red']
-                )}
-            >
-                <div className="flex flex-wrap gap-x-8 gap-y-3">
-                    <Stat label="Spend" value={usd(metrics.spend)} />
-                    <Stat label={ui('geoTotal', locale)} value={usd(metrics.revenue)} className="text-success" />
-                    <Stat
-                        label="Profit"
-                        value={`${metrics.profit >= 0 ? '+' : '−'}${usd(Math.abs(metrics.profit))}`}
-                        className={metrics.profit >= 0 ? 'text-success' : 'text-danger'}
-                    />
-                    <Stat
-                        label="ROI"
-                        value={pct(metrics.roi)}
-                        className={metrics.roi !== null && metrics.roi >= 0 ? 'text-success' : 'text-danger'}
-                    />
-                </div>
-                <div className="text-muted-foreground flex flex-wrap gap-x-6 gap-y-1 text-xs">
-                    <span>
-                        {ui('attributed', locale)}: <span className="font-mono">{usd(attributed.revenue)}</span>
-                    </span>
-                    {untaggedRevenue > 0.01 && (
+        <section className="glass-tint tint-blue tint-s5 flex flex-col gap-4 rounded-2xl p-4">
+            <div className="flex flex-wrap items-center gap-4">
+                <span className="text-2xl font-bold">
+                    {flagEmoji(geo)} {geo}
+                </span>
+                <span className="bg-border h-9 w-px" />
+                <span className="text-muted-foreground text-sm">
+                    CPC <Metric value={metrics.cpc} pair={thresholds?.clicks} /> · CPI{' '}
+                    <Metric value={metrics.cpi} pair={thresholds?.installs} /> · CPR{' '}
+                    <Metric value={metrics.cpr} pair={thresholds?.regs} /> · CPS{' '}
+                    <Metric value={metrics.cps} pair={thresholds?.sales} />
+                </span>
+            </div>
+
+            <div className="flex flex-wrap gap-4">
+                <div
+                    className={cn(
+                        'glow-soft flex min-w-64 flex-1 flex-col gap-3 rounded-2xl px-5 py-4',
+                        TONE_TINT[roi]
+                    )}
+                >
+                    <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
+                        <Stat label="Spend" value={usd(metrics.spend)} size="md" />
+                        <Stat
+                            label={ui('geoTotal', locale)}
+                            value={usd(metrics.revenue)}
+                            size="md"
+                            className={metrics.revenue > 0 ? 'text-success' : 'text-muted-foreground'}
+                        />
+                        <Stat
+                            label="Profit"
+                            value={`${metrics.profit >= 0 ? '+' : '−'}${usd(Math.abs(metrics.profit))}`}
+                            size="lg"
+                            className={metrics.profit >= 0 ? 'text-success' : 'text-danger'}
+                        />
+                        <Stat label="ROI" value={pct(metrics.roi)} size="lg" className={ZONE_TEXT_CLASS[roi]} />
+                    </div>
+                    <div className="text-muted-foreground flex flex-wrap gap-x-6 gap-y-1 text-xs">
                         <span>
-                            {ui('untaggedGap', locale)}: <span className="font-mono">{usd(untaggedRevenue)}</span>
+                            {ui('attributed', locale)}: <span className="font-mono">{usd(attributed.revenue)}</span>
                         </span>
+                        {untaggedRevenue > 0.01 && (
+                            <span>
+                                {ui('untaggedGap', locale)}: <span className="font-mono">{usd(untaggedRevenue)}</span>
+                            </span>
+                        )}
+                    </div>
+                </div>
+
+                <div
+                    className={cn(
+                        'flex min-w-64 flex-1 items-center gap-6 rounded-2xl px-5 py-4',
+                        TONE_TINT[wasteTone]
+                    )}
+                >
+                    <Stat
+                        label={ui('wasteTitle', locale)}
+                        value={usd(waste)}
+                        size="lg"
+                        className={ZONE_TEXT_CLASS[wasteTone]}
+                    />
+                    <Stat
+                        label={ui('wastePctOfSpend', locale)}
+                        value={`${wastePct.toFixed(1)}%`}
+                        size="lg"
+                        className={ZONE_TEXT_CLASS[wasteTone]}
+                    />
+                    <span className="flex-1" />
+                    {wasteZone && (
+                        <div className="text-muted-foreground text-right text-[10px] leading-relaxed">
+                            {ui('wasteZone', locale)}:
+                            <br />
+                            <span className={ZONE_TEXT_CLASS.green}>&lt;{wasteZone.gy}%</span> ·{' '}
+                            <span className={ZONE_TEXT_CLASS.yellow}>
+                                {wasteZone.gy}–{wasteZone.yr}%
+                            </span>{' '}
+                            · <span className={ZONE_TEXT_CLASS.red}>&gt;{wasteZone.yr}%</span>
+                        </div>
                     )}
                 </div>
-                <p className="text-muted-foreground text-[10px]">{ui('divergenceNote', locale)}</p>
-            </Card>
-
-            <Card className={cn('gap-1 p-4', ZONE_CARD_CLASS[wasteZoneGrade])}>
-                <span className="text-muted-foreground text-[10px] tracking-wide uppercase">
-                    {ui('wasteTitle', locale)}
-                </span>
-                <span className={cn('font-mono text-2xl font-bold', ZONE_TEXT_CLASS[wasteZoneGrade])}>
-                    {usd(waste)}
-                </span>
-                <span className="text-muted-foreground text-xs">
-                    {ui('wastePctOfSpend', locale)}: <span className="font-mono">{wastePct.toFixed(1)}%</span>
-                </span>
-                {wasteZone && (
-                    <span className="text-muted-foreground text-[10px]">
-                        {ui('wasteZone', locale)}: {wasteZone.gy}% / {wasteZone.yr}%
-                    </span>
-                )}
-            </Card>
-        </div>
+            </div>
+        </section>
     );
 }
 

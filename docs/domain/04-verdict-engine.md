@@ -60,12 +60,53 @@ Compared against the **absolute** `K × installs.yr`, not the geo average — th
 computed from the very accounts being judged, so it goes quiet exactly when the whole market is on
 fire, and one catastrophic account drags it up and excuses the merely-bad ones.
 
+### Reviewed — triage state, not a verdict input
+
+A Problem Account demands investigation, and the analyst needs to track which ones they have got
+to. **Reviewed** records that, and lives entirely in the UI: `accountsFor` neither accepts nor
+returns it, so the compute layer stays a pure function of facts + ruleset
+([ADR-0010](../adr/0010-compute-layer-module-layout.md)). Marking an account Reviewed silences its
+pulse and retires its alarm styling; the red frame, pill and reason all remain, because the account
+is still a Problem Account — reviewing it records that a human looked, not that the rules stopped
+firing.
+
+Account **order** is never touched: both the summary table and the block list render the compute
+layer's Spend⁺-descending order, so reviewing an account never moves rows around mid-pass. Problem
+Accounts instead start **collapsed** — the alarm strip above and the red header already carry the
+finding, and the campaign tables underneath are noise until the account has been checked by hand.
+
+This is the inverse of **Excluded**, which sits beside it in the same header and *is* an analysis
+input: muting a campaign removes it from the account's metrics, zone counts, waste and the Problem
+rules. Keeping the two straight matters because they look alike in the UI and only one of them can
+change a number.
+
+Reviewed is session state, keyed per Geo, cleared on upload — the same clear that drops `excluded`
+and `collapsed`, since a new file set voids every judgement taken against the old one. Threshold
+edits deliberately *keep* reviews: tuning the preset is how an analyst works through a geo, so
+wiping the pass on each tweak would make the two features fight. Accounts that newly turn Problem
+still announce themselves through the red frame and the digest's outstanding count.
+
 ## Structured reasons (not prose)
 
-The domain returns a **structured** reason — `{ stage, metric, value, zone }` — and the UI renders
-it per locale (full UK + EN i18n). The domain layer never emits display strings, which keeps it
-pure ([ADR-0004](../adr/0004-client-compute-server-persistence.md)) and its tests free of language
-assertions.
+The domain returns a **structured** reason and the UI renders it per locale (full UK + EN i18n). The
+"why" column names the **criteria that decided** — stage word, cost line, zone label, situational
+note — never the action word (the row's colour bar already carries the verdict).
+
+The reason is a **discriminated union** on `kind`, so the renderer can tell the situations apart
+instead of guessing from field shapes:
+
+| `kind` | when | fields | why line (uk) |
+|---|---|---|---|
+| `graded` | a stage produced results | `stage, metric, value, zone` | `Продажі: CPS $12.34 — червона` |
+| `clicksWaiting` | judged on clicks, non-red | `stage, metric, value, zone:'yellow'` | `Кліки: CPC $0.30 — жовта, чекаємо інстал` |
+| `zeroResult` | zero results, Spend⁺ past a red line | `stage, metric, value` (raw Spend⁺) | `Продажі: 0 за $300.00 (понад черв.)` |
+| `tooEarly` | spent under every red line, nothing yet | `value` (raw Spend⁺) | `Рано судити (spend $50.00)` |
+| `spendZero` | Spend⁺ = 0 | — | `Spend 0 — не аналізується` |
+
+`verdictFor` always returns a reason; `Verdict.reason` is `null` **only** with no preset loaded
+(`thresholds` undefined), which renders as an em dash. The domain layer never emits display strings,
+which keeps it pure ([ADR-0004](../adr/0004-client-compute-server-persistence.md)) and its tests free
+of language assertions.
 
 ## Prototype → change
 

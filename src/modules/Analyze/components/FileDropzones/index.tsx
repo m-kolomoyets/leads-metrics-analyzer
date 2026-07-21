@@ -50,16 +50,25 @@ function FileDropzones({ files, onChange }: FileDropzonesProps) {
     }
 
     return (
-        <div className="flex flex-col gap-4">
+        <section className="glass-tint tint-blue tint-s5 flex flex-col gap-4 rounded-2xl p-4">
+            <h3 className="text-muted-foreground text-[13px] font-normal tracking-widest uppercase">1 · Files</h3>
             <div className="grid gap-3 sm:grid-cols-3">
                 {ZONES.map((zone) => {
+                    const active = files.some((file) => {
+                        return file.type === zone.type;
+                    });
                     return (
                         <label
                             key={zone.type}
-                            className="flex cursor-pointer flex-col gap-1 rounded-md border border-dashed p-4 text-sm hover:bg-accent/40"
+                            className={cn(
+                                'flex cursor-pointer flex-col gap-1 rounded-lg border-[1.5px] border-dashed p-4 text-sm transition-colors',
+                                active
+                                    ? 'border-primary bg-primary/10'
+                                    : 'border-border bg-background/40 hover:bg-accent/40'
+                            )}
                         >
-                            <span className="font-medium">{zone.label}</span>
-                            <span className="text-muted-foreground text-xs">{zone.hint}</span>
+                            <span className="font-semibold">{zone.label}</span>
+                            <span className="text-muted-foreground text-xs">{active ? '✓ loaded' : zone.hint}</span>
                             <input
                                 type="file"
                                 accept=".csv,text/csv"
@@ -100,7 +109,7 @@ function FileDropzones({ files, onChange }: FileDropzonesProps) {
                     })}
                 </ul>
             )}
-        </div>
+        </section>
     );
 }
 

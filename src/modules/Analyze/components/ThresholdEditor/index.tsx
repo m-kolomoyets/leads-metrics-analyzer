@@ -97,11 +97,11 @@ function ThresholdEditor({ preset, locale }: ThresholdEditorProps) {
     }
 
     return (
-        <section className="border-border flex flex-col gap-3 rounded-lg border p-4">
+        <section className="flex flex-col gap-3">
             <div className="flex items-center gap-2">
-                <h3 className="text-sm font-medium">
+                <h4 className="text-muted-foreground text-[11px] font-normal tracking-wider uppercase">
                     {ui('thresholds', locale)} · {preset.name}
-                </h3>
+                </h4>
                 {!canEdit && <span className="text-muted-foreground text-xs">{ui('readonly', locale)}</span>}
             </div>
 

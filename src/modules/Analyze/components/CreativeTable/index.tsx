@@ -11,6 +11,7 @@ type CreativeTableProps = {
     rows: CreativeRow[];
     thresholds: GeoThresholds;
     locale: Locale;
+    geo: string;
 };
 
 // A zone-graded cost cell (CPC/CPI/CPR/CPS) on the creative's Spend⁺ (real) + allocated funnel.
@@ -23,14 +24,16 @@ function CostCell({ value, pair }: { value: number | null; pair: ThresholdPair }
 
 // #35 · Per-Geo Creative analysis table. One row per creative, verdict-zone striped on the left.
 // Spend + CPM are real per creative; CPC/CPI/CPR/CPS + CTR ride the allocated funnel (estimate note).
-function CreativeTable({ rows, thresholds, locale }: CreativeTableProps) {
+function CreativeTable({ rows, thresholds, locale, geo }: CreativeTableProps) {
     if (rows.length === 0) {
         return null;
     }
 
     return (
         <div className="flex flex-col gap-2">
-            <h3 className="text-sm font-semibold">{ui('creatives', locale)}</h3>
+            <h3 className="text-muted-foreground text-[13px] font-normal tracking-widest uppercase">
+                🎨 {ui('creatives', locale)} · {geo}
+            </h3>
             <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-right text-xs">
                     <thead>

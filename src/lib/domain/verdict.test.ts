@@ -23,13 +23,13 @@ describe('zoneFor', () => {
 describe('verdictFor waterfall', () => {
     it('deepest stage with a result decides (sales over installs)', () => {
         const v = verdictFor(totals({ spendPlus: 40, sales: 1, installs: 100 }), TH);
-        expect(v.reason?.stage).toBe('sales');
+        expect(v.reason && 'stage' in v.reason && v.reason.stage).toBe('sales');
         expect(v.verdict).toBe('yellow'); // cps 40 in [30,60]
     });
 
     it('a clicks-only campaign is never green (holds at yellow)', () => {
         const v = verdictFor(totals({ spendPlus: 0.1, linkClicks: 10 }), TH);
-        expect(v.reason?.stage).toBe('clicks'); // cpc 0.01 < gy → would be green
+        expect(v.reason?.kind).toBe('clicksWaiting'); // cpc 0.01 < gy → would be green
         expect(v.verdict).toBe('yellow');
     });
 

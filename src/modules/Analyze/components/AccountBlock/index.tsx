@@ -1,6 +1,6 @@
 import type { AccountRollup } from '@/lib/domain/accounts';
+import type { GeoThresholds } from '@/lib/domain/types';
 import type { Locale } from '../../utils/i18n';
-import { useState } from 'react';
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/Button';
 import { BUCKET_ZONES, ZONE_TEXT_CLASS } from '../../constants';
@@ -8,10 +8,13 @@ import { cost, pct, usd } from '../../utils/format';
 import { problemReason, ui } from '../../utils/i18n';
 import { AccountCampaigns } from '../AccountCampaigns';
 import { BucketBlock } from '../BucketBlock';
+import { Pill } from '../Pill';
 import { SalesBlock } from '../SalesBlock';
 
 type AccountBlockProps = {
     account: AccountRollup;
+    // Grades the campaign table's CPC/CPI/CPR/CPS cells by band (reference `<Metric>`).
+    thresholds: GeoThresholds | undefined;
     locale: Locale;
     copiedKey: string;
     onCopy: (text: string, key: string) => void;
@@ -20,13 +23,17 @@ type AccountBlockProps = {
     // Collapse is lifted so the summary nav table (#36) can uncollapse a block on row click.
     open: boolean;
     onToggleOpen: () => void;
+    // Triage state, lifted so the parent can order handled accounts to the bottom.
+    reviewed: boolean;
+    onToggleReviewed: () => void;
 };
 
 // One Account panel: a glass frame (red when Problem) with a metrics header, the three action buckets
 // + sales block, and the full campaign table. `id="acc-<account>"` is the summary table's jump anchor;
-// collapse is controlled by the parent, "reviewed" stays local view state.
+// collapse and "reviewed" are both controlled by the parent.
 function AccountBlock({
     account,
+    thresholds,
     locale,
     copiedKey,
     onCopy,
@@ -34,8 +41,9 @@ function AccountBlock({
     onToggleExcluded,
     open,
     onToggleOpen,
+    reviewed,
+    onToggleReviewed,
 }: AccountBlockProps) {
-    const [reviewed, setReviewed] = useState(false);
     const { metrics, counts, problem } = account;
 
     const included = account.campaigns.filter((campaign) => {
@@ -46,8 +54,11 @@ function AccountBlock({
         <section
             id={`acc-${account.account}`}
             className={cn(
-                'scroll-mt-4 rounded-2xl border p-4 backdrop-blur transition-opacity',
-                problem ? 'pulse-red border-danger/50 bg-danger/5' : 'border-border bg-card/40',
+                'scroll-mt-4 rounded-2xl p-4 transition-opacity',
+                problem ? 'glass-tint tint-red' : 'glass-tint tint-blue tint-s4',
+                // The pulse is a call to act, so reviewing silences it — the red frame and pill stay,
+                // since the account is still Problem, only no longer unhandled.
+                problem && !reviewed && 'pulse-red',
                 reviewed && 'opacity-60'
             )}
         >
@@ -74,22 +85,10 @@ function AccountBlock({
                     {copiedKey === `acc:${account.account}` ? ui('copied', locale) : account.account}
                 </button>
 
-                {problem && (
-                    <span className="rounded-full border border-danger/50 bg-danger/15 px-2 py-0.5 text-xs font-semibold text-danger">
-                        ! {ui('problem', locale)}
-                    </span>
-                )}
+                {problem && <Pill color="red" glyph="!" label={ui('problem', locale)} />}
 
                 <label className="text-muted-foreground flex items-center gap-1.5 text-xs">
-                    <input
-                        type="checkbox"
-                        checked={reviewed}
-                        onChange={() => {
-                            setReviewed((value) => {
-                                return !value;
-                            });
-                        }}
-                    />
+                    <input type="checkbox" checked={reviewed} onChange={onToggleReviewed} />
                     {ui('reviewed', locale)}
                 </label>
 
@@ -151,6 +150,7 @@ function AccountBlock({
                             <span className="text-sm font-bold text-violet-400">{ui('salesCampaigns', locale)}</span>
                             <AccountCampaigns
                                 campaigns={account.salesCampaigns}
+                                thresholds={thresholds}
                                 locale={locale}
                                 isExcluded={isExcluded}
                                 onToggle={onToggleExcluded}
@@ -160,6 +160,7 @@ function AccountBlock({
 
                     <AccountCampaigns
                         campaigns={account.campaigns}
+                        thresholds={thresholds}
                         locale={locale}
                         isExcluded={isExcluded}
                         onToggle={onToggleExcluded}
