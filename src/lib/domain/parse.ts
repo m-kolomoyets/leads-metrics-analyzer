@@ -39,7 +39,12 @@ export type KtMainRow = {
     // Geo as ISO-2, resolved from the Keitaro country name; null when the name is unknown.
     geo: string | null;
     // `Sub ID 2` starts with `{` → macro never expanded; Campaign attribution lost, Geo survives.
+    // Every other Sub ID survives too (`Sub ID 4` = Account, `Sub ID 5` = Creative), so the row is a
+    // full member of every table except Campaign (ADR-0012).
     unfiredMacro: boolean;
+    // Every Sub ID empty — Facebook's macros returned an empty referral. Only the Keitaro-native
+    // columns (Country/Offer/OS) survive: no Account, no Creative, no Campaign. Geo Total only.
+    untagged: boolean;
 };
 
 export type KtClicksRow = {
@@ -50,6 +55,7 @@ export type KtClicksRow = {
     linkClicks: number;
     geo: string | null;
     unfiredMacro: boolean;
+    untagged: boolean;
 };
 
 export type ParseWarning =
@@ -133,6 +139,15 @@ function detectDelimiter(text: string): string | undefined {
         }
     }
     return best?.delimiter;
+}
+
+// A Sub ID whose macro never fired carries the literal template (`{{campaign.id}}`, `{sub_id_4}`)
+// instead of a value. Facebook fails macros per column, not per row, so a row can lose its Account
+// while keeping its Creative. A template is absence, never an identity — collapse it to empty so no
+// downstream map ever keys an Account or Creative on the placeholder text.
+function subId(raw: string | undefined): string {
+    const value = (raw ?? '').trim();
+    return value.startsWith('{') ? '' : value;
 }
 
 function parseCsv(text: string): CsvResult {
@@ -291,19 +306,24 @@ export function parseFile(text: string): { type: FileType | null; parsed: Partia
         for (const r of rows) {
             const campaign = (r['Sub ID 2'] ?? '').trim();
             const os = (r['OS'] ?? '').trim();
-            // Totals Row (empty Sub ID 2) and Invalid Row (empty OS) are dropped everywhere.
-            if (campaign === '' || os === '') {
+            const name = (r['Country'] ?? '').trim();
+            // Three classes share an empty `Sub ID 2` and must not be confused (ADR-0012):
+            //   Totals Row — EVERY dimension empty, counts populated. Discard: it is the whole
+            //     report restated, so keeping it would double every number.
+            //   Invalid Row — empty OS. Dropped everywhere (doc 01).
+            //   Untagged Row — Sub IDs empty but Country/Offer/OS present. Real traffic whose
+            //     referral lost its macros; kept, tagged, counted to the Geo Total only.
+            if (os === '' || (campaign === '' && name === '')) {
                 continue;
             }
-            const name = (r['Country'] ?? '').trim();
             const geo = geoFromName(name);
             if (name !== '' && geo === null) {
                 warnings.push({ kind: 'unknown-geo', type, name });
             }
             ktMain.push({
                 campaign,
-                account: (r['Sub ID 4'] ?? '').trim(),
-                creative: (r['Sub ID 5'] ?? '').trim(),
+                account: subId(r['Sub ID 4']),
+                creative: subId(r['Sub ID 5']),
                 offer: (r['Offer ID'] ?? '').trim(),
                 offerName: (r['Offer'] ?? '').trim(),
                 os,
@@ -313,6 +333,7 @@ export function parseFile(text: string): { type: FileType | null; parsed: Partia
                 revenue: num(r['Revenue']),
                 geo,
                 unfiredMacro: campaign.startsWith('{'),
+                untagged: campaign === '',
             });
         }
         return { type, parsed: { ktMain, warnings } };
@@ -322,23 +343,25 @@ export function parseFile(text: string): { type: FileType | null; parsed: Partia
         const ktClicks: KtClicksRow[] = [];
         for (const r of rows) {
             const campaign = (r['Sub ID 2'] ?? '').trim();
-            // Totals Row: empty Sub ID 2. (Clicks report has no OS-invalid rule.)
-            if (campaign === '') {
+            const name = (r['Country'] ?? '').trim();
+            // Totals Row: every dimension empty. An empty `Sub ID 2` with a Country is an Untagged
+            // Row, not the totals — see the kt-main branch. (Clicks has no OS-invalid rule.)
+            if (campaign === '' && name === '') {
                 continue;
             }
-            const name = (r['Country'] ?? '').trim();
             const geo = geoFromName(name);
             if (name !== '' && geo === null) {
                 warnings.push({ kind: 'unknown-geo', type, name });
             }
             ktClicks.push({
                 campaign,
-                account: (r['Sub ID 4'] ?? '').trim(),
-                creative: (r['Sub ID 5'] ?? '').trim(),
+                account: subId(r['Sub ID 4']),
+                creative: subId(r['Sub ID 5']),
                 os: (r['OS'] ?? '').trim(),
                 linkClicks: num(r['UC (campaign)']),
                 geo,
                 unfiredMacro: campaign.startsWith('{'),
+                untagged: campaign === '',
             });
         }
         return { type, parsed: { ktClicks, warnings } };

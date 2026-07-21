@@ -56,6 +56,13 @@ export function accountsFor(
 ): AccountRollup[] {
     const byAccount = new Map<string, Map<string, Fact[]>>();
     for (const fact of facts) {
+        // This block exists to decide what to stop, and it decides one campaign at a time. A
+        // campaign-lost fact has no campaign to stop and no Spend to weigh, so it would show up as a
+        // synthetic row an analyst can neither act on nor recognise (ADR-0012). It still counts in
+        // the Geo, Offer, OS and Creative tables — this is the one surface it stays out of.
+        if (fact.attribution !== 'full') {
+            continue;
+        }
         const campaigns = byAccount.get(fact.account) ?? new Map<string, Fact[]>();
         const list = campaigns.get(fact.campaign) ?? [];
         list.push(fact);

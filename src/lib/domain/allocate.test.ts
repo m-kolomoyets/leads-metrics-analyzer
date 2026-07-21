@@ -7,6 +7,7 @@ import { allocateGeo } from './allocate';
 
 function fact(over: Partial<Fact>): Fact {
     return {
+        attribution: 'full',
         campaign: 'c',
         creative: 'ad',
         reportDate: '2026-07-01',

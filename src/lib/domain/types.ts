@@ -20,6 +20,12 @@ export type GeoThresholds = {
     clicks: ThresholdPair;
 };
 
+// How completely a fact is attributed (ADR-0012). `full` joined FB↔Keitaro on Campaign ID and is the
+// only class a Verdict may grade. `campaign-lost` is an Unfired-Macro row: Account, Creative, Offer,
+// OS and Geo all survive, so it counts everywhere those roll up — but it has no Campaign, and
+// therefore no Facebook Spend, so grading it would divide by zero and stopping it is meaningless.
+export type Attribution = 'full' | 'campaign-lost';
+
 // The raw funnel counts + spend/revenue at any roll-up level. Uniques (linkClicks, installs) are
 // exact at Campaign grain, approximate once summed to Geo (doc 03 — "uniques do not sum").
 export type Totals = {
@@ -55,6 +61,10 @@ export type VerdictReason =
 // (ADR-0010) so a save is a straight map. `offer`/`os` are representative attributes of the
 // collapsed KT rows; the Offer/OS allocation tables (doc 06) are rebuilt in slice 4.
 export type Fact = {
+    // `full` joined Facebook↔Keitaro on Campaign ID. `campaign-lost` is an Unfired-Macro row: real
+    // Account/Creative/Offer/OS/Geo, no Campaign and no Spend, so it counts into every roll-up but
+    // must never appear as a campaign row or carry a Verdict (ADR-0012).
+    attribution: Attribution;
     campaign: string;
     creative: string;
     reportDate: string;

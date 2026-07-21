@@ -98,8 +98,17 @@ Facebook's macros failed to tag the referral. Answers "is this market making mon
 campaigns that simply cannot be traced to one of them.
 
 **Attributed**:
-The subset of Facts that joined to a Campaign. Answers "which campaign do I stop?". Every
-Campaign, Account, Creative, Offer and OS figure is Attributed. Only the Geo Total is not.
+The subset of Facts placed on a real Account and Creative. Answers "which campaign do I stop?".
+Every Campaign, Account, Creative, Offer and OS figure is Attributed. Only the Geo Total is not.
+It is *not* the same as "joined to Facebook": an Unfired Macro is attributed too, since it names its
+Account and Creative outright. Only Untagged rows fall outside (ADR-0012).
+
+**Fact Attribution**:
+How completely one Fact is placed. **Full** joined Facebook↔Keitaro on Campaign ID. **Campaign-lost**
+is an Unfired Macro: real Account, Creative, Offer, OS and Geo, but no Campaign and no Spend, so it
+counts in every roll-up except the Account block's campaign rows, and is never graded or stopped
+(ADR-0012). Untagged rows are neither — they never become a Fact at all.
+_Avoid_: Partial attribution, orphan fact, half-joined
 
 **Join Key**:
 `Campaign ID` (Facebook) = `Sub ID 2` (Keitaro), alone. Country is deliberately excluded — a
@@ -232,23 +241,29 @@ _Avoid_: checked, acknowledged, done, resolved
 ### Data hygiene
 
 **Totals Row**:
-A summary row emitted by an export tool, identified by an empty key field (Facebook: empty
-`Country`; Keitaro: empty `Sub ID 2`). Represents the whole report, not a fact. Always discarded
-— counting it would double every total.
+A summary row emitted by an export tool, identified by *every* dimension field being empty
+(Facebook: empty `Country`; Keitaro: no `Country`, no Sub ID, no `Offer`, no `OS`). Represents the
+whole report, not a fact. Always discarded — counting it would double every total. An empty
+`Sub ID 2` alone does **not** identify one: that is an Untagged Row, which is real traffic
+(ADR-0012).
 _Avoid_: Summary row, grand total, aggregate row
 
 **Unfired Macro**:
 A Keitaro row whose `Sub ID 2` still holds its literal template (`{{campaign.id}}`) because the
-tracking macro never expanded. Campaign attribution is lost for good, but Geo and Account survive
-— the creative name still carries its Geo code and `Sub ID 4` still names the Account. Counts
-toward the Geo Total; never toward a Campaign.
+tracking macro never expanded. Campaign attribution is lost for good; everything else survives —
+`Sub ID 4` still names the Account and `Sub ID 5` still names the Creative. It counts toward the
+Geo, Account, Creative, Offer and OS figures, and never toward a Campaign (ADR-0012). It carries no
+Spend, and none is ever allocated to it: that money was already paid under a campaign we cannot
+name. Macros fail per column, so a row can lose only some Sub IDs; one that lost them all has no
+identity left and is Untagged instead.
 _Avoid_: Broken row, macro row, template row
 
 **Untagged Revenue**:
 Revenue on a Keitaro row where Facebook's macros returned an empty referral, leaving every Sub ID
 blank. Real money earned by these campaigns that cannot be traced to one of them. Its only Geo
 signal is Keitaro's country name — there is no creative to read a code from. Counts toward the
-Geo Total.
+Geo Total, and only when its `OS` is mobile: these campaigns buy mobile installs, so a desktop row
+cannot have come from the Spend under analysis (ADR-0012).
 _Avoid_: Orphan revenue, untracked revenue, unattributed revenue
 
 **Invalid Row**:

@@ -2,6 +2,7 @@ import type { Metrics } from './aggregate';
 import type { CampaignModel } from './join';
 import type { Fact, Totals } from './types';
 import { metricsFor } from './aggregate';
+import { mobileOs } from './join';
 
 // 6 · Allocation (doc 06). Offer and OS live below the join — Facebook never measures their Spend, so
 // each Campaign's real Spend⁺ is split across its Offers / OS in proportion to that Campaign's own
@@ -30,16 +31,6 @@ export type GeoAllocation = {
 
 function zeroTotals(): Totals {
     return { spend: 0, spendPlus: 0, revenue: 0, linkClicks: 0, installs: 0, regs: 0, sales: 0 };
-}
-
-// The OS table only ever reports mobile traffic: Android and iOS. Every other OS value (desktop,
-// unknown, empty) is dropped before allocation — it must not count into any OS row at all.
-function mobileOs(os: string): 'Android' | 'iOS' | null {
-    const value = os.trim().toLowerCase();
-    if (value.startsWith('android')) {
-        return 'Android';
-    }
-    return value.startsWith('ios') ? 'iOS' : null;
 }
 
 function bucket(map: Map<string, Totals>, key: string): Totals {

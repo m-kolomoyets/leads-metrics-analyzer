@@ -58,8 +58,14 @@ export function creativesFor(
 
     for (const fact of facts) {
         const creatives = campaignCreatives.get(fact.campaign);
-        // No per-creative source, or a zero-Spend campaign (no basis to split) — nothing to allocate.
-        if (!creatives || fact.spend <= 0) {
+        if (!creatives) {
+            continue;
+        }
+        // A zero-Spend campaign offers no basis to split by Spend share. One creative still takes the
+        // whole funnel — that is the Unfired-Macro case, where `Sub ID 5` names the creative outright
+        // and nothing is being estimated (ADR-0012). Several creatives with no Spend between them are
+        // genuinely unsplittable; skip rather than invent an even split.
+        if (fact.spend <= 0 && creatives.size !== 1) {
             continue;
         }
         for (const [name, real] of creatives) {
@@ -67,7 +73,7 @@ export function creativesFor(
             if (!parsed) {
                 continue;
             }
-            const share = real.spend / fact.spend;
+            const share = fact.spend > 0 ? real.spend / fact.spend : 1;
             const acc = byKey.get(parsed.key) ?? zeroAcc(parsed.cc);
             // Spend/Impressions are real; the rest is the campaign's funnel × this creative's Spend share.
             acc.spend += real.spend;

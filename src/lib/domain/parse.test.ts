@@ -31,7 +31,8 @@ describe('parseFiles hygiene', () => {
         'Country,Account ID,Campaign ID,Ad name,Amount spent (USD),Impressions,Reporting starts,Reporting ends\n,,,,999,0,2026-07-01,2026-07-16\nIN,acc1,c1,Ad A,10.5,100,2026-07-01,2026-07-16';
     const ktMain =
         'Country;Sub ID 2;Sub ID 4;Sub ID 5;Offer ID;Offer;OS;Clicks;UC (campaign);Conv.;Sales;Revenue\n' +
-        'India;;;;363;WWL;GNU/Linux;6;6;0;0;0\n' + // totals (empty Sub ID 2)
+        ';;;;;;;99;99;0;0;999\n' + // totals — EVERY dimension empty
+        'India;;;;363;WWL;GNU/Linux;6;6;0;0;0\n' + // untagged — Sub IDs empty, Country/Offer/OS real
         'India;c1;acc1;IN_1;363;WWL;;5;5;0;0;0\n' + // invalid (empty OS)
         'India;c1;acc1;IN_1;363;WWL;Android;5;3;1;0;120\n' +
         'India;{sub2};accX;IN_9;363;WWL;Android;2;2;0;0;50'; // unfired macro
@@ -42,14 +43,41 @@ describe('parseFiles hygiene', () => {
         expect(out.fb[0].spend).toBe(10.5);
     });
 
-    it('drops Totals + Invalid KT rows, tags unfired macro, resolves geo', () => {
+    it('drops Totals + Invalid KT rows, tags unfired macro and untagged, resolves geo', () => {
         const out = parseFiles([ktMain]);
-        expect(out.ktMain).toHaveLength(2); // one real + one macro; totals & invalid dropped
+        // Untagged survives (real traffic that lost its referral); only Totals and Invalid drop.
+        expect(out.ktMain).toHaveLength(3);
         const macro = out.ktMain.find((r) => {
             return r.unfiredMacro;
         });
         expect(macro?.geo).toBe('IN');
+        expect(macro?.untagged).toBe(false);
+        const untagged = out.ktMain.find((r) => {
+            return r.untagged;
+        });
+        expect(untagged?.geo).toBe('IN');
+        expect(untagged?.unfiredMacro).toBe(false);
         expect(out.ktMain[0].geo).toBe('IN');
+    });
+
+    it('an empty-everything row is the Totals Row and never becomes data', () => {
+        // Distinguished from Untagged by having no Country either — counting it doubles the report.
+        const out = parseFiles([ktMain]);
+        expect(
+            out.ktMain.some((r) => {
+                return r.revenue === 999;
+            })
+        ).toBe(false);
+    });
+
+    it('treats an unexpanded Sub ID template as absence, not an identity', () => {
+        const kt =
+            'Country;Sub ID 2;Sub ID 4;Sub ID 5;Offer ID;Offer;OS;Clicks;UC (campaign);Conv.;Sales;Revenue\n' +
+            'India;{{campaign.id}};{sub_id_4};{sub_id_5};363;WWL;Android;2;2;0;0;50';
+        const row = parseFiles([kt]).ktMain[0];
+        expect(row.unfiredMacro).toBe(true);
+        expect(row.account).toBe('');
+        expect(row.creative).toBe('');
     });
 
     it('does not mistake pipe-delimited offer names for the delimiter', () => {

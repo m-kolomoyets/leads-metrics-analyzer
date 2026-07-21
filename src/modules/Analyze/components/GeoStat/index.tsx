@@ -74,10 +74,15 @@ function Stat({
 // glowing stat pills — Spend/Revenue/Profit/ROI (glow tinted by the ROI band) and the waste readout
 // (glow tinted by its Waste-Zone band). Attributed / untagged gap (ADR-0003) rides under the first pill.
 function GeoStat({ geo, rollup, thresholds, waste, wasteZone, locale }: GeoStatProps) {
-    const { metrics } = rollup;
+    const { metrics, attributed } = rollup;
     const wastePct = metrics.spendPlus > 0 ? (waste / metrics.spendPlus) * 100 : 0;
     const wasteTone: Zone = wasteZone ? zoneFor(wastePct, wasteZone) : 'neutral';
     const roi = roiTone(metrics.roi);
+    // The Geo-Total gap (ADR-0003/0012): revenue on rows with no usable Sub ID. A growing share is a
+    // tracking-health signal, so it is shown rather than folded in silently — but only when it is
+    // non-zero, since most reports have none and an always-on 0 would be noise.
+    const untaggedRevenue = metrics.revenue - attributed.revenue;
+    const untaggedPct = metrics.revenue > 0 ? (untaggedRevenue / metrics.revenue) * 100 : 0;
 
     return (
         <section className="glass-tint tint-blue tint-s5 flex flex-col gap-4 rounded-2xl p-4">
@@ -117,6 +122,18 @@ function GeoStat({ geo, rollup, thresholds, waste, wasteZone, locale }: GeoStatP
                         />
                         <Stat label="ROI" value={pct(metrics.roi)} size="lg" className={ZONE_TEXT_CLASS[roi]} />
                     </div>
+
+                    {untaggedRevenue > 0.005 && (
+                        <p
+                            className="text-muted-foreground text-[10px] leading-relaxed"
+                            title={ui('divergenceNote', locale)}
+                        >
+                            {ui('attributed', locale)} {usd(attributed.revenue)} · {ui('untaggedGap', locale)}{' '}
+                            <span className="font-mono">
+                                {usd(untaggedRevenue)} ({untaggedPct.toFixed(1)}%)
+                            </span>
+                        </p>
+                    )}
                 </div>
 
                 <div

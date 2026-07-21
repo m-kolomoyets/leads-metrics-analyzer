@@ -11,6 +11,7 @@ const TH: GeoThresholds = {
 // A campaign-grain Fact; only the fields under test carry values.
 function fact(over: Partial<Fact>): Fact {
     return {
+        attribution: 'full',
         campaign: 'c',
         creative: 'ad',
         reportDate: '2026-07-01',

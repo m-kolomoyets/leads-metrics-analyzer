@@ -68,8 +68,9 @@ describe('analyze — golden geo money (exact)', () => {
         expect(m.revenue).toBeCloseTo(1620, 0);
         expect(m.profit).toBeCloseTo(562, 0);
         expect(m.roi).toBeCloseTo(53, 0);
-        // Attributed (no untagged) is 180 short — the Geo-Total divergence.
-        expect(geo('KR').attributed.revenue).toBeCloseTo(1440, 0);
+        // The unfired-macro row keeps its Account and Creative, so it is attributed too (ADR-0012) —
+        // only a row with no usable Sub ID at all sits outside Attributed, and KR has none of those.
+        expect(geo('KR').attributed.revenue).toBeCloseTo(1620, 0);
     });
 });
 
@@ -94,6 +95,7 @@ describe('analyze — fact shape & hygiene', () => {
         expect(Object.keys(fact).sort()).toEqual(
             [
                 'account',
+                'attribution',
                 'campaign',
                 'creative',
                 'geo',
@@ -115,11 +117,26 @@ describe('analyze — fact shape & hygiene', () => {
     });
 
     it('unfired-macro rows never surface as a campaign fact', () => {
-        expect(
-            result.facts.some((f) => {
-                return f.campaign.startsWith('{');
-            })
-        ).toBe(false);
+        // They do produce facts (ADR-0012) — but flagged `campaign-lost`, never carrying a literal
+        // macro as an id and never carrying Spend, so no caller can mistake one for a real campaign.
+        const lost = result.facts.filter((f) => {
+            return f.attribution === 'campaign-lost';
+        });
+        expect(lost.length).toBeGreaterThan(0);
+        for (const fact of lost) {
+            expect(fact.campaign.startsWith('{')).toBe(false);
+            expect(fact.spend).toBe(0);
+            expect(fact.account).not.toBe('');
+            expect(fact.creative).not.toBe('');
+        }
+    });
+
+    it('a macro that failed on every Sub ID is Geo-only, never a fact', () => {
+        // `{sub_id_4}` / `{sub_id_5}` literals are absence, not identities — nothing to attribute to.
+        for (const fact of result.facts) {
+            expect(fact.account.startsWith('{')).toBe(false);
+            expect(fact.creative.startsWith('{')).toBe(false);
+        }
     });
 });
 

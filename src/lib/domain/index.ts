@@ -63,6 +63,7 @@ function gradeFact(raw: RawFact, ruleset: Ruleset): Fact {
         ? verdictFor(totals, thresholds)
         : { verdict: 'neutral' as const, zone: 'neutral' as const };
     return {
+        attribution: raw.attribution,
         campaign: raw.campaign,
         creative: raw.creative,
         reportDate: raw.reportDate,
@@ -120,6 +121,12 @@ export function analyzeParsed(parsed: ParsedFiles, ruleset: Ruleset): AnalyzeRes
     const problemAccounts: ProblemAccount[] = [];
     const byGeoAccount = new Map<string, Map<string, Fact[]>>();
     for (const fact of facts) {
+        // Campaign-lost facts carry Revenue against zero Spend, so folding them in here would make a
+        // wasteful account look thriftier than it is and could silently clear a genuine flag. The
+        // detector is a Spend-waste test — it sees attributed facts only (ADR-0012).
+        if (fact.attribution !== 'full') {
+            continue;
+        }
         const accounts = byGeoAccount.get(fact.geo) ?? new Map<string, Fact[]>();
         const list = accounts.get(fact.account) ?? [];
         list.push(fact);
