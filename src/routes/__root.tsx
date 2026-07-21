@@ -37,7 +37,7 @@ const THEME_SCRIPT = `
 const INITIAL_STYLE = `
 :root { --initial-bg: rgb(248 250 253); }
 html.dark { --initial-bg: rgb(8 11 20); }
-html { font-family: "Geist", sans-serif; }
+html { font-family: "Inter", sans-serif; }
 body { background-color: var(--initial-bg); margin: 0; position: relative; }
 `;
 
@@ -78,11 +78,11 @@ export const Route = createRootRouteWithContext<RouterContext>()({
                 { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossOrigin: 'anonymous' },
                 {
                     rel: 'stylesheet',
-                    href: 'https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap',
+                    href: 'https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap',
                 },
                 {
                     rel: 'stylesheet',
-                    href: 'https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&display=swap',
+                    href: 'https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@100..700&display=swap',
                 },
             ],
         };

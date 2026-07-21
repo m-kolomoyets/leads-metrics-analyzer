@@ -123,9 +123,9 @@
 }
 
 @theme inline {
-    --font-sans: "Geist", sans-serif;
+    --font-sans: "Inter", sans-serif;
     --font-serif: ui-serif, "Georgia", "Cambria", "Times New Roman", "Times", serif;
-    --font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", "Menlo", "Monaco", "Consolas", monospace;
+    --font-mono: "Roboto Mono", ui-monospace, "SFMono-Regular", "Menlo", "Monaco", "Consolas", monospace;
     --radius-sm: calc(var(--radius) * 0.6);
     --radius-md: calc(var(--radius) * 0.8);
     --radius-lg: var(--radius);
