@@ -51,4 +51,25 @@ describe('parseFiles hygiene', () => {
         expect(macro?.geo).toBe('IN');
         expect(out.ktMain[0].geo).toBe('IN');
     });
+
+    it('does not mistake pipe-delimited offer names for the delimiter', () => {
+        // Narrow export: every row repeats the same offer string, so its pipe count is constant and
+        // PapaParse's default guess order would pick `|` over `;` and collapse the file into one column.
+        const offer = '"SG | Longfu88 | RegForm (Slot) | CPA | 200 EUR | Android | KPI Yes | Falcons"';
+        const rows = ['120246681556160106', '120246681556750106', '120246681556650106'].map((sub2) => {
+            return `Singapore;${sub2};1641083631350576;🇸🇬_SG_50_[WealthEastMoney];12240;${offer};Android;17;5;2;2;457.5`;
+        });
+        const narrowKt = [
+            'Country;"Sub ID 2";"Sub ID 4";"Sub ID 5";"Offer ID";Offer;OS;Clicks;"UC (campaign)";Conv.;Sales;Revenue',
+            ...rows,
+        ].join('\n');
+
+        const out = parseFiles([narrowKt]);
+
+        expect(out.ktMain).toHaveLength(3);
+        expect(out.ktMain[0].geo).toBe('SG');
+        expect(out.ktMain[0].creative).toBe('🇸🇬_SG_50_[WealthEastMoney]');
+        expect(out.ktMain[0].offer).toBe('12240');
+        expect(out.ktMain[0].revenue).toBe(457.5);
+    });
 });

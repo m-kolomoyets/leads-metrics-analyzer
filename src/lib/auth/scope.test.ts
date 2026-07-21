@@ -21,7 +21,7 @@ describe('scopeFor', () => {
         {
             name: 'team_lead is scoped to its own team, full dimensions',
             viewer: { id: 'u-tl', role: 'team_lead', teamId: 't-1' },
-            expected: { rowScope: 'team', teamId: 't-1', dimensions: FULL_DIMENSIONS },
+            expected: { rowScope: 'team', teamId: 't-1', userId: 'u-tl', dimensions: FULL_DIMENSIONS },
         },
         {
             name: 'buyer sees only its own rows, full dimensions',
@@ -66,8 +66,10 @@ describe('scopeFor', () => {
         expect(teamA.teamId).not.toBe(teamB.teamId);
     });
 
-    it('leaves team_lead teamId unbound until a team is assigned', () => {
-        expect(scopeFor({ id: 'u-tl', role: 'team_lead' }).teamId).toBeUndefined();
+    it('leaves team_lead teamId unbound until a team is assigned, but binds its userId', () => {
+        const scope = scopeFor({ id: 'u-tl', role: 'team_lead' });
+        expect(scope.teamId).toBeUndefined();
+        expect(scope.userId).toBe('u-tl');
     });
 
     it('denies a designer any dollar-carrying dimension (only creative)', () => {

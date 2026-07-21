@@ -37,7 +37,13 @@ export const scopeFor = (viewer: Viewer): VisibilityScope => {
             return { rowScope: 'all', dimensions: [...ALL_DIMENSIONS] };
         }
         case 'team_lead': {
-            return { rowScope: 'team', teamId: viewer.teamId ?? undefined, dimensions: [...ALL_DIMENSIONS] };
+            // `userId` is bound too: with no team placed, a lead falls back to own-rows only.
+            return {
+                rowScope: 'team',
+                teamId: viewer.teamId ?? undefined,
+                userId: viewer.id,
+                dimensions: [...ALL_DIMENSIONS],
+            };
         }
         case 'buyer': {
             return { rowScope: 'own', userId: viewer.id, dimensions: [...ALL_DIMENSIONS] };

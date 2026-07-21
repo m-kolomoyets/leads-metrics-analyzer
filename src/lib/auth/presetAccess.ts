@@ -43,7 +43,12 @@ export const presetAccessFor = (viewer: Viewer, preset: PresetSubject): PresetAc
             return 'edit';
         }
         case 'team': {
-            return preset.teamId !== null && preset.teamId === scope.teamId ? 'edit' : 'none';
+            // A viewer with no team bound sees only their own presets — handled by the owner check
+            // above, so nothing else is visible. Only a Head (rowScope 'all') reads every teamless one.
+            if (!scope.teamId) {
+                return 'none';
+            }
+            return preset.teamId === scope.teamId ? 'edit' : 'none';
         }
         case 'own': {
             // A non-owner under own-scope (buyer) never sees a teammate's preset — nothing to edit.

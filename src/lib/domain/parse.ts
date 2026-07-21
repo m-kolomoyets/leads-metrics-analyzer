@@ -53,7 +53,9 @@ export type KtClicksRow = {
 };
 
 export type ParseWarning =
-    { kind: 'unknown-geo'; type: FileType; name: string } | { kind: 'unknown-file-type'; headers: string[] };
+    | { kind: 'unknown-geo'; type: FileType; name: string }
+    // `reason` is a human sentence naming the offending column/row situation, shown next to the file.
+    | { kind: 'unknown-file-type'; headers: string[]; reason: string };
 
 export type ParsedFiles = {
     fb: FbRow[];
@@ -92,16 +94,100 @@ function geoFromName(name: string): string | null {
 
 type Rec = Record<string, string>;
 
-function parseCsv(text: string): Rec[] {
+type CsvResult = { rows: Rec[]; fields: string[]; delimiter: string; errors: string[] };
+
+function parseCsv(text: string): CsvResult {
     const result = Papa.parse<Rec>(text, {
         header: true,
         skipEmptyLines: true,
+        // Pin the guess list: PapaParse tries `|` before `;` by default, and Keitaro offer names are
+        // themselves pipe-delimited ("SG | Longfu88 | RegForm ... | Falcons"). A narrow export where every
+        // row repeats the same offer has a constant pipe count, so `|` scores as the most consistent
+        // delimiter and the whole file collapses into one column. Never guess `|`.
+        delimitersToGuess: [';', ',', '\t'],
         // Trim space-padded, quoted header names before matching (doc 01). PapaParse strips the BOM.
         transformHeader: (h) => {
             return h.trim();
         },
     });
-    return result.data;
+    return {
+        rows: result.data,
+        // `meta.fields` survives a header-only file, where `data` is empty — needed to explain why.
+        fields: (result.meta.fields ?? []).filter((f) => {
+            return f !== '';
+        }),
+        delimiter: result.meta.delimiter,
+        errors: result.errors.map((e) => {
+            return e.row === undefined ? e.message : `row ${e.row + 2}: ${e.message}`;
+        }),
+    };
+}
+
+// Signature column per file type — the single header that routes a file (doc 01).
+const SIGNATURES: { type: FileType; column: string; label: string }[] = [
+    { type: 'fb', column: 'Amount spent (USD)', label: 'Facebook Ads' },
+    { type: 'kt-main', column: 'Offer ID', label: 'Keitaro — Main' },
+    { type: 'kt-clicks', column: 'ROI (confirmed)', label: 'Keitaro — Clicks' },
+];
+
+// Other columns each report carries — used to spot a near-miss ("looks like FB, but…") so the user
+// gets the one missing column name instead of a generic "unrecognised file".
+const FAMILY_HINTS: Record<FileType, string[]> = {
+    fb: ['Reporting starts', 'Reporting ends', 'Ad name', 'Impressions', 'Account ID', 'Campaign ID'],
+    'kt-main': ['Sub ID 2', 'Sub ID 4', 'Sub ID 5', 'Conv.', 'Sales', 'Revenue', 'Offer'],
+    'kt-clicks': ['Sub ID 2', 'Sub ID 4', 'Sub ID 5', 'UC (campaign)', 'Clicks'],
+};
+
+function quoteList(items: string[], max = 6): string {
+    const shown = items.slice(0, max).map((i) => {
+        return `"${i}"`;
+    });
+    const rest = items.length - shown.length;
+    return rest > 0 ? `${shown.join(', ')} (+${rest} more)` : shown.join(', ');
+}
+
+// Why did detection fail? Answer in one sentence naming the actual columns/rows at fault.
+function unknownReason(csv: CsvResult): string {
+    const { rows, fields, delimiter, errors } = csv;
+
+    if (fields.length === 0) {
+        return 'No header row found — the file is empty or contains no readable columns.';
+    }
+
+    if (fields.length === 1) {
+        return `Only one column was detected ("${fields[0]}") using "${delimiter}" as the separator — the file is likely semicolon- or tab-separated, or is not a CSV at all.`;
+    }
+
+    // Near-miss: the file carries a report's supporting columns but not its routing column.
+    const near = SIGNATURES.map((sig) => {
+        const hits = FAMILY_HINTS[sig.type].filter((h) => {
+            return fields.includes(h);
+        });
+        return { sig, hits: hits.length };
+    })
+        .filter((c) => {
+            return c.hits >= 2;
+        })
+        .sort((a, b) => {
+            return b.hits - a.hits;
+        })[0];
+
+    if (near) {
+        return `Looks like a ${near.sig.label} export, but the required column "${near.sig.column}" is missing. Columns found: ${quoteList(fields)}.`;
+    }
+
+    if (rows.length === 0) {
+        return `Header row present but no data rows follow it. Columns found: ${quoteList(fields)}.`;
+    }
+
+    if (errors.length > 0) {
+        return `CSV is malformed — ${errors[0]}. Columns found: ${quoteList(fields)}.`;
+    }
+
+    const expected = SIGNATURES.map((sig) => {
+        return `"${sig.column}" (${sig.label})`;
+    }).join(', ');
+    return `No recognised report column. Expected one of ${expected}, but the file's columns are: ${quoteList(fields, 10)}.`;
 }
 
 // Route a file by its detected columns, not by drop-zone (doc 01) — a KT file on the FB slot still
@@ -140,8 +226,9 @@ function toFbRow(r: Rec): FbRow {
 // Parse one file's text. Applies hygiene (doc 01): Totals and Invalid rows are dropped; Unfired-Macro
 // rows are kept and tagged (they survive at Geo level, ADR-0003). Unknown geo names are warned.
 export function parseFile(text: string): { type: FileType | null; parsed: Partial<ParsedFiles> } {
-    const rows = parseCsv(text);
-    const headers = rows.length > 0 ? Object.keys(rows[0]) : [];
+    const csv = parseCsv(text);
+    const { rows } = csv;
+    const headers = csv.fields;
     const type = detectType(headers);
     const warnings: ParseWarning[] = [];
 
@@ -211,7 +298,7 @@ export function parseFile(text: string): { type: FileType | null; parsed: Partia
         return { type, parsed: { ktClicks, warnings } };
     }
 
-    return { type: null, parsed: { warnings: [{ kind: 'unknown-file-type', headers }] } };
+    return { type: null, parsed: { warnings: [{ kind: 'unknown-file-type', headers, reason: unknownReason(csv) }] } };
 }
 
 // Merge already-parsed per-file partials into one batch, routing each row by its type bucket. Cheap

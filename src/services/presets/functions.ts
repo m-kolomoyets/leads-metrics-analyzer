@@ -50,8 +50,9 @@ const presetRowFilter = (scope: VisibilityScope): SQL | undefined => {
             return undefined;
         }
         case 'team': {
-            // A teamless lead is excluded upstream (see listPresetsFn), so a bound teamId is expected.
-            return eq(preset.teamId, scope.teamId ?? '');
+            // No team bound (a lead not yet placed) → own presets only; a Head (rowScope 'all') is the
+            // one who reads every teamless preset. Mirrors `presetAccessFor` so rows and verdicts agree.
+            return scope.teamId ? eq(preset.teamId, scope.teamId) : eq(preset.ownerUserId, scope.userId ?? '');
         }
         case 'own': {
             return eq(preset.ownerUserId, scope.userId ?? '');
@@ -110,11 +111,6 @@ export const listPresetsFn = createServerFn({ method: 'GET' }).handler(async ():
 
     // Presets are a dollar-dimension table; a viewer without the Geo dimension (designer/bdm) sees none.
     if (!scope.dimensions.includes('geo')) {
-        return [];
-    }
-
-    // A team-scoped viewer with no team bound (a lead not yet placed) can match no team's presets.
-    if (scope.rowScope === 'team' && !scope.teamId) {
         return [];
     }
 

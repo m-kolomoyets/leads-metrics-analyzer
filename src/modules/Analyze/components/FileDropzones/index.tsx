@@ -38,6 +38,32 @@ function isCsv(file: File) {
     return file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv');
 }
 
+// A rejected file still gets listed as unknown — silently dropping it looks like a broken upload.
+function toRejected(file: File): UploadedFile {
+    const ext = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.')) : '(no extension)';
+    return {
+        name: file.name,
+        type: null,
+        parsed: {
+            warnings: [
+                {
+                    kind: 'unknown-file-type',
+                    headers: [],
+                    reason: `Not a CSV file — "${ext}" is not readable. Export the report as CSV and upload it again.`,
+                },
+            ],
+        },
+    };
+}
+
+// The one-sentence explanation attached at parse time, if any.
+function unknownReasonOf(file: UploadedFile): string | null {
+    const warning = file.parsed.warnings?.find((w) => {
+        return w.kind === 'unknown-file-type';
+    });
+    return warning?.reason ?? null;
+}
+
 function zoneHint(hint: string, active: boolean, isDraggedOver: boolean) {
     if (isDraggedOver) {
         return 'Drop to add';
@@ -49,12 +75,15 @@ function FileDropzones({ files, onChange }: FileDropzonesProps) {
     const [draggedOver, setDraggedOver] = useState<FileType | null>(null);
 
     async function addFiles(picked: File[], multiple: boolean) {
-        const accepted = picked.filter(isCsv);
-        if (accepted.length === 0) {
+        if (picked.length === 0) {
             return;
         }
+        const accepted = picked.filter(isCsv);
+        const rejected = picked.filter((file) => {
+            return !isCsv(file);
+        });
         const added = await toUploaded(multiple ? accepted : accepted.slice(0, 1));
-        onChange([...files, ...added]);
+        onChange([...files, ...added, ...rejected.map(toRejected)]);
     }
 
     async function handleInput(event: React.ChangeEvent<HTMLInputElement>) {
@@ -141,26 +170,30 @@ function FileDropzones({ files, onChange }: FileDropzonesProps) {
             {files.length > 0 && (
                 <ul className="flex flex-col gap-1 text-sm">
                     {files.map((file, index) => {
+                        const reason = file.type ? null : unknownReasonOf(file);
                         return (
-                            <li key={`${file.name}-${index}`} className="flex items-center gap-2">
-                                <span
-                                    className={cn(
-                                        'rounded px-1.5 py-0.5 text-xs',
-                                        file.type ? 'bg-accent' : 'bg-danger/15 text-danger'
-                                    )}
-                                >
-                                    {file.type ? TYPE_LABEL[file.type] : 'unknown'}
-                                </span>
-                                <span className="truncate">{file.name}</span>
-                                <button
-                                    type="button"
-                                    className="text-muted-foreground text-xs hover:underline"
-                                    onClick={() => {
-                                        removeAt(index);
-                                    }}
-                                >
-                                    remove
-                                </button>
+                            <li key={`${file.name}-${index}`} className="flex flex-col gap-0.5">
+                                <div className="flex items-center gap-2">
+                                    <span
+                                        className={cn(
+                                            'rounded px-1.5 py-0.5 text-xs',
+                                            file.type ? 'bg-accent' : 'bg-danger/15 text-danger'
+                                        )}
+                                    >
+                                        {file.type ? TYPE_LABEL[file.type] : 'unknown'}
+                                    </span>
+                                    <span className="truncate">{file.name}</span>
+                                    <button
+                                        type="button"
+                                        className="text-muted-foreground text-xs hover:underline"
+                                        onClick={() => {
+                                            removeAt(index);
+                                        }}
+                                    >
+                                        remove
+                                    </button>
+                                </div>
+                                {reason && <span className="text-danger pl-1 text-xs">{reason}</span>}
                             </li>
                         );
                     })}

@@ -16,6 +16,8 @@ const TEAM = 't-1';
 const owned: PresetSubject = { ownerUserId: OWNER, teamId: TEAM };
 const otherOwnerSameTeam: PresetSubject = { ownerUserId: 'u-mate', teamId: TEAM };
 const otherTeam: PresetSubject = { ownerUserId: 'u-x', teamId: 't-2' };
+// Owned by nobody's team — the rows a Head reads wholesale and a teamless viewer only owns.
+const teamless: PresetSubject = { ownerUserId: 'u-x', teamId: null };
 
 describe('presetAccessFor', () => {
     const cases: Array<{ name: string; viewer: Viewer; preset: PresetSubject; expected: string }> = [
@@ -53,6 +55,24 @@ describe('presetAccessFor', () => {
             name: 'head edits every preset in any team',
             viewer: { id: 'u-head', role: 'head' },
             preset: otherTeam,
+            expected: 'edit',
+        },
+        {
+            name: 'head reads every teamless preset',
+            viewer: { id: 'u-head', role: 'head' },
+            preset: teamless,
+            expected: 'edit',
+        },
+        {
+            name: 'a team_lead with no team sees no teamless preset it does not own',
+            viewer: { id: 'u-tl', role: 'team_lead' },
+            preset: teamless,
+            expected: 'none',
+        },
+        {
+            name: 'a team_lead with no team still edits their own preset',
+            viewer: { id: OWNER, role: 'team_lead' },
+            preset: { ownerUserId: OWNER, teamId: null },
             expected: 'edit',
         },
         {
