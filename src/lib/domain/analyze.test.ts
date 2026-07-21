@@ -154,4 +154,14 @@ describe('analyze — allocation reconciles (doc 06, S4)', () => {
         expect(offerSpend).toBeGreaterThan(0);
         expect(offerSpend).toBeLessThanOrEqual(g.attributed.spendPlus + 0.01);
     });
+
+    it('offer Spend⁺ + unallocated equals the geo attributed Spend⁺ exactly', () => {
+        const g = geo('IN');
+        const offerSpend = g.allocation.offers.reduce((sum, r) => {
+            return sum + r.metrics.spendPlus;
+        }, 0);
+        // Zero-install campaigns are still real cost — they land in `unallocated`, so the Offers
+        // table's footer can equal the Geo Total instead of quietly losing money.
+        expect(offerSpend + g.allocation.unallocated.spendPlus).toBeCloseTo(g.attributed.spendPlus, 6);
+    });
 });

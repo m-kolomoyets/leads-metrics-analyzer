@@ -74,7 +74,7 @@ function AccountCampaigns({ campaigns, thresholds, locale, isExcluded, onToggle 
                                 <td className="text-muted-foreground p-2 text-left font-mono text-xs">
                                     {campaign.campaign}
                                 </td>
-                                <td className="p-2 font-mono">{usd(metrics.spend)}</td>
+                                <td className="p-2 font-mono">{usd(metrics.spendPlus)}</td>
                                 <td
                                     className={cn(
                                         'p-2 font-mono',

@@ -83,6 +83,7 @@ const UI: Record<Locale, Record<string, string>> = {
         osTable: 'OS',
         totalAvg: 'Разом / сер.',
         allocEstimate: 'Spend оцінено: реальний Spend⁺ кампанії розподілено пропорційно інсталам (оцінка).',
+        unallocatedRow: 'Без інсталів (не розподілено)',
         wasteTitle: 'Злито поза нормою',
         wastePctOfSpend: '% від Spend⁺',
         wasteZone: 'Зона втрат',
@@ -90,7 +91,7 @@ const UI: Record<Locale, Record<string, string>> = {
         creatives: '🎨 Аналіз креативів',
         creative: 'Креатив',
         creativeEstimate:
-            'Spend та покази — реальні на креатив; воронку (інстали/реги/продажі/кліки) розподілено пропорційно Spend (оцінка).',
+            'Покази — реальні на креатив; Spend показано з комісією (Spend⁺); воронку (інстали/реги/продажі/кліки) розподілено пропорційно Spend (оцінка).',
         accountSummary: 'Зведення по акаунтах',
         summaryHint: 'клік — до блоку',
         wasteCol: 'Злито',
@@ -152,6 +153,7 @@ const UI: Record<Locale, Record<string, string>> = {
         totalAvg: 'Total / avg',
         allocEstimate:
             'Spend is estimated: each campaign real Spend⁺ split across offers/OS in proportion to installs (estimate).',
+        unallocatedRow: 'No installs (unallocated)',
         wasteTitle: 'Wasted over the line',
         wastePctOfSpend: '% of Spend⁺',
         wasteZone: 'Waste zone',
@@ -159,7 +161,7 @@ const UI: Record<Locale, Record<string, string>> = {
         creatives: '🎨 Creative analysis',
         creative: 'Creative',
         creativeEstimate:
-            'Spend and impressions are real per creative; the funnel (installs/regs/sales/clicks) is split across creatives in proportion to Spend (estimate).',
+            'Impressions are real per creative and Spend is commission-inclusive (Spend⁺); the funnel (installs/regs/sales/clicks) is split across creatives in proportion to Spend (estimate).',
         accountSummary: 'Account summary',
         summaryHint: 'click a row to jump',
         wasteCol: 'Waste',

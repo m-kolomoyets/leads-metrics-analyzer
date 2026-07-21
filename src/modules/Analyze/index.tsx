@@ -113,7 +113,7 @@ function Analyze() {
     // Spend⁺ per geo, stamped on each nav tab (reference).
     const spendByGeo: Record<string, number> = {};
     for (const geo of result?.geos ?? []) {
-        spendByGeo[geo.geo] = geo.metrics.spend;
+        spendByGeo[geo.geo] = geo.metrics.spendPlus;
     }
     const activeGeo = geos.includes(selectedGeo ?? '') ? selectedGeo : (geos[0] ?? null);
     // The very preset that fed this geo's grading — the inline editor mutates it so edits and
@@ -421,6 +421,7 @@ function Analyze() {
                                         title={`📦 ${ui('offers', locale)} · ${activeGeo}`}
                                         firstCol={ui('offers', locale)}
                                         rows={geoRollup.allocation.offers}
+                                        unallocated={geoRollup.allocation.unallocated}
                                         thresholds={thresholds}
                                         locale={locale}
                                     />

@@ -1,6 +1,6 @@
 import type { Metrics } from '@/lib/domain/aggregate';
 import type { ModelRow } from '@/lib/domain/allocate';
-import type { GeoThresholds, ThresholdPair } from '@/lib/domain/types';
+import type { GeoThresholds, ThresholdPair, Totals } from '@/lib/domain/types';
 import type { Locale } from '../../utils/i18n';
 import { metricsFor, sumTotals } from '@/lib/domain/aggregate';
 import { zoneFor } from '@/lib/domain/verdict';
@@ -13,6 +13,9 @@ type OffersTableProps = {
     title: string;
     firstCol: string;
     rows: ModelRow[];
+    // Spend⁺ of the geo's campaigns that bought nothing (allocate.ts). Rendered as its own row so
+    // the footer equals the Geo Total's Spend⁺ — zero-action campaigns are still real cost.
+    unallocated: Totals;
     thresholds: GeoThresholds;
     locale: Locale;
 };
@@ -88,13 +91,17 @@ function MetricCells({ m, thresholds, plain }: { m: Metrics; thresholds: GeoThre
 // the parsed name. No copy button, no CPC (offers have no click source). The footer rolls every row
 // up via metricsFor(Σ totals): counts/money summed, EPC/ROI/cost/conversion re-derived — so the
 // footer obeys the same Spend⁺ arithmetic as the cells above it.
-function OffersTable({ title, firstCol, rows, thresholds, locale }: OffersTableProps) {
+function OffersTable({ title, firstCol, rows, unallocated, thresholds, locale }: OffersTableProps) {
+    // Sub-cent leftovers are float noise, not a real bucket — only show a genuine spend.
+    const hasUnallocated = unallocated.spendPlus >= 0.01;
+    const unallocatedMetrics = metricsFor(unallocated);
     const totals = metricsFor(
-        sumTotals(
-            rows.map((row) => {
+        sumTotals([
+            ...rows.map((row) => {
                 return row.metrics;
-            })
-        )
+            }),
+            ...(hasUnallocated ? [unallocated] : []),
+        ])
     );
 
     // Block-start columns (Inst=1, EPC ends block1 → Rev, CPI, I2R start blocks 2/3/4).
@@ -144,6 +151,14 @@ function OffersTable({ title, firstCol, rows, thresholds, locale }: OffersTableP
                                 </tr>
                             );
                         })}
+                        {hasUnallocated && (
+                            <tr className="border-b">
+                                <td className="text-muted-foreground max-w-80 truncate p-2 text-left">
+                                    {ui('unallocatedRow', locale)}
+                                </td>
+                                <MetricCells m={unallocatedMetrics} thresholds={thresholds} plain />
+                            </tr>
+                        )}
                     </tbody>
                     <tfoot>
                         <tr className="border-t-2 font-semibold">

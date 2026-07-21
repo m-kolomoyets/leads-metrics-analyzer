@@ -23,7 +23,7 @@ function CostCell({ value, pair }: { value: number | null; pair: ThresholdPair }
 }
 
 // #35 · Per-Geo Creative analysis table. One row per creative, verdict-zone striped on the left.
-// Spend + CPM are real per creative; CPC/CPI/CPR/CPS + CTR ride the allocated funnel (estimate note).
+// Impressions are real per creative; every money figure is Spend⁺ (commission-inclusive), the funnel allocated.
 function CreativeTable({ rows, thresholds, locale, geo }: CreativeTableProps) {
     if (rows.length === 0) {
         return null;
@@ -60,7 +60,7 @@ function CreativeTable({ rows, thresholds, locale, geo }: CreativeTableProps) {
                                         <span className="text-base">{flagEmoji(row.cc)}</span>{' '}
                                         <span className="font-mono font-semibold">{row.key}</span>
                                     </td>
-                                    <td className="p-2 font-mono font-bold">{usd(metrics.spend)}</td>
+                                    <td className="p-2 font-mono font-bold">{usd(metrics.spendPlus)}</td>
                                     <CostCell value={metrics.cpc} pair={thresholds.clicks} />
                                     <CostCell value={metrics.cpi} pair={thresholds.installs} />
                                     <CostCell value={metrics.cpr} pair={thresholds.regs} />

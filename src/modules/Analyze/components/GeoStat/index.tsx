@@ -102,7 +102,7 @@ function GeoStat({ geo, rollup, thresholds, waste, wasteZone, locale }: GeoStatP
                     )}
                 >
                     <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
-                        <Stat label="Spend" value={usd(metrics.spend)} size="md" />
+                        <Stat label="Spend" value={usd(metrics.spendPlus)} size="md" />
                         <Stat
                             label={ui('geoTotal', locale)}
                             value={usd(metrics.revenue)}

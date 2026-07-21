@@ -39,7 +39,7 @@ function ProblemAccounts({ accounts, locale, isReviewed }: ProblemAccountsProps)
                             className={cn('text-muted-foreground', reviewed && 'line-through opacity-60')}
                         >
                             <span className="text-foreground font-mono">{account.account}</span>{' '}
-                            {usd(account.metrics.spend)} ·{' '}
+                            {usd(account.metrics.spendPlus)} ·{' '}
                             {problemReason(account.problem!, account.metrics.spendPlus, account.metrics.cpi, locale)}
                         </li>
                     );

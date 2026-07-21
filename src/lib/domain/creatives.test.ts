@@ -102,10 +102,10 @@ describe('creativesFor — golden', () => {
         expect(rowInstalls).toBeCloseTo(factInstalls, 4);
     });
 
-    it('CPM uses real Spend ÷ Impressions; CTR uses allocated clicks ÷ Impressions', () => {
+    it('CPM uses Spend⁺ ÷ Impressions; CTR uses allocated clicks ÷ Impressions', () => {
         for (const row of inRows) {
             if (row.impressions > 0) {
-                expect(row.cpm).toBeCloseTo((row.metrics.spend / row.impressions) * 1000, 6);
+                expect(row.cpm).toBeCloseTo((row.metrics.spendPlus / row.impressions) * 1000, 6);
                 expect(row.ctr).toBeCloseTo((row.metrics.linkClicks / row.impressions) * 100, 6);
             } else {
                 expect(row.cpm).toBeNull();

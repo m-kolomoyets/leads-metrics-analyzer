@@ -96,14 +96,52 @@ type Rec = Record<string, string>;
 
 type CsvResult = { rows: Rec[]; fields: string[]; delimiter: string; errors: string[] };
 
+// Every separator a report has ever arrived with, plus the ASCII record/unit separators PapaParse
+// knows about. Order is the tie-break order when two candidates score identically.
+const CANDIDATE_DELIMITERS = [',', ';', '\t', '|', ':', Papa.RECORD_SEP, Papa.UNIT_SEP];
+
+// Split the header with one candidate delimiter and count how many columns we actually recognise.
+// Content beats consistency: PapaParse's own guesser only measures field-count stability, which a
+// narrow Keitaro export defeats — every row repeats the same pipe-delimited `Offer` string
+// ("SG | Longfu88 | RegForm ... | Falcons"), so `|` looks perfectly consistent and collapses the file
+// into one column. A delimiter that yields real report headers is the one that is actually right.
+function scoreDelimiter(text: string, delimiter: string): { score: number; fields: number } {
+    const header = Papa.parse<string[]>(text, { delimiter, preview: 1, skipEmptyLines: true }).data[0] ?? [];
+    const seen = new Set(
+        header.map((h) => {
+            return h.trim();
+        })
+    );
+    const score = KNOWN_COLUMNS.filter((c) => {
+        return seen.has(c);
+    }).length;
+    return { score, fields: seen.size };
+}
+
+// Pick the delimiter that exposes the most known report columns; more columns breaks a tie. Returns
+// undefined when nothing is recognised, leaving PapaParse to guess so `unknownReason` can still
+// describe whatever the file really is.
+function detectDelimiter(text: string): string | undefined {
+    let best: { delimiter: string; score: number; fields: number } | undefined;
+    for (const delimiter of CANDIDATE_DELIMITERS) {
+        const { score, fields } = scoreDelimiter(text, delimiter);
+        if (score === 0) {
+            continue;
+        }
+        if (!best || score > best.score || (score === best.score && fields > best.fields)) {
+            best = { delimiter, score, fields };
+        }
+    }
+    return best?.delimiter;
+}
+
 function parseCsv(text: string): CsvResult {
     const result = Papa.parse<Rec>(text, {
         header: true,
         skipEmptyLines: true,
-        // Pin the guess list: PapaParse tries `|` before `;` by default, and Keitaro offer names are
-        // themselves pipe-delimited ("SG | Longfu88 | RegForm ... | Falcons"). A narrow export where every
-        // row repeats the same offer has a constant pipe count, so `|` scores as the most consistent
-        // delimiter and the whole file collapses into one column. Never guess `|`.
+        // Explicit when we recognise the header, otherwise PapaParse guesses — never with `|`, which
+        // its default order tries before `;` and which the `Offer` column is full of.
+        delimiter: detectDelimiter(text),
         delimitersToGuess: [';', ',', '\t'],
         // Trim space-padded, quoted header names before matching (doc 01). PapaParse strips the BOM.
         transformHeader: (h) => {
@@ -137,6 +175,14 @@ const FAMILY_HINTS: Record<FileType, string[]> = {
     'kt-main': ['Sub ID 2', 'Sub ID 4', 'Sub ID 5', 'Conv.', 'Sales', 'Revenue', 'Offer'],
     'kt-clicks': ['Sub ID 2', 'Sub ID 4', 'Sub ID 5', 'UC (campaign)', 'Clicks'],
 };
+
+// Every header any supported report can carry — the vocabulary `detectDelimiter` scores against.
+const KNOWN_COLUMNS: string[] = [
+    ...SIGNATURES.map((sig) => {
+        return sig.column;
+    }),
+    ...new Set(Object.values(FAMILY_HINTS).flat()),
+];
 
 function quoteList(items: string[], max = 6): string {
     const shown = items.slice(0, max).map((i) => {

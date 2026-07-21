@@ -72,4 +72,40 @@ describe('parseFiles hygiene', () => {
         expect(out.ktMain[0].offer).toBe('12240');
         expect(out.ktMain[0].revenue).toBe(457.5);
     });
+
+    it.each([
+        [';', 'semicolon'],
+        [',', 'comma'],
+        ['\t', 'tab'],
+        ['|', 'pipe'],
+        [':', 'colon'],
+    ])('routes a KT main export delimited by %s (%s)', (delimiter) => {
+        const csv = [
+            [
+                'Country',
+                'Sub ID 2',
+                'Sub ID 4',
+                'Sub ID 5',
+                'Offer ID',
+                'Offer',
+                'OS',
+                'Clicks',
+                'UC (campaign)',
+                'Conv.',
+                'Sales',
+                'Revenue',
+            ],
+            ['India', 'c1', 'acc1', 'IN_1', '363', 'WWL', 'Android', '5', '3', '1', '0', '120'],
+        ]
+            .map((row) => {
+                return row.join(delimiter);
+            })
+            .join('\n');
+
+        const out = parseFiles([csv]);
+
+        expect(out.ktMain).toHaveLength(1);
+        expect(out.ktMain[0].geo).toBe('IN');
+        expect(out.ktMain[0].revenue).toBe(120);
+    });
 });

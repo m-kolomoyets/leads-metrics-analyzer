@@ -94,7 +94,7 @@ function AccountBlock({
 
                 <span className="flex-1" />
 
-                <span className="font-mono text-sm">{usd(metrics.spend)}</span>
+                <span className="font-mono text-sm">{usd(metrics.spendPlus)}</span>
                 <span className="text-sm">
                     ROI <span className={cn('font-mono font-bold', roiClass(metrics.roi))}>{pct(metrics.roi)}</span>
                 </span>

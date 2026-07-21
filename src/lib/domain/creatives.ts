@@ -99,7 +99,8 @@ export function creativesFor(
             cc: acc.cc,
             impressions: acc.impressions,
             metrics,
-            cpm: acc.impressions > 0 ? (acc.spend / acc.impressions) * 1000 : null,
+            // Spend⁺ basis like every other cost metric (aggregate.ts) — commission is real cost.
+            cpm: acc.impressions > 0 ? (acc.spendPlus / acc.impressions) * 1000 : null,
             ctr: acc.impressions > 0 ? (acc.linkClicks / acc.impressions) * 100 : null,
             verdict: thresholds ? verdictFor(totals, thresholds) : NEUTRAL,
         });
