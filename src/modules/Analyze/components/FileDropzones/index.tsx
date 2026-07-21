@@ -80,7 +80,7 @@ function FileDropzones({ files, onChange }: FileDropzonesProps) {
                                 <span
                                     className={cn(
                                         'rounded px-1.5 py-0.5 text-xs',
-                                        file.type ? 'bg-accent' : 'bg-red-500/15 text-red-700'
+                                        file.type ? 'bg-accent' : 'bg-danger/15 text-danger'
                                     )}
                                 >
                                     {file.type ? TYPE_LABEL[file.type] : 'unknown'}

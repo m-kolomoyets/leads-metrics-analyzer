@@ -1,5 +1,6 @@
 import type { AccountRollup } from '@/lib/domain/accounts';
 import type { Locale } from '../../utils/i18n';
+import { Card } from '@/components/ui/Card';
 import { usd } from '../../utils/format';
 import { problemReason, ui } from '../../utils/i18n';
 
@@ -19,8 +20,8 @@ function ProblemAccounts({ accounts, locale }: ProblemAccountsProps) {
     }
 
     return (
-        <div className="rounded-xl border border-red-500/40 bg-red-500/5 p-3">
-            <p className="mb-2 text-sm font-semibold text-red-500">
+        <Card className="rounded-xl border-danger/40 bg-danger/5 p-3">
+            <p className="mb-2 text-sm font-semibold text-danger">
                 🚨 {ui('problemAccounts', locale)} ({flagged.length})
             </p>
             <ul className="flex flex-col gap-1 text-xs">
@@ -34,7 +35,7 @@ function ProblemAccounts({ accounts, locale }: ProblemAccountsProps) {
                     );
                 })}
             </ul>
-        </div>
+        </Card>
     );
 }
 

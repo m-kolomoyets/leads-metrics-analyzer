@@ -47,7 +47,7 @@ function AccountBlock({
             id={`acc-${account.account}`}
             className={cn(
                 'scroll-mt-4 rounded-2xl border p-4 backdrop-blur transition-opacity',
-                problem ? 'border-red-500/50 bg-red-500/5' : 'border-border bg-card/40',
+                problem ? 'pulse-red border-danger/50 bg-danger/5' : 'border-border bg-card/40',
                 reviewed && 'opacity-60'
             )}
         >
@@ -66,7 +66,7 @@ function AccountBlock({
                 <button
                     type="button"
                     title="copy account id"
-                    className={cn('font-mono text-base font-bold', problem && 'text-red-500')}
+                    className={cn('font-mono text-base font-bold', problem && 'text-danger')}
                     onClick={() => {
                         onCopy(account.account, `acc:${account.account}`);
                     }}
@@ -75,7 +75,7 @@ function AccountBlock({
                 </button>
 
                 {problem && (
-                    <span className="rounded-full border border-red-500/50 bg-red-500/15 px-2 py-0.5 text-xs font-semibold text-red-500">
+                    <span className="rounded-full border border-danger/50 bg-danger/15 px-2 py-0.5 text-xs font-semibold text-danger">
                         ! {ui('problem', locale)}
                     </span>
                 )}
@@ -112,7 +112,7 @@ function AccountBlock({
             </div>
 
             {problem && open && (
-                <p className="mt-2 text-xs text-red-500">
+                <p className="mt-2 text-xs text-danger">
                     ⚠ {problemReason(problem, metrics.spendPlus, metrics.cpi, locale)} — {ui('checkManually', locale)}.
                 </p>
             )}
@@ -174,7 +174,7 @@ function roiClass(roi: number | null): string {
     if (roi === null) {
         return 'text-muted-foreground';
     }
-    return roi >= 0 ? 'text-green-500' : 'text-red-500';
+    return roi >= 0 ? 'text-success' : 'text-danger';
 }
 
 export { AccountBlock };

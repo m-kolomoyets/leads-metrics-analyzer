@@ -8,6 +8,7 @@ import { PresetCreator } from '@/modules/Analyze/components/PresetCreator';
 import { ThresholdEditor } from '@/modules/Analyze/components/ThresholdEditor';
 import { MainLayoutHeader } from '@/components/layouts/MainLayoutHeader';
 import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/Sheet';
@@ -57,7 +58,7 @@ function Presets() {
                 </Button>
             </MainLayoutHeader>
 
-            <div className="overflow-x-auto rounded-lg border">
+            <Card variant="flat" className="overflow-x-auto">
                 <table className="w-full text-sm">
                     <thead className="text-muted-foreground border-b">
                         <tr>
@@ -101,7 +102,7 @@ function Presets() {
                         )}
                     </tbody>
                 </table>
-            </div>
+            </Card>
 
             <Sheet open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                 <SheetContent className="gap-0 overflow-y-auto">

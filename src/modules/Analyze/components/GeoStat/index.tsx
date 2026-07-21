@@ -3,6 +3,7 @@ import type { ThresholdPair } from '@/lib/domain/types';
 import type { Locale } from '../../utils/i18n';
 import { zoneFor } from '@/lib/domain/verdict';
 import { cn } from '@/lib/utils/cn';
+import { Card } from '@/components/ui/Card';
 import { ZONE_CARD_CLASS, ZONE_TEXT_CLASS } from '../../constants';
 import { pct, usd } from '../../utils/format';
 import { ui } from '../../utils/i18n';
@@ -37,24 +38,24 @@ function GeoStat({ rollup, waste, wasteZone, locale }: GeoStatProps) {
 
     return (
         <div className="flex flex-col gap-3 lg:flex-row">
-            <div
+            <Card
                 className={cn(
-                    'flex flex-1 flex-col gap-3 rounded-xl border p-4',
+                    'flex-1 gap-3 p-4',
                     ZONE_CARD_CLASS[metrics.roi !== null && metrics.roi >= 0 ? 'green' : 'red']
                 )}
             >
                 <div className="flex flex-wrap gap-x-8 gap-y-3">
                     <Stat label="Spend" value={usd(metrics.spend)} />
-                    <Stat label={ui('geoTotal', locale)} value={usd(metrics.revenue)} className="text-green-500" />
+                    <Stat label={ui('geoTotal', locale)} value={usd(metrics.revenue)} className="text-success" />
                     <Stat
                         label="Profit"
                         value={`${metrics.profit >= 0 ? '+' : '−'}${usd(Math.abs(metrics.profit))}`}
-                        className={metrics.profit >= 0 ? 'text-green-500' : 'text-red-500'}
+                        className={metrics.profit >= 0 ? 'text-success' : 'text-danger'}
                     />
                     <Stat
                         label="ROI"
                         value={pct(metrics.roi)}
-                        className={metrics.roi !== null && metrics.roi >= 0 ? 'text-green-500' : 'text-red-500'}
+                        className={metrics.roi !== null && metrics.roi >= 0 ? 'text-success' : 'text-danger'}
                     />
                 </div>
                 <div className="text-muted-foreground flex flex-wrap gap-x-6 gap-y-1 text-xs">
@@ -68,9 +69,9 @@ function GeoStat({ rollup, waste, wasteZone, locale }: GeoStatProps) {
                     )}
                 </div>
                 <p className="text-muted-foreground text-[10px]">{ui('divergenceNote', locale)}</p>
-            </div>
+            </Card>
 
-            <div className={cn('flex flex-col gap-1 rounded-xl border p-4', ZONE_CARD_CLASS[wasteZoneGrade])}>
+            <Card className={cn('gap-1 p-4', ZONE_CARD_CLASS[wasteZoneGrade])}>
                 <span className="text-muted-foreground text-[10px] tracking-wide uppercase">
                     {ui('wasteTitle', locale)}
                 </span>
@@ -85,7 +86,7 @@ function GeoStat({ rollup, waste, wasteZone, locale }: GeoStatProps) {
                         {ui('wasteZone', locale)}: {wasteZone.gy}% / {wasteZone.yr}%
                     </span>
                 )}
-            </div>
+            </Card>
         </div>
     );
 }

@@ -3,6 +3,7 @@ import type { UsersSectionProps } from './types';
 import { useState } from 'react';
 import { PlusIcon } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/Sheet';
 import { CreateUserForm } from '../CreateUserForm';
 import { EditUserForm } from '../EditUserForm';
@@ -31,7 +32,7 @@ function UsersSection({ users, teams, currentUserId }: UsersSectionProps) {
                 </Button>
             </div>
 
-            <div className="overflow-x-auto rounded-lg border">
+            <Card variant="flat" className="overflow-x-auto">
                 <table className="w-full text-sm">
                     <thead className="text-muted-foreground border-b">
                         <tr>
@@ -58,7 +59,7 @@ function UsersSection({ users, teams, currentUserId }: UsersSectionProps) {
                         })}
                     </tbody>
                 </table>
-            </div>
+            </Card>
 
             <Sheet open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                 <SheetContent className="gap-0">

@@ -2,6 +2,7 @@ import type { CampaignRollup } from '@/lib/domain/accounts';
 import type { Locale } from '../../utils/i18n';
 import { sumTotals } from '@/lib/domain/aggregate';
 import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
 import { usd } from '../../utils/format';
 import { ui } from '../../utils/i18n';
 
@@ -28,7 +29,7 @@ function SalesBlock({ campaigns, locale, copiedKey, onCopy, copyKey }: SalesBloc
     );
 
     return (
-        <div className="flex min-w-48 flex-1 flex-col gap-3 rounded-xl border border-violet-500/30 bg-violet-500/5 p-3 backdrop-blur">
+        <Card className="min-w-48 flex-1 gap-3 border-violet-500/30 bg-violet-500/5 p-3 backdrop-blur">
             <div className="flex items-center gap-2">
                 <span
                     className="flex size-5 items-center justify-center rounded-full bg-violet-500 text-[10px] font-bold text-black"
@@ -62,7 +63,7 @@ function SalesBlock({ campaigns, locale, copiedKey, onCopy, copyKey }: SalesBloc
             >
                 {copiedKey === copyKey ? ui('copied', locale) : ui('copyIds', locale)}
             </Button>
-        </div>
+        </Card>
     );
 }
 

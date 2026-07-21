@@ -108,15 +108,14 @@ function ModelTable({
                                     <td className="p-2 font-mono">{metrics.installs}</td>
                                     <td className="p-2 font-mono">{metrics.regs}</td>
                                     <td className="p-2 font-mono">{metrics.sales}</td>
-                                    <td className={cn('p-2 font-mono', metrics.revenue > 0 && 'text-green-500')}>
+                                    <td className={cn('p-2 font-mono', metrics.revenue > 0 && 'text-success')}>
                                         {usd(metrics.revenue)}
                                     </td>
                                     <td className="text-muted-foreground p-2 font-mono">{cost(metrics.epc)}</td>
                                     <td
                                         className={cn(
                                             'p-2 font-mono font-bold',
-                                            metrics.roi !== null &&
-                                                (metrics.roi >= 0 ? 'text-green-500' : 'text-red-500')
+                                            metrics.roi !== null && (metrics.roi >= 0 ? 'text-success' : 'text-danger')
                                         )}
                                     >
                                         {pct(metrics.roi)}

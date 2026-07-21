@@ -3,6 +3,7 @@ import type { GeoThresholds, ThresholdPair } from '@/lib/domain/types';
 import type { Locale } from '../../utils/i18n';
 import { zoneFor } from '@/lib/domain/verdict';
 import { cn } from '@/lib/utils/cn';
+import { Card } from '@/components/ui/Card';
 import { ZONE_TEXT_CLASS } from '../../constants';
 import { cost, pct } from '../../utils/format';
 import { ui } from '../../utils/i18n';
@@ -37,7 +38,7 @@ function AccountSummary({ accounts, thresholds, locale, onJump }: AccountSummary
     }
 
     return (
-        <div className="flex flex-col gap-2 rounded-xl border border-sky-500/30 bg-sky-500/5 p-4">
+        <Card variant="flat" className="gap-2 border-primary/30 bg-primary/5 p-4">
             <h3 className="text-sm font-semibold">
                 {ui('accountSummary', locale)}{' '}
                 <span className="text-muted-foreground font-normal">· {ui('summaryHint', locale)}</span>
@@ -68,7 +69,7 @@ function AccountSummary({ accounts, thresholds, locale, onJump }: AccountSummary
                                     key={account.account}
                                     className={cn(
                                         'hover:bg-muted/30 cursor-pointer border-b',
-                                        problem && 'bg-red-500/5'
+                                        problem && 'bg-danger/5'
                                     )}
                                     onClick={() => {
                                         onJump(account.account);
@@ -77,20 +78,19 @@ function AccountSummary({ accounts, thresholds, locale, onJump }: AccountSummary
                                     <td
                                         className={cn(
                                             'p-2 text-left font-mono',
-                                            problem ? 'font-bold text-red-500' : ''
+                                            problem ? 'font-bold text-danger' : ''
                                         )}
                                     >
                                         {account.account} {problem && '🚨'}
                                     </td>
                                     <td className="p-2 font-mono font-bold">${metrics.spend.toFixed(2)}</td>
-                                    <td className={cn('p-2 font-mono', metrics.revenue > 0 && 'text-green-500')}>
+                                    <td className={cn('p-2 font-mono', metrics.revenue > 0 && 'text-success')}>
                                         {metrics.revenue > 0 ? `$${metrics.revenue.toFixed(0)}` : '—'}
                                     </td>
                                     <td
                                         className={cn(
                                             'p-2 font-mono font-bold',
-                                            metrics.roi !== null &&
-                                                (metrics.roi >= 0 ? 'text-green-500' : 'text-red-500')
+                                            metrics.roi !== null && (metrics.roi >= 0 ? 'text-success' : 'text-danger')
                                         )}
                                     >
                                         {pct(metrics.roi)}
@@ -98,7 +98,7 @@ function AccountSummary({ accounts, thresholds, locale, onJump }: AccountSummary
                                     <td
                                         className={cn(
                                             'p-2 font-mono',
-                                            waste > 0 ? 'text-red-500' : 'text-muted-foreground'
+                                            waste > 0 ? 'text-danger' : 'text-muted-foreground'
                                         )}
                                     >
                                         {waste > 0 ? `$${waste.toFixed(2)}` : '—'}
@@ -118,7 +118,7 @@ function AccountSummary({ accounts, thresholds, locale, onJump }: AccountSummary
                 </table>
             </div>
             <p className="text-muted-foreground text-[10px]">{ui('wasteEstimate', locale)}</p>
-        </div>
+        </Card>
     );
 }
 

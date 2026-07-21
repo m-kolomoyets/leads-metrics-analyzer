@@ -5,6 +5,7 @@ import { createTeamMutationOptions } from '@/services/admin/queries';
 import { createTeamInputSchema } from '@/services/admin/schemas';
 import { useAppForm } from '@/components/Form';
 import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
 import { Field, FieldGroup } from '@/components/ui/Field';
 import { buildLeadOptions } from '../../utils/teamOptions';
 import { TeamRow } from '../TeamRow';
@@ -75,7 +76,7 @@ function TeamsSection({ users, teams }: TeamsSectionProps) {
                 </Field>
             </form>
 
-            <div className="overflow-x-auto rounded-lg border">
+            <Card variant="flat" className="overflow-x-auto">
                 {/* table-fixed + explicit column widths: a row toggling to rename / delete-confirm must
                     not resize columns (no layout shift). Actions column is sized for its widest state. */}
                 <table className="w-full min-w-3xl table-fixed text-sm">
@@ -104,7 +105,7 @@ function TeamsSection({ users, teams }: TeamsSectionProps) {
                         })}
                     </tbody>
                 </table>
-            </div>
+            </Card>
         </section>
     );
 }
