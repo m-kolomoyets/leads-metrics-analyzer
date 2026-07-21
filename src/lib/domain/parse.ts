@@ -214,11 +214,12 @@ export function parseFile(text: string): { type: FileType | null; parsed: Partia
     return { type: null, parsed: { warnings: [{ kind: 'unknown-file-type', headers }] } };
 }
 
-// Ingest a batch of uploaded files, routing each by detected type. Files of the same type merge.
-export function parseFiles(texts: string[]): ParsedFiles {
+// Merge already-parsed per-file partials into one batch, routing each row by its type bucket. Cheap
+// (array concat only, no Papa.parse) — the heavy `parseFile` runs once per file at ingest, and its
+// result is merged here on every recompute (perf: parse-once, grade-many — mirrors the reference).
+export function mergeParsed(partials: Partial<ParsedFiles>[]): ParsedFiles {
     const out: ParsedFiles = { fb: [], ktMain: [], ktClicks: [], warnings: [] };
-    for (const text of texts) {
-        const { parsed } = parseFile(text);
+    for (const parsed of partials) {
         if (parsed.fb) {
             out.fb.push(...parsed.fb);
         }
@@ -233,4 +234,13 @@ export function parseFiles(texts: string[]): ParsedFiles {
         }
     }
     return out;
+}
+
+// Ingest a batch of uploaded files, routing each by detected type. Files of the same type merge.
+export function parseFiles(texts: string[]): ParsedFiles {
+    return mergeParsed(
+        texts.map((text) => {
+            return parseFile(text).parsed;
+        })
+    );
 }

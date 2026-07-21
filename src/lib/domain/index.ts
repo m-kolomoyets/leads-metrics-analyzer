@@ -2,6 +2,7 @@ import type { Metrics } from './aggregate';
 import type { GeoAllocation } from './allocate';
 import type { CommissionConfig } from './commission';
 import type { CampaignCreatives, RawFact, RawTotals } from './join';
+import type { ParsedFiles } from './parse';
 import type { Fact, GeoThresholds, Totals } from './types';
 import type { ProblemAccount } from './verdict';
 import { metricsFor, spendPlus, sumTotals } from './aggregate';
@@ -86,8 +87,9 @@ function untaggedTotals(raw: RawTotals): Totals {
     return { ...raw, spend: 0, spendPlus: 0 };
 }
 
-export function analyze(texts: string[], ruleset: Ruleset): AnalyzeResult {
-    const parsed = parseFiles(texts);
+// Grade an already-parsed batch: join → commission → aggregate → verdict. The heavy CSV parse is
+// hoisted to the caller (parse-once at ingest); this re-runs cheaply on every ruleset change.
+export function analyzeParsed(parsed: ParsedFiles, ruleset: Ruleset): AnalyzeResult {
     const { facts: rawFacts, geoUntagged, campaignModels, campaignCreatives, warnings } = join(parsed);
     const facts = rawFacts.map((raw) => {
         return gradeFact(raw, ruleset);
@@ -151,4 +153,10 @@ export function analyze(texts: string[], ruleset: Ruleset): AnalyzeResult {
         warnings,
         parseWarnings: parsed.warnings,
     };
+}
+
+// Convenience entry: parse raw CSV text then grade in one call. The UI hoists the parse to ingest and
+// calls `analyzeParsed` directly (so preset edits skip the re-parse); this stays for tests/batch use.
+export function analyze(texts: string[], ruleset: Ruleset): AnalyzeResult {
+    return analyzeParsed(parseFiles(texts), ruleset);
 }

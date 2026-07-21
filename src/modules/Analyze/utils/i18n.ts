@@ -52,7 +52,7 @@ const UI: Record<Locale, Record<string, string>> = {
         readonly: 'лише читання',
         sharedSettings: 'Спільні налаштування',
         defaultCommission: 'Комісія за замовч. (%)',
-        reviewMultiplier: 'Множник перевірки',
+        reviewMultiplier: 'Коефіцієнт проблемності',
         sellers: 'Сейлери аккаунтів',
         rate: 'ставка (%)',
         accountIds: 'ID акаунтів (через кому)',

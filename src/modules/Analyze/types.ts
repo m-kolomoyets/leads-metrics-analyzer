@@ -1,9 +1,10 @@
-import type { FileType } from '@/lib/domain/parse';
+import type { FileType, ParsedFiles } from '@/lib/domain/parse';
 
-// One ingested CSV: its raw text (fed to `analyze`) plus the type detected from its headers, so the
-// UI can show routing-by-content (ADR: files routed by detected type, not by drop-zone slot).
+// One ingested CSV: the type detected from its headers (so the UI can show routing-by-content —
+// files routed by detected type, not by drop-zone slot) plus its already-parsed rows. Parsing happens
+// once at ingest (`parseFile`); `analyzeParsed` merges these on recompute without re-running Papa.parse.
 export type UploadedFile = {
     name: string;
-    text: string;
     type: FileType | null;
+    parsed: Partial<ParsedFiles>;
 };
