@@ -69,10 +69,9 @@ export const Route = createRootRouteWithContext<RouterContext>()({
                 { name: 'color-scheme', content: 'light dark' },
                 { name: 'theme-color', content: '#ffffff', media: '(prefers-color-scheme: light)' },
                 { name: 'theme-color', content: '#080b14', media: '(prefers-color-scheme: dark)' },
-                { title: 'Phenomenon Studio Admin Panel' },
+                { title: 'Adjoin' },
             ],
             links: [
-                { rel: 'icon', href: '/favicon.ico', sizes: 'any' },
                 { rel: 'icon', href: '/icon.svg', type: 'image/svg+xml' },
                 { rel: 'apple-touch-icon', href: '/apple-icon.png' },
                 { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
