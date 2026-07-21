@@ -158,11 +158,15 @@ function SharedSettingsEditor({ shared, canEdit, locale, seed, saveTeamId }: Sha
 
             <div className="flex flex-wrap gap-4">
                 <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-1">
-                        <Label htmlFor="ss-review">{ui('reviewMultiplier', locale)}</Label>
-                        <Tooltip>
-                            <TooltipTrigger
-                                render={
+                    <Tooltip>
+                        {/* Whole label row is the trigger so hovering the text (not just the icon) opens the
+                            tooltip; the inner button keeps it keyboard-reachable (focus bubbles to the trigger). */}
+                        <TooltipTrigger
+                            render={
+                                <div className="flex w-fit items-center gap-1">
+                                    <Label htmlFor="ss-review" className="cursor-help">
+                                        {ui('reviewMultiplier', locale)}
+                                    </Label>
                                     <button
                                         type="button"
                                         className="text-muted-foreground hover:text-foreground"
@@ -170,13 +174,13 @@ function SharedSettingsEditor({ shared, canEdit, locale, seed, saveTeamId }: Sha
                                     >
                                         <InfoIcon className="size-3.5" />
                                     </button>
-                                }
-                            />
-                            <TooltipContent>
-                                Коефіцієнт показує у скільки разів метрики акаунту більші за встановленні пороги
-                            </TooltipContent>
-                        </Tooltip>
-                    </div>
+                                </div>
+                            }
+                        />
+                        <TooltipContent>
+                            Коефіцієнт показує у скільки разів метрики акаунту більші за встановленні пороги
+                        </TooltipContent>
+                    </Tooltip>
                     <Input
                         id="ss-review"
                         type="number"

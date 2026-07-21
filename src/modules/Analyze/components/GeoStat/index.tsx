@@ -74,8 +74,7 @@ function Stat({
 // glowing stat pills — Spend/Revenue/Profit/ROI (glow tinted by the ROI band) and the waste readout
 // (glow tinted by its Waste-Zone band). Attributed / untagged gap (ADR-0003) rides under the first pill.
 function GeoStat({ geo, rollup, thresholds, waste, wasteZone, locale }: GeoStatProps) {
-    const { metrics, attributed } = rollup;
-    const untaggedRevenue = metrics.revenue - attributed.revenue;
+    const { metrics } = rollup;
     const wastePct = metrics.spendPlus > 0 ? (waste / metrics.spendPlus) * 100 : 0;
     const wasteTone: Zone = wasteZone ? zoneFor(wastePct, wasteZone) : 'neutral';
     const roi = roiTone(metrics.roi);
