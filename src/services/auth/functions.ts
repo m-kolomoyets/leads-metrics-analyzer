@@ -6,7 +6,7 @@ import { canRequestPasswordReset, isResetTokenUsable } from '@/lib/auth/password
 import { createSession, destroySession, getSessionUser } from '@/lib/auth/session';
 import { hashInvitationToken, hashResetToken } from '@/lib/auth/tokenHash';
 import { db } from '@/lib/db';
-import { invitation, passwordReset, user } from '@/lib/db/schema';
+import { invitation, passwordReset, team, user } from '@/lib/db/schema';
 import {
     activateInputSchema,
     loginInputSchema,
@@ -35,9 +35,11 @@ export const loginFn = createServerFn({ method: 'POST' })
                 role: user.role,
                 status: user.status,
                 teamId: user.teamId,
+                teamName: team.name,
                 passwordHash: user.passwordHash,
             })
             .from(user)
+            .leftJoin(team, eq(user.teamId, team.id))
             .where(eq(user.email, data.email))
             .limit(1);
 
@@ -53,7 +55,14 @@ export const loginFn = createServerFn({ method: 'POST' })
 
         await createSession(found.id);
 
-        return { id: found.id, email: found.email, role: found.role, status: found.status, teamId: found.teamId };
+        return {
+            id: found.id,
+            email: found.email,
+            role: found.role,
+            status: found.status,
+            teamId: found.teamId,
+            teamName: found.teamName,
+        };
     });
 
 // Request a password reset (T5, #42): a public endpoint. Anti-enumeration — the response is one
@@ -141,7 +150,15 @@ export const activateFn = createServerFn({ method: 'POST' })
 
         await createSession(activated.id);
 
-        return activated;
+        // Resolve the team's display name for the returned session (join is not expressible in the
+        // update…returning above). Teamless activations skip the lookup.
+        let teamName: string | null = null;
+        if (activated.teamId) {
+            const [row] = await db.select({ name: team.name }).from(team).where(eq(team.id, activated.teamId)).limit(1);
+            teamName = row?.name ?? null;
+        }
+
+        return { ...activated, teamName };
     });
 
 // Complete a password reset (T4c, #44): a public endpoint — the token IS the credential. Sets the

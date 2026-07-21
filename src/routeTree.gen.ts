@@ -16,9 +16,7 @@ import { Route as PublicIndexRouteImport } from './routes/_public/index'
 import { Route as UnauthenticatedResetPasswordIndexRouteImport } from './routes/_unauthenticated/reset-password/index'
 import { Route as UnauthenticatedLoginIndexRouteImport } from './routes/_unauthenticated/login/index'
 import { Route as UnauthenticatedActivateIndexRouteImport } from './routes/_unauthenticated/activate/index'
-import { Route as AuthenticatedVouchersIndexRouteImport } from './routes/_authenticated/vouchers/index'
 import { Route as AuthenticatedPresetsIndexRouteImport } from './routes/_authenticated/presets/index'
-import { Route as AuthenticatedMerchantsIndexRouteImport } from './routes/_authenticated/merchants/index'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard/index'
 import { Route as AuthenticatedAnalyzeIndexRouteImport } from './routes/_authenticated/analyze/index'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
@@ -58,22 +56,10 @@ const UnauthenticatedActivateIndexRoute =
     path: '/activate/',
     getParentRoute: () => UnauthenticatedRouteRoute,
   } as any)
-const AuthenticatedVouchersIndexRoute =
-  AuthenticatedVouchersIndexRouteImport.update({
-    id: '/vouchers/',
-    path: '/vouchers/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedPresetsIndexRoute =
   AuthenticatedPresetsIndexRouteImport.update({
     id: '/presets/',
     path: '/presets/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedMerchantsIndexRoute =
-  AuthenticatedMerchantsIndexRouteImport.update({
-    id: '/merchants/',
-    path: '/merchants/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedDashboardIndexRoute =
@@ -99,9 +85,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/analyze/': typeof AuthenticatedAnalyzeIndexRoute
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
-  '/merchants/': typeof AuthenticatedMerchantsIndexRoute
   '/presets/': typeof AuthenticatedPresetsIndexRoute
-  '/vouchers/': typeof AuthenticatedVouchersIndexRoute
   '/activate/': typeof UnauthenticatedActivateIndexRoute
   '/login/': typeof UnauthenticatedLoginIndexRoute
   '/reset-password/': typeof UnauthenticatedResetPasswordIndexRoute
@@ -111,9 +95,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/analyze': typeof AuthenticatedAnalyzeIndexRoute
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
-  '/merchants': typeof AuthenticatedMerchantsIndexRoute
   '/presets': typeof AuthenticatedPresetsIndexRoute
-  '/vouchers': typeof AuthenticatedVouchersIndexRoute
   '/activate': typeof UnauthenticatedActivateIndexRoute
   '/login': typeof UnauthenticatedLoginIndexRoute
   '/reset-password': typeof UnauthenticatedResetPasswordIndexRoute
@@ -127,9 +109,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/analyze/': typeof AuthenticatedAnalyzeIndexRoute
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
-  '/_authenticated/merchants/': typeof AuthenticatedMerchantsIndexRoute
   '/_authenticated/presets/': typeof AuthenticatedPresetsIndexRoute
-  '/_authenticated/vouchers/': typeof AuthenticatedVouchersIndexRoute
   '/_unauthenticated/activate/': typeof UnauthenticatedActivateIndexRoute
   '/_unauthenticated/login/': typeof UnauthenticatedLoginIndexRoute
   '/_unauthenticated/reset-password/': typeof UnauthenticatedResetPasswordIndexRoute
@@ -141,9 +121,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/analyze/'
     | '/dashboard/'
-    | '/merchants/'
     | '/presets/'
-    | '/vouchers/'
     | '/activate/'
     | '/login/'
     | '/reset-password/'
@@ -153,9 +131,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/analyze'
     | '/dashboard'
-    | '/merchants'
     | '/presets'
-    | '/vouchers'
     | '/activate'
     | '/login'
     | '/reset-password'
@@ -168,9 +144,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/'
     | '/_authenticated/analyze/'
     | '/_authenticated/dashboard/'
-    | '/_authenticated/merchants/'
     | '/_authenticated/presets/'
-    | '/_authenticated/vouchers/'
     | '/_unauthenticated/activate/'
     | '/_unauthenticated/login/'
     | '/_unauthenticated/reset-password/'
@@ -233,25 +207,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UnauthenticatedActivateIndexRouteImport
       parentRoute: typeof UnauthenticatedRouteRoute
     }
-    '/_authenticated/vouchers/': {
-      id: '/_authenticated/vouchers/'
-      path: '/vouchers'
-      fullPath: '/vouchers/'
-      preLoaderRoute: typeof AuthenticatedVouchersIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/presets/': {
       id: '/_authenticated/presets/'
       path: '/presets'
       fullPath: '/presets/'
       preLoaderRoute: typeof AuthenticatedPresetsIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/merchants/': {
-      id: '/_authenticated/merchants/'
-      path: '/merchants'
-      fullPath: '/merchants/'
-      preLoaderRoute: typeof AuthenticatedMerchantsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dashboard/': {
@@ -282,18 +242,14 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
   AuthenticatedAnalyzeIndexRoute: typeof AuthenticatedAnalyzeIndexRoute
   AuthenticatedDashboardIndexRoute: typeof AuthenticatedDashboardIndexRoute
-  AuthenticatedMerchantsIndexRoute: typeof AuthenticatedMerchantsIndexRoute
   AuthenticatedPresetsIndexRoute: typeof AuthenticatedPresetsIndexRoute
-  AuthenticatedVouchersIndexRoute: typeof AuthenticatedVouchersIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   AuthenticatedAnalyzeIndexRoute: AuthenticatedAnalyzeIndexRoute,
   AuthenticatedDashboardIndexRoute: AuthenticatedDashboardIndexRoute,
-  AuthenticatedMerchantsIndexRoute: AuthenticatedMerchantsIndexRoute,
   AuthenticatedPresetsIndexRoute: AuthenticatedPresetsIndexRoute,
-  AuthenticatedVouchersIndexRoute: AuthenticatedVouchersIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

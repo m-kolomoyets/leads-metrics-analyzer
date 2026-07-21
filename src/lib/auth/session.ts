@@ -2,7 +2,7 @@ import type { MeData } from '@/services/auth/types';
 import { deleteCookie, getCookie, setCookie } from '@tanstack/react-start/server';
 import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db';
-import { session, user } from '@/lib/db/schema';
+import { session, team, user } from '@/lib/db/schema';
 
 // SERVER-ONLY. Server-side session store (spec §Roles): the session id is an opaque uuid held in an
 // httpOnly cookie; the source of truth is the `session` row, so deleting it revokes access on the
@@ -50,6 +50,7 @@ export const getSessionUser = async (): Promise<MeData | null> => {
         role: MeData['role'];
         status: MeData['status'];
         teamId: string | null;
+        teamName: string | null;
         expiresAt: Date;
     }>;
 
@@ -61,10 +62,12 @@ export const getSessionUser = async (): Promise<MeData | null> => {
                 role: user.role,
                 status: user.status,
                 teamId: user.teamId,
+                teamName: team.name,
                 expiresAt: session.expiresAt,
             })
             .from(session)
             .innerJoin(user, eq(session.userId, user.id))
+            .leftJoin(team, eq(user.teamId, team.id))
             .where(eq(session.id, sessionId))
             .limit(1);
     } catch (error) {
@@ -90,7 +93,14 @@ export const getSessionUser = async (): Promise<MeData | null> => {
         return null;
     }
 
-    return { id: found.id, email: found.email, role: found.role, status: found.status, teamId: found.teamId };
+    return {
+        id: found.id,
+        email: found.email,
+        role: found.role,
+        status: found.status,
+        teamId: found.teamId,
+        teamName: found.teamName,
+    };
 };
 
 // Deletes the session row (if any) and clears the cookie.

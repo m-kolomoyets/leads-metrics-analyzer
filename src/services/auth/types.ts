@@ -11,6 +11,8 @@ export type MeData = {
     // The user's team (spec: `me` → id, role, team). Null for teamless roles; drives team-scoped
     // visibility (`scopeFor`) for a Team Lead.
     teamId: string | null;
+    // The team's display name, resolved via join. Null whenever `teamId` is null.
+    teamName: string | null;
 };
 
 export type AuthenticatedState = {
