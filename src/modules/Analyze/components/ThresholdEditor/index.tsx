@@ -10,18 +10,28 @@ import {
     renamePresetMutationOptions,
     savePresetVersionMutationOptions,
 } from '@/services/presets/queries';
+import { AccordionPanel } from '@/components/ui/Accordion';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
-import { ui } from '../../utils/i18n';
+import { THRESHOLD_METRICS, ui } from '../../utils/i18n';
 import { EMPTY_THRESHOLD_DRAFT, parseThresholdDraft, ThresholdFields, toThresholdDraft } from '../ThresholdFields';
 
 type ThresholdEditorProps = {
     preset: PresetView;
     locale: Locale;
-    // Left-column header slot (section title + preset picker). When given, the save button joins it on
-    // the same row so the header reads "title · geo … preset … save" as in the reference layout.
+    // Header slot (accordion trigger + preset picker). When given, the save button joins it on the same
+    // row so the header reads "title · geo … preset … save", and everything below moves into an
+    // `AccordionPanel` — i.e. passing `header` means "I am the header row of an enclosing AccordionItem".
+    // Without it (the Presets page) the editor renders flat, as before.
     header?: ReactNode;
+    // Panel slots, rendered only in accordion mode: `panelLeft` sits under the threshold fields in the
+    // left column, `panelRight` is the second column. They live here rather than beside the editor
+    // because the panel must be a descendant of the same AccordionItem as the header.
+    panelLeft?: ReactNode;
+    panelRight?: ReactNode;
+    // Drives the unsaved marker: a collapsed panel must not look clean while a draft is pending.
+    collapsed?: boolean;
 };
 
 // Inline threshold-pair + rename editor for one Geo's active preset (S3, #23/#30). Anyone who can see
@@ -29,10 +39,11 @@ type ThresholdEditorProps = {
 // thresholds mints a new immutable preset version and moves the active pointer; rename touches
 // identity only (no version). Either invalidates the list query, `toRuleset` re-derives, grading
 // re-runs. Parent remounts this on `activeVersionId`/name change, so local drafts reset with no effect.
-function ThresholdEditor({ preset, locale, header }: ThresholdEditorProps) {
+function ThresholdEditor({ preset, locale, header, panelLeft, panelRight, collapsed }: ThresholdEditorProps) {
     const canEdit = preset.access === 'edit';
+    const saved = preset.thresholds ? toThresholdDraft(preset.thresholds) : EMPTY_THRESHOLD_DRAFT;
     const [draft, setDraft] = useState<ThresholdDraft>(() => {
-        return preset.thresholds ? toThresholdDraft(preset.thresholds) : EMPTY_THRESHOLD_DRAFT;
+        return saved;
     });
     const [name, setName] = useState(preset.name);
     const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
@@ -47,6 +58,11 @@ function ThresholdEditor({ preset, locale, header }: ThresholdEditorProps) {
     }
 
     const { isValid, thresholds } = parseThresholdDraft(draft);
+    // Ruleset Versions are immutable (ADR-0002/0011), so saving an unchanged draft would mint a version
+    // identical to the last one — cheap to do by accident now that the fields can be collapsed away.
+    const isDirty = THRESHOLD_METRICS.some((metric) => {
+        return draft[metric].gy !== saved[metric].gy || draft[metric].yr !== saved[metric].yr;
+    });
     const trimmedName = name.trim();
     const canRename = trimmedName !== '' && trimmedName !== preset.name;
 
@@ -101,20 +117,13 @@ function ThresholdEditor({ preset, locale, header }: ThresholdEditorProps) {
     }
 
     const saveButton = canEdit && (
-        <Button type="button" size="sm" disabled={!isValid || isSaving} onClick={handleSave}>
+        <Button type="button" size="sm" disabled={!isValid || !isDirty || isSaving} onClick={handleSave}>
             {isSaving ? ui('saving', locale) : ui('save', locale)}
         </Button>
     );
 
-    return (
+    const body = (
         <section className="flex flex-col gap-3">
-            {header && (
-                <div className="flex flex-wrap items-center gap-3">
-                    {header}
-                    {saveButton}
-                </div>
-            )}
-
             <div className="flex items-center gap-2">
                 <h4 className="text-muted-foreground text-[11px] font-normal tracking-wider uppercase">
                     {ui('thresholds', locale)} · {preset.name}
@@ -200,6 +209,35 @@ function ThresholdEditor({ preset, locale, header }: ThresholdEditorProps) {
                 </div>
             )}
         </section>
+    );
+
+    if (!header) {
+        return body;
+    }
+
+    return (
+        <>
+            <div className="flex flex-wrap items-center gap-3">
+                {header}
+                {canEdit && isDirty && collapsed && (
+                    <span
+                        className="bg-primary size-1.5 shrink-0 rounded-full"
+                        role="status"
+                        aria-label={ui('unsaved', locale)}
+                    />
+                )}
+                {saveButton}
+            </div>
+            <AccordionPanel>
+                <div className="flex flex-col gap-4 pt-4 lg:flex-row lg:items-start">
+                    <div className="flex flex-1 flex-col gap-4">
+                        {body}
+                        {panelLeft}
+                    </div>
+                    {panelRight}
+                </div>
+            </AccordionPanel>
+        </>
     );
 }
 

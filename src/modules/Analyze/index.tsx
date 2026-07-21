@@ -13,6 +13,7 @@ import { mergeParsed } from '@/lib/domain/parse';
 import { teamsQueryOptions } from '@/services/admin/queries';
 import { presetsQueryOptions, sharedSettingsQueryOptions } from '@/services/presets/queries';
 import { MainLayoutHeader } from '@/components/layouts/MainLayoutHeader';
+import { Accordion, AccordionHeader, AccordionItem, AccordionPanel, AccordionTrigger } from '@/components/ui/Accordion';
 import { Button } from '@/components/ui/Button';
 import {
     Combobox,
@@ -35,6 +36,7 @@ import { FileDropzones } from './components/FileDropzones';
 import { GeoStat } from './components/GeoStat';
 import { GeoTabs } from './components/GeoTabs';
 import { ModelTable } from './components/ModelTable';
+import { OffersTable } from './components/OffersTable';
 import { PresetCreator } from './components/PresetCreator';
 import { ProblemAccounts } from './components/ProblemAccounts';
 import { SectionCard } from './components/SectionCard';
@@ -44,6 +46,9 @@ import { ThresholdEditor } from './components/ThresholdEditor';
 
 // Roles that hold the Geo dollar dimension and so may own presets (designer/bdm see none).
 const PRESET_WRITE_ROLES = ['buyer', 'team_lead', 'head'];
+
+// The zone-metrics accordion holds a single item; its value is arbitrary but must be stable.
+const ZONE_ITEM = 'zone-metrics';
 
 // The GeoThresholds the active geo grades against: the focused preset's four pairs (dropping the
 // slice-4 `wasteZones` the verdict engine ignores), or the ruleset's first-wins fallback.
@@ -84,6 +89,9 @@ function Analyze() {
     // Shared tunables lifted from an imported file, with a bump counter so each import re-seeds the
     // shared-settings editor even when the values repeat.
     const [importedShared, setImportedShared] = useState<{ seed: ImportedShared; n: number } | null>(null);
+    // Zone-metrics disclosure, tagged with the geo it was taken for so switching geo falls back to the
+    // default rather than carrying the previous geo's choice across.
+    const [zoneOpen, setZoneOpen] = useState<{ geo: string; open: boolean } | null>(null);
     const [locale, setLocale] = useState<Locale>('uk');
     // Muted campaigns, keyed `${geo}:${campaign}` so the same id in two geos toggles independently.
     const [excluded, setExcluded] = useState<ReadonlySet<string>>(new Set());
@@ -240,14 +248,61 @@ function Analyze() {
         document.getElementById(`acc-${account}`)?.scrollIntoView({ block: 'start', behavior: 'smooth' });
     }
 
-    // Zone-metrics header: title · geo plus the preset picker. It heads the left (thresholds) column
-    // only — the shared-settings column on the right is its own panel — and the threshold save button
-    // joins this row inside ThresholdEditor.
+    // Collapsed by default, but a geo with no active preset opens itself: without thresholds every table
+    // below is hidden, and this block holds the only remedy — hiding it behind a chevron would read as a
+    // broken page. Storing the geo alongside the flag makes a geo switch fall back to the default again.
+    const isZoneOpen = zoneOpen?.geo === activeGeo ? zoneOpen.open : !thresholds;
+
+    const presetCreator = canWritePresets && activeGeo && (
+        <div className="border-border/60 border-t pt-4">
+            <PresetCreator
+                key={activeGeo}
+                geo={activeGeo}
+                locale={locale}
+                onImportShared={(seed) => {
+                    setImportedShared((current) => {
+                        return { seed, n: (current?.n ?? 0) + 1 };
+                    });
+                }}
+            />
+        </div>
+    );
+
+    const sharedColumn = (shared || canEditShared) && (
+        <div className="border-border/60 flex flex-1 flex-col gap-2 border-t pt-4 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-4">
+            {isHead && (
+                <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground text-xs">{ui('team', locale)}</span>
+                    <TeamScopePicker
+                        teams={teams ?? []}
+                        value={sharedTeamId}
+                        locale={locale}
+                        onChange={setSharedTeamId}
+                    />
+                </div>
+            )}
+            <SharedSettingsEditor
+                key={`${sharedTeamId ?? 'global'}:${shared?.activeVersionId ?? 'new'}:${importedShared?.n ?? 0}`}
+                shared={shared}
+                canEdit={canEditShared}
+                locale={locale}
+                seed={importedShared?.seed}
+                saveTeamId={isHead ? sharedTeamId : undefined}
+            />
+        </div>
+    );
+
+    // Zone-metrics header: the accordion trigger (title · geo) plus the preset picker. The picker and
+    // the threshold save button sit *outside* the trigger — they are buttons themselves, so nesting them
+    // would be invalid markup and every click would toggle the panel. Save joins this row inside
+    // ThresholdEditor, which owns the draft.
     const zoneHeader = activeGeo && (
         <>
-            <h3 className="text-muted-foreground text-[13px] font-normal tracking-widest uppercase">
-                {ui('zoneMetrics', locale)} · {activeGeo}
-            </h3>
+            <AccordionHeader>
+                <AccordionTrigger className="text-[13px] font-normal tracking-widest uppercase">
+                    {ui('zoneMetrics', locale)} · {activeGeo}
+                </AccordionTrigger>
+            </AccordionHeader>
             {geoPresets.length > 0 && (
                 <div className="flex items-center gap-2">
                     <span className="text-muted-foreground text-xs">{ui('preset', locale)}</span>
@@ -331,59 +386,38 @@ function Analyze() {
 
                         {(activePreset || canWritePresets || shared || canEditShared) && (
                             <SectionCard tone="blue">
-                                <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-                                    <div className="flex flex-1 flex-col gap-4">
+                                <Accordion
+                                    value={isZoneOpen ? [ZONE_ITEM] : []}
+                                    onValueChange={(value) => {
+                                        setZoneOpen({ geo: activeGeo, open: value.length > 0 });
+                                    }}
+                                >
+                                    <AccordionItem value={ZONE_ITEM}>
                                         {activePreset ? (
                                             <ThresholdEditor
                                                 key={`${activePreset.id}:${activePreset.activeVersionId}:${activePreset.name}`}
                                                 preset={activePreset}
                                                 locale={locale}
                                                 header={zoneHeader}
+                                                collapsed={!isZoneOpen}
+                                                panelLeft={presetCreator}
+                                                panelRight={sharedColumn}
                                             />
                                         ) : (
-                                            <div className="flex flex-wrap items-center gap-3">{zoneHeader}</div>
+                                            <>
+                                                <div className="flex flex-wrap items-center gap-3">{zoneHeader}</div>
+                                                <AccordionPanel>
+                                                    <div className="flex flex-col gap-4 pt-4 lg:flex-row lg:items-start">
+                                                        <div className="flex flex-1 flex-col gap-4">
+                                                            {presetCreator}
+                                                        </div>
+                                                        {sharedColumn}
+                                                    </div>
+                                                </AccordionPanel>
+                                            </>
                                         )}
-                                        {canWritePresets && (
-                                            <div className="border-border/60 border-t pt-4">
-                                                <PresetCreator
-                                                    key={activeGeo}
-                                                    geo={activeGeo}
-                                                    locale={locale}
-                                                    onImportShared={(seed) => {
-                                                        setImportedShared((current) => {
-                                                            return { seed, n: (current?.n ?? 0) + 1 };
-                                                        });
-                                                    }}
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
-                                    {(shared || canEditShared) && (
-                                        <div className="border-border/60 flex flex-1 flex-col gap-2 border-t pt-4 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-4">
-                                            {isHead && (
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-muted-foreground text-xs">
-                                                        {ui('team', locale)}
-                                                    </span>
-                                                    <TeamScopePicker
-                                                        teams={teams ?? []}
-                                                        value={sharedTeamId}
-                                                        locale={locale}
-                                                        onChange={setSharedTeamId}
-                                                    />
-                                                </div>
-                                            )}
-                                            <SharedSettingsEditor
-                                                key={`${sharedTeamId ?? 'global'}:${shared?.activeVersionId ?? 'new'}:${importedShared?.n ?? 0}`}
-                                                shared={shared}
-                                                canEdit={canEditShared}
-                                                locale={locale}
-                                                seed={importedShared?.seed}
-                                                saveTeamId={isHead ? sharedTeamId : undefined}
-                                            />
-                                        </div>
-                                    )}
-                                </div>
+                                    </AccordionItem>
+                                </Accordion>
                             </SectionCard>
                         )}
 
@@ -403,15 +437,12 @@ function Analyze() {
                         {geoRollup && thresholds && (
                             <div className="flex flex-col gap-6">
                                 <SectionCard tone="violet">
-                                    <ModelTable
+                                    <OffersTable
                                         title={`📦 ${ui('offers', locale)} · ${activeGeo}`}
                                         firstCol={ui('offers', locale)}
                                         rows={geoRollup.allocation.offers}
                                         thresholds={thresholds}
                                         locale={locale}
-                                        copiedKey={copied ?? ''}
-                                        onCopy={copy}
-                                        copyKey={`offers:${activeGeo}`}
                                     />
                                 </SectionCard>
                                 <SectionCard tone="blue">

@@ -123,6 +123,11 @@ dimensions sit below the Fact Grain and have no measured Spend of their own. Alw
 must be labelled as such wherever it is shown.
 _Avoid_: Estimated spend, est. spend, modelled spend
 
+> **Offers table shows Spend⁺, not raw Spend.** Its `Spend` column carries the commission-inclusive
+> figure, so `Profit = Rev − Spend` reads true in that row and the footer's cost/ROI totals match
+> the cells above them. This is the one place a displayed "Spend" is Spend⁺ by design — elsewhere
+> raw Spend stays display-only.
+
 ### Money
 
 **Commission**:
@@ -144,7 +149,13 @@ CPC, *UniqCost*, *ConversionCost*, *DepCost*. Lower is better; these are what Th
 `Revenue ÷ Installs` — earnings per install. Named "EPC" by convention; it is *not* per-click.
 
 **Click2inst / Inst2reg / Reg2dep**:
-Funnel conversion rates: Installs÷Link Clicks, Registrations÷Installs, Sales÷Registrations.
+Funnel conversion rates between *adjacent* stages: Installs÷Link Clicks, Registrations÷Installs,
+Sales÷Registrations. UI labels I2R (Inst2reg), R2S (Reg2dep).
+
+**Inst2sale** (UI: *I2S*):
+Sales÷Installs — a *cross-stage* rate that skips Registration, answering "of everyone who
+installed, how many ever deposited?". Distinct from the adjacent-stage rates above; shown only in
+the Offers table.
 
 **Seller**:
 A supplier of Facebook ad accounts, charging one Commission rate. Owns a set of Accounts; an

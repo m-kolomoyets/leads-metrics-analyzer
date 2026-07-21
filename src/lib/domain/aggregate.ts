@@ -27,6 +27,7 @@ export type Metrics = Totals & {
     click2inst: number | null; // Installs ÷ Link Clicks × 100
     inst2reg: number | null; // Registrations ÷ Installs × 100
     reg2dep: number | null; // Sales ÷ Registrations × 100
+    inst2sale: number | null; // Sales ÷ Installs × 100 (cross-stage, skips Registration; UI: I2S)
 };
 
 const ZERO: Totals = {
@@ -70,5 +71,6 @@ export function metricsFor(totals: Totals): Metrics {
         click2inst: linkClicks === 0 ? null : (installs / linkClicks) * 100,
         inst2reg: installs === 0 ? null : (regs / installs) * 100,
         reg2dep: regs === 0 ? null : (sales / regs) * 100,
+        inst2sale: installs === 0 ? null : (sales / installs) * 100,
     };
 }
