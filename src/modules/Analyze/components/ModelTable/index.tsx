@@ -16,10 +16,11 @@ type ModelTableProps = {
     locale: Locale;
     // OS rows carry clicks (CPC shown); offers do not.
     showCpc?: boolean;
-    // Copy-to-clipboard of the rows' identities (offer IDs / OS values), reusing the shared hook.
-    copiedKey: string;
-    onCopy: (text: string, key: string) => void;
-    copyKey: string;
+    // Copy-to-clipboard of the rows' identities (offer IDs), reusing the shared hook. Omit the trio
+    // to render the table without a copy button (the OS table has nothing worth copying).
+    copiedKey?: string;
+    onCopy?: (text: string, key: string) => void;
+    copyKey?: string;
 };
 
 // A zone-graded cost cell (CPI/CPR/CPS/CPC): em dash when the denominator was zero, else the cost
@@ -55,17 +56,19 @@ function ModelTable({
         <div className="flex flex-col gap-2">
             <div className="flex items-center gap-3">
                 <h3 className="text-muted-foreground text-[13px] font-normal tracking-widest uppercase">{title}</h3>
-                <Button
-                    type="button"
-                    variant="outline"
-                    size="xs"
-                    disabled={rows.length === 0}
-                    onClick={() => {
-                        onCopy(idLine, copyKey);
-                    }}
-                >
-                    {copiedKey === copyKey ? ui('copied', locale) : ui('copyIds', locale)}
-                </Button>
+                {onCopy && copyKey && (
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="xs"
+                        disabled={rows.length === 0}
+                        onClick={() => {
+                            onCopy(idLine, copyKey);
+                        }}
+                    >
+                        {copiedKey === copyKey ? ui('copied', locale) : ui('copyIds', locale)}
+                    </Button>
+                )}
             </div>
             <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-right text-xs">

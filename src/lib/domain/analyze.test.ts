@@ -132,12 +132,16 @@ describe('analyze — allocation reconciles (doc 06, S4)', () => {
         expect(offerInstalls).toBe(g.attributed.installs);
     });
 
-    it('OS installs sum back to the geo attributed installs', () => {
+    it('OS rows are Android/iOS only and never exceed the geo attributed installs', () => {
         const g = geo('IN');
         const osInstalls = g.allocation.os.reduce((sum, r) => {
             return sum + r.metrics.installs;
         }, 0);
-        expect(osInstalls).toBe(g.attributed.installs);
+        for (const row of g.allocation.os) {
+            expect(['Android', 'iOS']).toContain(row.key);
+        }
+        expect(osInstalls).toBeLessThanOrEqual(g.attributed.installs);
+        expect(osInstalls).toBeGreaterThan(0);
     });
 
     it('allocated Spend⁺ is a split of attributed, never an invention (≤ attributed, > 0)', () => {

@@ -30,10 +30,10 @@ function roiTone(roi: number | null): Zone {
     return roi <= 30 ? 'yellow' : 'green';
 }
 
-// The glass-tint classes for a zone (index.css). Yellow/neutral keep the plain blue tint.
+// The glass-tint classes for a zone (index.css). Neutral keeps the plain blue tint.
 const TONE_TINT: Record<Zone, string> = {
     green: 'glass-tint tint-green',
-    yellow: 'glass-tint tint-blue',
+    yellow: 'glass-tint tint-yellow',
     red: 'glass-tint tint-red',
     neutral: 'glass-tint tint-blue tint-s5',
 };
@@ -132,7 +132,7 @@ function GeoStat({ geo, rollup, thresholds, waste, wasteZone, locale }: GeoStatP
 
                 <div
                     className={cn(
-                        'flex min-w-64 flex-1 items-center gap-6 rounded-2xl px-5 py-4',
+                        'glow-soft flex min-w-64 flex-1 items-center gap-6 rounded-2xl px-5 py-4',
                         TONE_TINT[wasteTone]
                     )}
                 >

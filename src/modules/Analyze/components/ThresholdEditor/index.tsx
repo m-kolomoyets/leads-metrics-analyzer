@@ -20,8 +20,8 @@ type ThresholdEditorProps = {
     locale: Locale;
 };
 
-// Inline threshold-pair + rename editor for one Geo's active preset (S3, #23/#30). Owner-only edit
-// (`presetAccessFor` → 'edit'); a read viewer sees the values disabled and no rename. Saving
+// Inline threshold-pair + rename editor for one Geo's active preset (S3, #23/#30). Anyone who can see
+// the preset may edit it (`presetAccessFor` → 'edit'); a read viewer sees the values disabled. Saving
 // thresholds mints a new immutable preset version and moves the active pointer; rename touches
 // identity only (no version). Either invalidates the list query, `toRuleset` re-derives, grading
 // re-runs. Parent remounts this on `activeVersionId`/name change, so local drafts reset with no effect.

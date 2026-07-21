@@ -260,6 +260,10 @@
     --tint-rgb: var(--success-rgb);
 }
 
+.tint-yellow {
+    --tint-rgb: var(--warning-rgb);
+}
+
 .tint-s4 {
     --tint-strength: 0.4;
 }

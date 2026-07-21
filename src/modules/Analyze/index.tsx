@@ -326,30 +326,32 @@ function Analyze() {
                                     )
                                 }
                             >
-                                <div className="flex flex-col gap-4">
-                                    {activePreset && (
-                                        <ThresholdEditor
-                                            key={`${activePreset.id}:${activePreset.activeVersionId}:${activePreset.name}`}
-                                            preset={activePreset}
-                                            locale={locale}
-                                        />
-                                    )}
-                                    {canWritePresets && (
-                                        <div className="border-border/60 border-t pt-4">
-                                            <PresetCreator
-                                                key={activeGeo}
-                                                geo={activeGeo}
+                                <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+                                    <div className="flex flex-1 flex-col gap-4">
+                                        {activePreset && (
+                                            <ThresholdEditor
+                                                key={`${activePreset.id}:${activePreset.activeVersionId}:${activePreset.name}`}
+                                                preset={activePreset}
                                                 locale={locale}
-                                                onImportShared={(seed) => {
-                                                    setImportedShared((current) => {
-                                                        return { seed, n: (current?.n ?? 0) + 1 };
-                                                    });
-                                                }}
                                             />
-                                        </div>
-                                    )}
+                                        )}
+                                        {canWritePresets && (
+                                            <div className="border-border/60 border-t pt-4">
+                                                <PresetCreator
+                                                    key={activeGeo}
+                                                    geo={activeGeo}
+                                                    locale={locale}
+                                                    onImportShared={(seed) => {
+                                                        setImportedShared((current) => {
+                                                            return { seed, n: (current?.n ?? 0) + 1 };
+                                                        });
+                                                    }}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
                                     {(shared || canEditShared) && (
-                                        <div className="border-border/60 flex flex-col gap-2 border-t pt-4">
+                                        <div className="border-border/60 flex flex-1 flex-col gap-2 border-t pt-4 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-4">
                                             {isHead && (
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-muted-foreground text-xs">
@@ -412,9 +414,6 @@ function Analyze() {
                                         thresholds={thresholds}
                                         locale={locale}
                                         showCpc
-                                        copiedKey={copied ?? ''}
-                                        onCopy={copy}
-                                        copyKey={`os:${activeGeo}`}
                                     />
                                 </SectionCard>
                                 <SectionCard tone="blue">

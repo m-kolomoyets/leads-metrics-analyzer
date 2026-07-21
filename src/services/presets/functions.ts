@@ -22,8 +22,8 @@ import {
 
 // Presets API (T5, #7). Every read runs through `scopeFor(viewer)` (ADR-0007) — no hand-rolled role
 // check — and every write appends an immutable version rather than mutating in place (ADR-0002).
-// Owner-only edit is enforced by `presetAccessFor`, which composes row/dimension scope with
-// ownership; `scopeFor` alone never encodes it.
+// Write access is `presetAccessFor` → 'edit': visibility grants edit, so any viewer the row/dimension
+// scope surfaces a preset to may retune, rename or delete it (the owner always can).
 
 const viewerFrom = (me: MeData): Viewer => {
     return { id: me.id, role: me.role, teamId: me.teamId };
@@ -190,9 +190,9 @@ export const savePresetVersionFn = createServerFn({ method: 'POST' })
         const me = await requireUser();
         const viewer = viewerFrom(me);
 
-        // Owner-only edit: a new version is minted and the pointer moved; the prior version is never
-        // touched (ADR-0002). The ownership check and the two writes share one transaction so a
-        // concurrent transfer cannot slip between the gate and the append.
+        // Edit gate + append: a new version is minted and the pointer moved; the prior version is never
+        // touched (ADR-0002). The access check and the two writes share one transaction so a concurrent
+        // transfer cannot slip between the gate and the append.
         await db.transaction(async (tx) => {
             const [row] = await tx
                 .select({ ownerUserId: preset.ownerUserId, teamId: preset.teamId })
@@ -232,8 +232,8 @@ export const renamePresetFn = createServerFn({ method: 'POST' })
         const me = await requireUser();
         const viewer = viewerFrom(me);
 
-        // Rename touches identity, not thresholds, so it does not mint a version — but it is still an
-        // owner-only edit.
+        // Rename touches identity, not thresholds, so it does not mint a version — but it still needs
+        // the edit gate.
         await db.transaction(async (tx) => {
             const [row] = await tx
                 .select({ ownerUserId: preset.ownerUserId, teamId: preset.teamId })
@@ -267,7 +267,7 @@ export const deletePresetFn = createServerFn({ method: 'POST' })
         const me = await requireUser();
         const viewer = viewerFrom(me);
 
-        // Owner-only delete — same gate as edit. `preset_version` rows cascade off the FK, and any
+        // Delete — same gate as edit. `preset_version` rows cascade off the FK, and any
         // Snapshot that pinned one of those versions keeps it (`snapshot_geo_preset.preset_version_id`
         // is `set null`, ADR-0002), so a past judgement is never silently rewritten.
         await db.transaction(async (tx) => {

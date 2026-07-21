@@ -27,6 +27,16 @@ function zeroTotals(): Totals {
     return { spend: 0, spendPlus: 0, revenue: 0, linkClicks: 0, installs: 0, regs: 0, sales: 0 };
 }
 
+// The OS table only ever reports mobile traffic: Android and iOS. Every other OS value (desktop,
+// unknown, empty) is dropped before allocation — it must not count into any OS row at all.
+function mobileOs(os: string): 'Android' | 'iOS' | null {
+    const value = os.trim().toLowerCase();
+    if (value.startsWith('android')) {
+        return 'Android';
+    }
+    return value.startsWith('ios') ? 'iOS' : null;
+}
+
 function bucket(map: Map<string, Totals>, key: string): Totals {
     const existing = map.get(key);
     if (existing) {
@@ -84,7 +94,11 @@ export function allocateGeo(facts: Fact[], models: Map<string, CampaignModel>): 
         }
 
         for (const [os, funnel] of model.os) {
-            const acc = bucket(osTotals, os);
+            const label = mobileOs(os);
+            if (!label) {
+                continue;
+            }
+            const acc = bucket(osTotals, label);
             const share = campaignInstalls > 0 ? funnel.installs / campaignInstalls : 0;
             acc.spend += fact.spend * share;
             acc.spendPlus += fact.spendPlus * share;

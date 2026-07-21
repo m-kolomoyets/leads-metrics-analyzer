@@ -4,8 +4,9 @@ import { presetAccessFor } from './presetAccess';
 
 // External-behavior tests (ADR-0005/0007) for the T5 preset authorization seam. `presetAccessFor`
 // composes `scopeFor` (row + dimension scope) with preset ownership into a single verdict:
-//   - the owner always gets 'edit' (owner-only edit — spec §Ownership & stamping);
-//   - a teammate / in-scope viewer gets read-only;
+//   - the owner always gets 'edit';
+//   - a teammate / in-scope viewer also gets 'edit' — visibility grants edit (a preset is a shared
+//     team tool and every write appends an immutable version);
 //   - a viewer outside the row scope, or one whose dimensions exclude the dollar tables
 //     (designer/bdm), gets 'none'.
 
@@ -31,10 +32,10 @@ describe('presetAccessFor', () => {
             expected: 'none',
         },
         {
-            name: 'team_lead reads any preset in its team, but cannot edit it',
+            name: 'team_lead edits any preset in its team',
             viewer: { id: 'u-tl', role: 'team_lead', teamId: TEAM },
             preset: otherOwnerSameTeam,
-            expected: 'read',
+            expected: 'edit',
         },
         {
             name: 'team_lead cannot see a preset from another team',
@@ -49,10 +50,10 @@ describe('presetAccessFor', () => {
             expected: 'edit',
         },
         {
-            name: 'head reads every preset in any team, read-only',
+            name: 'head edits every preset in any team',
             viewer: { id: 'u-head', role: 'head' },
             preset: otherTeam,
-            expected: 'read',
+            expected: 'edit',
         },
         {
             name: 'designer is denied dollar-dimension presets entirely',
