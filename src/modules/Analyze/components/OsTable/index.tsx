@@ -80,14 +80,15 @@ function MetricCells({ m, thresholds, plain }: { m: Metrics; thresholds: GeoThre
             <CostCell value={m.cpi} pair={thresholds.installs} className={BLOCK_START} plain={plain} />
             <CostCell value={m.cpr} pair={thresholds.regs} plain={plain} />
             <CostCell value={m.cps} pair={thresholds.sales} plain={plain} />
-            <td className={cn('p-2 font-mono', BLOCK_START, dim)}>{ratioPct(m.inst2reg)}</td>
+            <td className={cn('p-2 font-mono', BLOCK_START, dim)}>{ratioPct(m.click2inst)}</td>
+            <td className={cn('p-2 font-mono', dim)}>{ratioPct(m.inst2reg)}</td>
             <td className={cn('p-2 font-mono', dim)}>{ratioPct(m.reg2dep)}</td>
             <td className={cn('p-2 font-mono', dim)}>{ratioPct(m.inst2sale)}</td>
         </>
     );
 }
 
-// Block-start columns: Rev, CPI and I2R open blocks 2/3/4 (block 1 runs Clicks…EPC).
+// Block-start columns: Rev, CPI and C2I open blocks 2/3/4 (block 1 runs Clicks…EPC).
 const HEAD_COLS: Array<{ label: string; start?: boolean }> = [
     { label: 'Clicks' },
     { label: 'Inst' },
@@ -101,7 +102,8 @@ const HEAD_COLS: Array<{ label: string; start?: boolean }> = [
     { label: 'CPI', start: true },
     { label: 'CPR' },
     { label: 'CPS' },
-    { label: 'I2R', start: true },
+    { label: 'C2I', start: true },
+    { label: 'I2R' },
     { label: 'R2S' },
     { label: 'I2S' },
 ];
