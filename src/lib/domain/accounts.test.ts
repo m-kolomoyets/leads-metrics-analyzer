@@ -83,6 +83,19 @@ describe('accountsFor', () => {
         ).toEqual(['sale']);
     });
 
+    it('tallies a sales campaign under counts.sales instead of its verdict zone', () => {
+        const [a] = accountsFor(
+            [
+                fact({ campaign: 'sale', spendPlus: 2, installs: 2, sales: 1 }), // cpi 1 → green
+                fact({ campaign: 'nosale', spendPlus: 2, installs: 2 }), // cpi 1 → green
+            ],
+            TH,
+            2
+        );
+        expect(a.counts.sales).toBe(1);
+        expect(a.counts.green).toBe(1);
+    });
+
     it('sorts accounts by Spend⁺ desc and drops zero-spend accounts', () => {
         const accounts = accountsFor(
             [

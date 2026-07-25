@@ -39,6 +39,9 @@ export const ZONE_BUTTON_CLASS: Record<Zone, string> = {
     neutral: 'border-border bg-muted/30 text-muted-foreground hover:bg-muted/50',
 };
 
+// Violet counterpart to `ZONE_TEXT_CLASS` for the sales tally (dots, summary column).
+export const SALES_TEXT_CLASS = 'text-violet-400';
+
 // Sales panel's violet counterpart to `ZONE_BUTTON_CLASS` (sales is zone-independent).
 export const SALES_BUTTON_CLASS =
     'border-violet-500/40 bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 hover:text-violet-400 dark:bg-violet-500/10 dark:border-violet-500/40 dark:hover:bg-violet-500/20';

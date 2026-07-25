@@ -3,7 +3,7 @@ import type { GeoThresholds } from '@/lib/domain/types';
 import type { Locale } from '../../utils/i18n';
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/Button';
-import { BUCKET_ZONES, ZONE_TEXT_CLASS } from '../../constants';
+import { BUCKET_ZONES, SALES_TEXT_CLASS, ZONE_TEXT_CLASS } from '../../constants';
 import { cost, pct, usd } from '../../utils/format';
 import { problemReason, ui } from '../../utils/i18n';
 import { AccountCampaigns } from '../AccountCampaigns';
@@ -48,6 +48,12 @@ function AccountBlock({
 
     const included = account.campaigns.filter((campaign) => {
         return !campaign.excluded;
+    });
+
+    // Sales outrank the zone verdict: a campaign with ≥1 sale belongs to the sales block only, so the
+    // buckets (СТОП / ТРИМАЄМО / БУСТ) never repeat an id the sales block already lists.
+    const bucketCampaigns = included.filter((campaign) => {
+        return campaign.metrics.sales === 0;
     });
 
     return (
@@ -106,7 +112,8 @@ function AccountBlock({
                     <span className={ZONE_TEXT_CLASS.red}>●{counts.red}</span>{' '}
                     <span className={ZONE_TEXT_CLASS.yellow}>●{counts.yellow}</span>{' '}
                     <span className={ZONE_TEXT_CLASS.green}>●{counts.green}</span>{' '}
-                    <span className={ZONE_TEXT_CLASS.neutral}>●{counts.neutral}</span>
+                    <span className={ZONE_TEXT_CLASS.neutral}>●{counts.neutral}</span>{' '}
+                    <span className={SALES_TEXT_CLASS}>●{counts.sales}</span>
                 </span>
             </div>
 
@@ -124,7 +131,7 @@ function AccountBlock({
                                 <BucketBlock
                                     key={zone}
                                     zone={zone}
-                                    campaigns={included.filter((campaign) => {
+                                    campaigns={bucketCampaigns.filter((campaign) => {
                                         return campaign.verdict.verdict === zone;
                                     })}
                                     locale={locale}

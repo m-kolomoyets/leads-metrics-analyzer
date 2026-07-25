@@ -18,14 +18,18 @@ export type CampaignRollup = {
     excluded: boolean;
 };
 
+// The header tally. A campaign with ≥1 sale counts under `sales` INSTEAD of its verdict zone — sales
+// outrank the zone everywhere in the UI (the sales block owns those ids), so the dots never double-count.
+export type AccountCounts = Record<Zone, number> & { sales: number };
+
 export type AccountRollup = {
     account: string;
     // Metrics over the account's INCLUDED campaigns only.
     metrics: Metrics;
     // All the account's campaigns (included + excluded), Spend⁺ desc.
     campaigns: CampaignRollup[];
-    // Included-campaign counts by verdict zone — the account header tally.
-    counts: Record<Zone, number>;
+    // Included-campaign counts by verdict zone, plus the sales tally — the account header dots.
+    counts: AccountCounts;
     // Non-null when a Problem-Account rule fires (doc 04) over the included campaigns.
     problem: ProblemAccount | null;
     // Σ Spend⁺ wasted over the included red campaigns (doc 06) — the account's slice of geo waste.
@@ -99,8 +103,12 @@ export function accountsFor(
             })
         );
 
-        const counts: Record<Zone, number> = { green: 0, yellow: 0, red: 0, neutral: 0 };
+        const counts: AccountCounts = { green: 0, yellow: 0, red: 0, neutral: 0, sales: 0 };
         for (const rollup of included) {
+            if (rollup.metrics.sales > 0) {
+                counts.sales += 1;
+                continue;
+            }
             counts[rollup.verdict.verdict] += 1;
         }
 

@@ -1,11 +1,11 @@
-import type { AccountRollup } from '@/lib/domain/accounts';
+import type { AccountCounts, AccountRollup } from '@/lib/domain/accounts';
 import type { Metrics } from '@/lib/domain/aggregate';
 import type { GeoThresholds, ThresholdPair, Zone } from '@/lib/domain/types';
 import type { Locale } from '../../utils/i18n';
 import { metricsFor, sumTotals } from '@/lib/domain/aggregate';
 import { zoneFor } from '@/lib/domain/verdict';
 import { cn } from '@/lib/utils/cn';
-import { ZONE_TEXT_CLASS } from '../../constants';
+import { SALES_TEXT_CLASS, ZONE_TEXT_CLASS } from '../../constants';
 import { cost, int, pct, usd, usdRound, usdSigned } from '../../utils/format';
 import { ui } from '../../utils/i18n';
 
@@ -133,11 +133,12 @@ function AccountSummary({ accounts, thresholds, locale, isReviewed, onJump }: Ac
     const totalWaste = accounts.reduce((sum, account) => {
         return sum + account.waste;
     }, 0);
-    const totalCounts: Record<Zone, number> = { green: 0, yellow: 0, red: 0, neutral: 0 };
+    const totalCounts: AccountCounts = { green: 0, yellow: 0, red: 0, neutral: 0, sales: 0 };
     for (const account of accounts) {
         for (const zone of ZONES) {
             totalCounts[zone] += account.counts[zone];
         }
+        totalCounts.sales += account.counts.sales;
     }
 
     return (
@@ -180,6 +181,7 @@ function AccountSummary({ accounts, thresholds, locale, isReviewed, onJump }: Ac
                                     </th>
                                 );
                             })}
+                            <th className={cn('p-2 font-normal', SALES_TEXT_CLASS)}>💰</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -219,6 +221,7 @@ function AccountSummary({ accounts, thresholds, locale, isReviewed, onJump }: Ac
                                             </td>
                                         );
                                     })}
+                                    <td className={cn('p-2 font-mono', SALES_TEXT_CLASS)}>{counts.sales}</td>
                                 </tr>
                             );
                         })}
@@ -245,6 +248,7 @@ function AccountSummary({ accounts, thresholds, locale, isReviewed, onJump }: Ac
                                         </td>
                                     );
                                 })}
+                                <td className={cn('p-2 font-mono', SALES_TEXT_CLASS)}>{totalCounts.sales}</td>
                             </tr>
                         </tfoot>
                     )}
