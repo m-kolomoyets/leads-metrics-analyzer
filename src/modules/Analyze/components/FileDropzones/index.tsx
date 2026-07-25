@@ -21,6 +21,12 @@ const TYPE_LABEL: Record<FileType, string> = {
     'kt-clicks': 'KT clicks',
 };
 
+// FB spend exports stack — one CSV per account/date slice, and `mergeParsed` concatenating them is
+// exactly right. The two Keitaro reports do not: each is a single whole-period export, and two of them
+// with overlapping ranges would double-count clicks and, worse, sum `UC (campaign)` uniques, which are
+// not additive. So a second KT drop replaces the first instead of adding to it (reference behaviour).
+const SINGLE_TYPES: FileType[] = ['kt-main', 'kt-clicks'];
+
 // Any file dropped in any zone is routed by its detected content type, never the slot it landed in.
 function toUploaded(picked: File[]): Promise<UploadedFile[]> {
     return Promise.all(
@@ -28,7 +34,7 @@ function toUploaded(picked: File[]): Promise<UploadedFile[]> {
             // Parse once here, at ingest — store the rows, not the raw text. `analyzeParsed` merges
             // these on every recompute without re-running Papa.parse (parse-once, grade-many).
             const { type, parsed } = parseFile(await file.text());
-            return { name: file.name, type, parsed };
+            return { name: file.name, lastModified: file.lastModified, size: file.size, type, parsed };
         })
     );
 }
@@ -43,6 +49,8 @@ function toRejected(file: File): UploadedFile {
     const ext = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.')) : '(no extension)';
     return {
         name: file.name,
+        lastModified: file.lastModified,
+        size: file.size,
         type: null,
         parsed: {
             warnings: [
@@ -64,11 +72,67 @@ function unknownReasonOf(file: UploadedFile): string | null {
     return warning?.reason ?? null;
 }
 
-function zoneHint(hint: string, active: boolean, isDraggedOver: boolean) {
+// Name alone is too weak: re-exporting the same report over a new date range keeps the filename, and
+// dropping it would be silently ignored. Size + mtime separate those while still catching a true
+// double-drop of one file.
+function keyOf(file: UploadedFile) {
+    return `${file.name}|${file.size}|${file.lastModified}`;
+}
+
+// Applied to the whole list after every add: drop exact re-drops, then keep only the newest KT main and
+// KT clicks. Post-processing the merged list (rather than the incoming batch) is what makes replacement
+// work when a KT file lands in the FB zone — routing is by detected content type, never by slot.
+function reconcile(next: UploadedFile[]): UploadedFile[] {
+    const seen = new Set<string>();
+    const deduped = next.filter((file) => {
+        const key = keyOf(file);
+        if (seen.has(key)) {
+            return false;
+        }
+        seen.add(key);
+        return true;
+    });
+
+    const lastOfType = new Map<FileType, number>();
+    deduped.forEach((file, index) => {
+        if (file.type && SINGLE_TYPES.includes(file.type)) {
+            lastOfType.set(file.type, index);
+        }
+    });
+    return deduped.filter((file, index) => {
+        if (!file.type || !SINGLE_TYPES.includes(file.type)) {
+            return true;
+        }
+        return lastOfType.get(file.type) === index;
+    });
+}
+
+// Rows that survived parse hygiene — the count the reference showed per file, and the quickest tell
+// that an export came back empty or truncated.
+function rowCountOf(file: UploadedFile) {
+    const { fb = [], ktMain = [], ktClicks = [] } = file.parsed;
+    return fb.length + ktMain.length + ktClicks.length;
+}
+
+function formatStamp(ms: number) {
+    const date = new Date(ms);
+    const pad = (value: number) => {
+        return String(value).padStart(2, '0');
+    };
+    const day = `${pad(date.getMonth() + 1)}.${pad(date.getDate())}.${date.getFullYear()}`;
+    // Time matters: two same-day re-exports of one report differ only here.
+    return `${day} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function zoneHint(hint: string, loaded: number, isDraggedOver: boolean) {
     if (isDraggedOver) {
         return 'Drop to add';
     }
-    return active ? '✓ loaded' : hint;
+    if (loaded === 0) {
+        return hint;
+    }
+    // FB stacks, so the count is the useful signal there; the KT zones only ever hold one.
+    return loaded > 1 ? `✓ ${loaded} files` : '✓ loaded';
 }
 
 function FileDropzones({ files, onChange }: FileDropzonesProps) {
@@ -83,17 +147,17 @@ function FileDropzones({ files, onChange }: FileDropzonesProps) {
             return !isCsv(file);
         });
         const added = await toUploaded(multiple ? accepted : accepted.slice(0, 1));
-        onChange([...files, ...added, ...rejected.map(toRejected)]);
+        onChange(reconcile([...files, ...added, ...rejected.map(toRejected)]));
     }
 
-    async function handleInput(event: React.ChangeEvent<HTMLInputElement>) {
+    async function handleInput(event: React.ChangeEvent<HTMLInputElement>, multiple: boolean) {
         const { files: picked } = event.target;
         if (!picked?.length) {
             return;
         }
         const list = Array.from(picked);
         event.target.value = '';
-        await addFiles(list, true);
+        await addFiles(list, multiple);
     }
 
     function handleDragOver(event: React.DragEvent<HTMLLabelElement>, zone: FileType) {
@@ -129,9 +193,10 @@ function FileDropzones({ files, onChange }: FileDropzonesProps) {
             <h3 className="text-muted-foreground text-[13px] font-normal tracking-widest uppercase">1 · Files</h3>
             <div className="grid gap-3 sm:grid-cols-3">
                 {ZONES.map((zone) => {
-                    const active = files.some((file) => {
+                    const loaded = files.filter((file) => {
                         return file.type === zone.type;
-                    });
+                    }).length;
+                    const active = loaded > 0;
                     const isDraggedOver = draggedOver === zone.type;
                     return (
                         <label
@@ -153,14 +218,16 @@ function FileDropzones({ files, onChange }: FileDropzonesProps) {
                         >
                             <span className="font-semibold">{zone.label}</span>
                             <span className="text-muted-foreground text-xs">
-                                {zoneHint(zone.hint, active, isDraggedOver)}
+                                {zoneHint(zone.hint, loaded, isDraggedOver)}
                             </span>
                             <input
                                 type="file"
                                 accept=".csv,text/csv"
                                 multiple={zone.multiple}
                                 className="mt-2 text-xs"
-                                onChange={handleInput}
+                                onChange={(event) => {
+                                    void handleInput(event, zone.multiple);
+                                }}
                             />
                         </label>
                     );
@@ -172,7 +239,7 @@ function FileDropzones({ files, onChange }: FileDropzonesProps) {
                     {files.map((file, index) => {
                         const reason = file.type ? null : unknownReasonOf(file);
                         return (
-                            <li key={`${file.name}-${index}`} className="flex flex-col gap-0.5">
+                            <li key={keyOf(file)} className="flex flex-col gap-0.5">
                                 <div className="flex items-center gap-2">
                                     <span
                                         className={cn(
@@ -182,7 +249,14 @@ function FileDropzones({ files, onChange }: FileDropzonesProps) {
                                     >
                                         {file.type ? TYPE_LABEL[file.type] : 'unknown'}
                                     </span>
-                                    <span className="truncate">{file.name}</span>
+                                    <span className="truncate">
+                                        {file.name} ({formatStamp(file.lastModified)})
+                                    </span>
+                                    {file.type && (
+                                        <span className="text-muted-foreground shrink-0 text-xs">
+                                            {rowCountOf(file)} rows
+                                        </span>
+                                    )}
                                     <button
                                         type="button"
                                         className="text-muted-foreground text-xs hover:underline"
