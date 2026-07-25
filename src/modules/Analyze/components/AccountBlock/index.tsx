@@ -1,10 +1,11 @@
 import type { AccountRollup } from '@/lib/domain/accounts';
-import type { GeoThresholds } from '@/lib/domain/types';
+import type { GeoThresholds, ThresholdPair } from '@/lib/domain/types';
 import type { Locale } from '../../utils/i18n';
+import { zoneFor } from '@/lib/domain/verdict';
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/Button';
 import { BUCKET_ZONES, SALES_TEXT_CLASS, ZONE_TEXT_CLASS } from '../../constants';
-import { cost, pct, usd } from '../../utils/format';
+import { cost, pct, usd, usdRound, usdSigned } from '../../utils/format';
 import { problemReason, ui } from '../../utils/i18n';
 import { AccountCampaigns } from '../AccountCampaigns';
 import { BucketBlock } from '../BucketBlock';
@@ -100,21 +101,55 @@ function AccountBlock({
 
                 <span className="flex-1" />
 
-                <span className="font-mono text-sm">{usd(metrics.spendPlus)}</span>
-                <span className="text-sm">
-                    ROI <span className={cn('font-mono font-bold', roiClass(metrics.roi))}>{pct(metrics.roi)}</span>
-                </span>
-                <span className="text-muted-foreground text-xs">
-                    CPC {cost(metrics.cpc)} · CPI {cost(metrics.cpi)} · CPR {cost(metrics.cpr)} · CPS{' '}
-                    {cost(metrics.cps)}
-                </span>
-                <span className="font-mono text-xs">
-                    <span className={ZONE_TEXT_CLASS.red}>●{counts.red}</span>{' '}
-                    <span className={ZONE_TEXT_CLASS.yellow}>●{counts.yellow}</span>{' '}
-                    <span className={ZONE_TEXT_CLASS.green}>●{counts.green}</span>{' '}
-                    <span className={ZONE_TEXT_CLASS.neutral}>●{counts.neutral}</span>{' '}
-                    <span className={SALES_TEXT_CLASS}>●{counts.sales}</span>
-                </span>
+                {/* Money | cost-per | zone markers — same three blocks as the summary table's column
+                    groups, so the collapsed header reads like the row it stands for. */}
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                    <div className="flex items-center gap-3">
+                        <Stat
+                            label="Rev"
+                            value={metrics.revenue > 0 ? usdRound(metrics.revenue) : '—'}
+                            className={metrics.revenue > 0 ? 'text-success' : 'text-muted-foreground'}
+                        />
+                        <Stat label="Spend" value={usd(metrics.spendPlus)} className="font-bold" />
+                        <Stat
+                            label="Profit"
+                            value={usdSigned(metrics.profit)}
+                            className={cn('font-bold', metrics.profit >= 0 ? 'text-success' : 'text-danger')}
+                        />
+                        <Stat label="ROI" value={pct(metrics.roi)} className={cn('font-bold', roiClass(metrics.roi))} />
+                    </div>
+
+                    <div className="flex items-center gap-3 border-l pl-3">
+                        <Stat
+                            label="CPC"
+                            value={cost(metrics.cpc)}
+                            className={costClass(metrics.cpc, thresholds?.clicks)}
+                        />
+                        <Stat
+                            label="CPI"
+                            value={cost(metrics.cpi)}
+                            className={costClass(metrics.cpi, thresholds?.installs)}
+                        />
+                        <Stat
+                            label="CPR"
+                            value={cost(metrics.cpr)}
+                            className={costClass(metrics.cpr, thresholds?.regs)}
+                        />
+                        <Stat
+                            label="CPS"
+                            value={cost(metrics.cps)}
+                            className={costClass(metrics.cps, thresholds?.sales)}
+                        />
+                    </div>
+
+                    <span className="border-l pl-3 font-mono">
+                        <span className={ZONE_TEXT_CLASS.red}>●{counts.red}</span>{' '}
+                        <span className={ZONE_TEXT_CLASS.yellow}>●{counts.yellow}</span>{' '}
+                        <span className={ZONE_TEXT_CLASS.green}>●{counts.green}</span>{' '}
+                        <span className={ZONE_TEXT_CLASS.neutral}>●{counts.neutral}</span>{' '}
+                        <span className={SALES_TEXT_CLASS}>●{counts.sales}</span>
+                    </span>
+                </div>
             </div>
 
             {problem && open && (
@@ -176,6 +211,24 @@ function AccountBlock({
             )}
         </section>
     );
+}
+
+// One labelled figure in the header strip: dim label, coloured mono value.
+function Stat({ label, value, className }: { label: string; value: string; className?: string }) {
+    return (
+        <span className="flex items-baseline gap-1 whitespace-nowrap">
+            <span className="text-muted-foreground text-[10px] tracking-wide uppercase">{label}</span>
+            <span className={cn('font-mono', className)}>{value}</span>
+        </span>
+    );
+}
+
+// Band tint for a cost-per figure, mirroring the campaign table; no preset (or null value) → dim.
+function costClass(value: number | null, pair: ThresholdPair | undefined): string {
+    if (value === null || !pair) {
+        return 'text-muted-foreground';
+    }
+    return ZONE_TEXT_CLASS[zoneFor(value, pair)];
 }
 
 function roiClass(roi: number | null): string {
