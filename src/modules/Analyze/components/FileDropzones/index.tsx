@@ -9,10 +9,10 @@ type FileDropzonesProps = {
     onChange: (files: UploadedFile[]) => void;
 };
 
-const ZONES: { type: FileType; label: string; hint: string; multiple: boolean }[] = [
-    { type: 'fb', label: 'Facebook Ads', hint: 'Spend export (multi-file)', multiple: true },
-    { type: 'kt-main', label: 'Keitaro — Main', hint: 'Installs / regs / sales', multiple: false },
-    { type: 'kt-clicks', label: 'Keitaro — Clicks', hint: 'Link-click report', multiple: false },
+const ZONES: { type: FileType; label: string; hint: string }[] = [
+    { type: 'fb', label: 'Facebook Ads', hint: 'Spend export (multi-file)' },
+    { type: 'kt-main', label: 'Keitaro — Main', hint: 'Installs / regs / sales (multi-file)' },
+    { type: 'kt-clicks', label: 'Keitaro — Clicks', hint: 'Link-click report (multi-file)' },
 ];
 
 const TYPE_LABEL: Record<FileType, string> = {
@@ -21,11 +21,11 @@ const TYPE_LABEL: Record<FileType, string> = {
     'kt-clicks': 'KT clicks',
 };
 
-// FB spend exports stack — one CSV per account/date slice, and `mergeParsed` concatenating them is
-// exactly right. The two Keitaro reports do not: each is a single whole-period export, and two of them
-// with overlapping ranges would double-count clicks and, worse, sum `UC (campaign)` uniques, which are
-// not additive. So a second KT drop replaces the first instead of adding to it (reference behaviour).
-const SINGLE_TYPES: FileType[] = ['kt-main', 'kt-clicks'];
+// Every type stacks: exports are sliced per account/date range and `mergeParsed` concatenating them is
+// what reassembles the period. Caveat for the Keitaro zones — overlapping date ranges double-count
+// clicks and sum `UC (campaign)` uniques, which are not additive. Slices must not overlap; the zone
+// warns once a type holds more than one file.
+const OVERLAP_WARN_TYPES: FileType[] = ['kt-main', 'kt-clicks'];
 
 // Any file dropped in any zone is routed by its detected content type, never the slot it landed in.
 function toUploaded(picked: File[]): Promise<UploadedFile[]> {
@@ -79,31 +79,17 @@ function keyOf(file: UploadedFile) {
     return `${file.name}|${file.size}|${file.lastModified}`;
 }
 
-// Applied to the whole list after every add: drop exact re-drops, then keep only the newest KT main and
-// KT clicks. Post-processing the merged list (rather than the incoming batch) is what makes replacement
-// work when a KT file lands in the FB zone — routing is by detected content type, never by slot.
+// Applied to the whole list after every add: drop exact re-drops. Everything else stacks, whichever
+// zone it landed in — routing is by detected content type, never by slot.
 function reconcile(next: UploadedFile[]): UploadedFile[] {
     const seen = new Set<string>();
-    const deduped = next.filter((file) => {
+    return next.filter((file) => {
         const key = keyOf(file);
         if (seen.has(key)) {
             return false;
         }
         seen.add(key);
         return true;
-    });
-
-    const lastOfType = new Map<FileType, number>();
-    deduped.forEach((file, index) => {
-        if (file.type && SINGLE_TYPES.includes(file.type)) {
-            lastOfType.set(file.type, index);
-        }
-    });
-    return deduped.filter((file, index) => {
-        if (!file.type || !SINGLE_TYPES.includes(file.type)) {
-            return true;
-        }
-        return lastOfType.get(file.type) === index;
     });
 }
 
@@ -131,14 +117,13 @@ function zoneHint(hint: string, loaded: number, isDraggedOver: boolean) {
     if (loaded === 0) {
         return hint;
     }
-    // FB stacks, so the count is the useful signal there; the KT zones only ever hold one.
     return loaded > 1 ? `✓ ${loaded} files` : '✓ loaded';
 }
 
 function FileDropzones({ files, onChange }: FileDropzonesProps) {
     const [draggedOver, setDraggedOver] = useState<FileType | null>(null);
 
-    async function addFiles(picked: File[], multiple: boolean) {
+    async function addFiles(picked: File[]) {
         if (picked.length === 0) {
             return;
         }
@@ -146,18 +131,18 @@ function FileDropzones({ files, onChange }: FileDropzonesProps) {
         const rejected = picked.filter((file) => {
             return !isCsv(file);
         });
-        const added = await toUploaded(multiple ? accepted : accepted.slice(0, 1));
+        const added = await toUploaded(accepted);
         onChange(reconcile([...files, ...added, ...rejected.map(toRejected)]));
     }
 
-    async function handleInput(event: React.ChangeEvent<HTMLInputElement>, multiple: boolean) {
+    async function handleInput(event: React.ChangeEvent<HTMLInputElement>) {
         const { files: picked } = event.target;
         if (!picked?.length) {
             return;
         }
         const list = Array.from(picked);
         event.target.value = '';
-        await addFiles(list, multiple);
+        await addFiles(list);
     }
 
     function handleDragOver(event: React.DragEvent<HTMLLabelElement>, zone: FileType) {
@@ -174,10 +159,10 @@ function FileDropzones({ files, onChange }: FileDropzonesProps) {
         setDraggedOver(null);
     }
 
-    async function handleDrop(event: React.DragEvent<HTMLLabelElement>, multiple: boolean) {
+    async function handleDrop(event: React.DragEvent<HTMLLabelElement>) {
         event.preventDefault();
         setDraggedOver(null);
-        await addFiles(Array.from(event.dataTransfer.files), multiple);
+        await addFiles(Array.from(event.dataTransfer.files));
     }
 
     function removeAt(index: number) {
@@ -198,6 +183,7 @@ function FileDropzones({ files, onChange }: FileDropzonesProps) {
                     }).length;
                     const active = loaded > 0;
                     const isDraggedOver = draggedOver === zone.type;
+                    const warnOverlap = loaded > 1 && OVERLAP_WARN_TYPES.includes(zone.type);
                     return (
                         <label
                             key={zone.type}
@@ -213,20 +199,25 @@ function FileDropzones({ files, onChange }: FileDropzonesProps) {
                             }}
                             onDragLeave={handleDragLeave}
                             onDrop={(event) => {
-                                void handleDrop(event, zone.multiple);
+                                void handleDrop(event);
                             }}
                         >
                             <span className="font-semibold">{zone.label}</span>
                             <span className="text-muted-foreground text-xs">
                                 {zoneHint(zone.hint, loaded, isDraggedOver)}
                             </span>
+                            {warnOverlap && (
+                                <span className="text-warning text-xs">
+                                    ⚠ Date ranges must not overlap — clicks double-count and uniques do not sum.
+                                </span>
+                            )}
                             <input
                                 type="file"
                                 accept=".csv,text/csv"
-                                multiple={zone.multiple}
+                                multiple
                                 className="mt-2 text-xs"
                                 onChange={(event) => {
-                                    void handleInput(event, zone.multiple);
+                                    void handleInput(event);
                                 }}
                             />
                         </label>
