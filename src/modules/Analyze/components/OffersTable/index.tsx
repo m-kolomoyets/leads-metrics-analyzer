@@ -90,10 +90,14 @@ function MetricCells({ m, thresholds, plain }: { m: Metrics; thresholds: GeoThre
 // four column blocks. Offer identity leads with its ID in the accent colour (reference parity), then
 // the parsed name. No copy button, no CPC (offers have no click source). The footer rolls every row
 // up via metricsFor(Σ totals): counts/money summed, EPC/ROI/cost/conversion re-derived — so the
-// footer obeys the same Spend⁺ arithmetic as the cells above it.
+// footer obeys the same Spend⁺ arithmetic as the cells above it. It is hidden for a single offer,
+// where the total would just repeat that one row (CONTEXT.md, Total / avg footer).
 function OffersTable({ title, firstCol, rows, unallocated, thresholds, locale }: OffersTableProps) {
     // Sub-cent leftovers are float noise, not a real bucket — only show a genuine spend.
     const hasUnallocated = unallocated.spendPlus >= 0.01;
+    // One offer → the footer would restate that row verbatim. Only roll up when there is something
+    // to roll up. The unallocated row is not an offer and never earns the footer on its own.
+    const showFooter = rows.length > 1;
     const unallocatedMetrics = metricsFor(unallocated);
     const totals = metricsFor(
         sumTotals([
@@ -160,14 +164,16 @@ function OffersTable({ title, firstCol, rows, unallocated, thresholds, locale }:
                             </tr>
                         )}
                     </tbody>
-                    <tfoot>
-                        <tr className="border-t-2 font-semibold">
-                            <td className="text-muted-foreground p-2 text-left whitespace-nowrap">
-                                {ui('totalAvg', locale)}
-                            </td>
-                            <MetricCells m={totals} thresholds={thresholds} plain />
-                        </tr>
-                    </tfoot>
+                    {showFooter && (
+                        <tfoot>
+                            <tr className="border-t-2 font-semibold">
+                                <td className="text-muted-foreground p-2 text-left whitespace-nowrap">
+                                    {ui('totalAvg', locale)}
+                                </td>
+                                <MetricCells m={totals} thresholds={thresholds} plain />
+                            </tr>
+                        </tfoot>
+                    )}
                 </table>
             </div>
             <p className="text-muted-foreground text-[10px]">{ui('allocEstimate', locale)}</p>

@@ -145,6 +145,12 @@ _Avoid_: Average CPI, blended CPI, effective CPI
 > the cells above them. This is the one place a displayed "Spend" is Spend⁺ by design — elsewhere
 > raw Spend stays display-only.
 
+> **Total / avg footers appear only above one row.** Any table's roll-up footer is rendered only
+> when the table body holds **more than one** data row — with a single row the footer would restate
+> it verbatim and read as a second, different fact. Applies to every table in the app, whatever the
+> dimension. Roll-up arithmetic is unchanged: counts/money summed, EPC/ROI/cost-per/conversion
+> re-derived from those sums, never averaged.
+
 ### Money
 
 **Commission**:
