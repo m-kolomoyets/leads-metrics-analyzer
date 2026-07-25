@@ -166,7 +166,7 @@ function SharedSettingsEditor({ shared, canEdit, locale, seed }: SharedSettingsE
                                     </Label>
                                     <button
                                         type="button"
-                                        className="text-muted-foreground hover:text-foreground"
+                                        className="text-muted-foreground hover:text-foreground mb-1.5"
                                         aria-label={ui('reviewMultiplier', locale)}
                                     >
                                         <InfoIcon className="size-3.5" />
