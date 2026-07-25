@@ -1,5 +1,6 @@
 import type { Stage, VerdictReason, Zone } from '@/lib/domain/types';
 import type { ProblemAccount, Verdict } from '@/lib/domain/verdict';
+import { usd } from './format';
 
 // i18n at the UI edge (ADR-0004): the domain returns structured verdicts/reasons; every display
 // string lives here. Ukrainian is the team's canonical language (doc 04 glossary); English mirrors it.
@@ -197,7 +198,7 @@ export function reasonText(reason: VerdictReason | null, locale: Locale): string
     if (!reason) {
         return '—';
     }
-    const money = `$${'value' in reason ? reason.value.toFixed(2) : '0.00'}`;
+    const money = usd('value' in reason ? reason.value : 0);
     switch (reason.kind) {
         case 'graded': {
             const line = `${STAGE_LABEL[locale][reason.stage]}: ${reason.metric.toUpperCase()} ${money}`;
@@ -228,11 +229,9 @@ export function verdictWhy(verdict: Verdict, locale: Locale): string {
 // Problem-account reason per rule (doc 04). Rule 1: spend out, nothing tracked. Rule 2: unics dear.
 export function problemReason(problem: ProblemAccount, spendPlus: number, cpi: number | null, locale: Locale): string {
     if (problem.rule === 1) {
-        return locale === 'uk'
-            ? `0 інсталів за Spend⁺ $${spendPlus.toFixed(2)}`
-            : `0 installs on Spend⁺ $${spendPlus.toFixed(2)}`;
+        return locale === 'uk' ? `0 інсталів за Spend⁺ ${usd(spendPlus)}` : `0 installs on Spend⁺ ${usd(spendPlus)}`;
     }
-    const cpiText = cpi === null ? '—' : `$${cpi.toFixed(2)}`;
+    const cpiText = cpi === null ? '—' : usd(cpi);
     return locale === 'uk'
         ? `уніки дорогі (CPI ${cpiText}), реги погані, 0 депозитів`
         : `unics dear (CPI ${cpiText}), regs bad, 0 deposits`;

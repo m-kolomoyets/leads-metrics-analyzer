@@ -4,7 +4,7 @@ import type { Locale } from '../../utils/i18n';
 import { zoneFor } from '@/lib/domain/verdict';
 import { cn } from '@/lib/utils/cn';
 import { ZONE_TEXT_CLASS } from '../../constants';
-import { cost, pct } from '../../utils/format';
+import { cost, pct, usd, usdRound } from '../../utils/format';
 import { ui } from '../../utils/i18n';
 
 type AccountSummaryProps = {
@@ -86,9 +86,9 @@ function AccountSummary({ accounts, thresholds, locale, isReviewed, onJump }: Ac
                                     <td className={cn('p-2 text-left font-mono', alarm && 'font-bold text-danger')}>
                                         {account.account} {alarm && '🚨'}
                                     </td>
-                                    <td className="p-2 font-mono font-bold">${metrics.spendPlus.toFixed(2)}</td>
+                                    <td className="p-2 font-mono font-bold">{usd(metrics.spendPlus)}</td>
                                     <td className={cn('p-2 font-mono', metrics.revenue > 0 && 'text-success')}>
-                                        {metrics.revenue > 0 ? `$${metrics.revenue.toFixed(0)}` : '—'}
+                                        {metrics.revenue > 0 ? usdRound(metrics.revenue) : '—'}
                                     </td>
                                     <td
                                         className={cn(
@@ -104,7 +104,7 @@ function AccountSummary({ accounts, thresholds, locale, isReviewed, onJump }: Ac
                                             waste > 0 ? 'text-danger' : 'text-muted-foreground'
                                         )}
                                     >
-                                        {waste > 0 ? `$${waste.toFixed(2)}` : '—'}
+                                        {waste > 0 ? usd(waste) : '—'}
                                     </td>
                                     <CostCell value={metrics.cpc} pair={thresholds?.clicks} />
                                     <CostCell value={metrics.cpi} pair={thresholds?.installs} />

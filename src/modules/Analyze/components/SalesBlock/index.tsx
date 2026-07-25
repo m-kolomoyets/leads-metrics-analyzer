@@ -3,7 +3,7 @@ import type { Locale } from '../../utils/i18n';
 import { sumTotals } from '@/lib/domain/aggregate';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { usd } from '../../utils/format';
+import { int, usd } from '../../utils/format';
 import { ui } from '../../utils/i18n';
 import { Pill } from '../Pill';
 
@@ -34,8 +34,8 @@ function SalesBlock({ campaigns, locale, copiedKey, onCopy, copyKey }: SalesBloc
             <Pill color="violet" glyph="$" label={ui('sales', locale)} count={campaigns.length} />
 
             <p className="text-muted-foreground font-mono text-[11px] leading-relaxed">
-                Spend {usd(stat.spendPlus)} · Clicks {stat.linkClicks} · Inst {stat.installs} · Reg {stat.regs} · Sales{' '}
-                {stat.sales}
+                Spend {usd(stat.spendPlus)} · Clicks {int(stat.linkClicks)} · Inst {int(stat.installs)} · Reg{' '}
+                {int(stat.regs)} · Sales {int(stat.sales)}
             </p>
 
             <textarea

@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils/cn';
+import { usdRound } from '../../utils/format';
 
 // ISO-2 → flag emoji via Unicode regional-indicator offset. Returns null for anything that is not two
 // A–Z letters (unknown/aggregate geo), so the label falls back to the raw code.
@@ -50,9 +51,7 @@ function GeoTabs({ geos, active, spendByGeo, onSelect }: GeoTabsProps) {
                             </span>
                         )}
                         {geo}
-                        {spend !== undefined && (
-                            <span className="ml-1.5 font-mono  opacity-80">${spend.toFixed(0)}</span>
-                        )}
+                        {spend !== undefined && <span className="ml-1.5 font-mono  opacity-80">{usdRound(spend)}</span>}
                     </button>
                 );
             })}

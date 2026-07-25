@@ -4,7 +4,7 @@ import type { Locale } from '../../utils/i18n';
 import { zoneFor } from '@/lib/domain/verdict';
 import { cn } from '@/lib/utils/cn';
 import { ZONE_TEXT_CLASS } from '../../constants';
-import { cost, flagEmoji, pct, usd } from '../../utils/format';
+import { flagEmoji, pct, percent, usd, usdSigned } from '../../utils/format';
 import { ui } from '../../utils/i18n';
 
 type GeoStatProps = {
@@ -44,7 +44,7 @@ function Metric({ value, pair }: { value: number | null; pair: ThresholdPair | u
     const tone: Zone = graded ? zoneFor(value, pair) : 'neutral';
     return (
         <span className={cn('font-mono', graded ? ZONE_TEXT_CLASS[tone] : 'text-muted-foreground')}>
-            ${cost(value)}
+            {value === null ? '—' : usd(value)}
         </span>
     );
 }
@@ -116,7 +116,7 @@ function GeoStat({ geo, rollup, thresholds, waste, wasteZone, locale }: GeoStatP
                         />
                         <Stat
                             label="Profit"
-                            value={`${metrics.profit >= 0 ? '+' : '−'}${usd(Math.abs(metrics.profit))}`}
+                            value={usdSigned(metrics.profit)}
                             size="lg"
                             className={metrics.profit >= 0 ? 'text-success' : 'text-danger'}
                         />
@@ -130,7 +130,7 @@ function GeoStat({ geo, rollup, thresholds, waste, wasteZone, locale }: GeoStatP
                         >
                             {ui('attributed', locale)} {usd(attributed.revenue)} · {ui('untaggedGap', locale)}{' '}
                             <span className="font-mono">
-                                {usd(untaggedRevenue)} ({untaggedPct.toFixed(1)}%)
+                                {usd(untaggedRevenue)} ({percent(untaggedPct)})
                             </span>
                         </p>
                     )}
@@ -150,7 +150,7 @@ function GeoStat({ geo, rollup, thresholds, waste, wasteZone, locale }: GeoStatP
                     />
                     <Stat
                         label={ui('wastePctOfSpend', locale)}
-                        value={`${wastePct.toFixed(1)}%`}
+                        value={percent(wastePct)}
                         size="lg"
                         className={ZONE_TEXT_CLASS[wasteTone]}
                     />

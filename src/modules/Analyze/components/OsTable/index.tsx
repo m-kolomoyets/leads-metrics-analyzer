@@ -6,7 +6,7 @@ import { metricsFor, sumTotals } from '@/lib/domain/aggregate';
 import { zoneFor } from '@/lib/domain/verdict';
 import { cn } from '@/lib/utils/cn';
 import { ZONE_TEXT_CLASS } from '../../constants';
-import { cost, pct, ratioPct, usd } from '../../utils/format';
+import { cost, int, pct, ratioPct, usd, usdSigned } from '../../utils/format';
 import { ui } from '../../utils/i18n';
 
 type OsTableProps = {
@@ -44,11 +44,6 @@ function CostCell({
     return <td className={cn('p-2 font-mono', zone, className)}>{cost(value)}</td>;
 }
 
-// A signed dollar Profit: +$120.00 / −$45.00.
-function profitText(value: number): string {
-    return `${value >= 0 ? '+' : '−'}$${Math.abs(value).toFixed(2)}`;
-}
-
 // The metric cells shared by a data row and the totals footer. `spendPlus` is displayed as the
 // Spend column (commission-inclusive by design — see CONTEXT.md), so Profit = Rev − Spend reads true.
 // `plain` (footer totals, unallocated row) drops every tint so the sums/avg render in the default
@@ -57,17 +52,17 @@ function MetricCells({ m, thresholds, plain }: { m: Metrics; thresholds: GeoThre
     const dim = plain ? undefined : 'text-muted-foreground';
     return (
         <>
-            <td className="p-2 font-mono">{m.linkClicks}</td>
-            <td className="p-2 font-mono">{m.installs}</td>
-            <td className="p-2 font-mono">{m.regs}</td>
-            <td className="p-2 font-mono">{m.sales}</td>
+            <td className="p-2 font-mono">{int(m.linkClicks)}</td>
+            <td className="p-2 font-mono">{int(m.installs)}</td>
+            <td className="p-2 font-mono">{int(m.regs)}</td>
+            <td className="p-2 font-mono">{int(m.sales)}</td>
             <td className={cn('p-2 font-mono', dim)}>{cost(m.epc)}</td>
             <td className={cn('p-2 font-mono', BLOCK_START, !plain && m.revenue > 0 && 'text-success')}>
                 {usd(m.revenue)}
             </td>
             <td className={cn('p-2 font-mono', dim)}>{usd(m.spendPlus)}</td>
             <td className={cn('p-2 font-mono font-bold', !plain && (m.profit >= 0 ? 'text-success' : 'text-danger'))}>
-                {profitText(m.profit)}
+                {usdSigned(m.profit)}
             </td>
             <td
                 className={cn(

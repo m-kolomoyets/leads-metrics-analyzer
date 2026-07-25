@@ -4,7 +4,7 @@ import type { Locale } from '../../utils/i18n';
 import { zoneFor } from '@/lib/domain/verdict';
 import { cn } from '@/lib/utils/cn';
 import { ZONE_ACCENT_CLASS, ZONE_TEXT_CLASS } from '../../constants';
-import { cost, usd } from '../../utils/format';
+import { int, usd } from '../../utils/format';
 import { ui, verdictWhy } from '../../utils/i18n';
 
 type AccountCampaignsProps = {
@@ -25,12 +25,10 @@ function CostCell({ value, pair }: { value: number | null; pair: ThresholdPair |
         return <td className="text-muted-foreground p-2 font-mono">—</td>;
     }
     if (!pair) {
-        return <td className="p-2 font-mono">${cost(value)}</td>;
+        return <td className="p-2 font-mono">{usd(value)}</td>;
     }
     const zone = zoneFor(value, pair);
-    return (
-        <td className={cn('p-2 font-mono', zone === 'red' && 'font-bold', ZONE_TEXT_CLASS[zone])}>${cost(value)}</td>
-    );
+    return <td className={cn('p-2 font-mono', zone === 'red' && 'font-bold', ZONE_TEXT_CLASS[zone])}>{usd(value)}</td>;
 }
 
 // The Account's campaigns at Campaign grain, one row each with an exclude toggle. Toggling a row
@@ -83,10 +81,10 @@ function AccountCampaigns({ campaigns, thresholds, locale, isExcluded, onToggle 
                                 >
                                     {metrics.revenue > 0 ? usd(metrics.revenue) : '—'}
                                 </td>
-                                <td className="p-2 font-mono">{metrics.linkClicks}</td>
-                                <td className="p-2 font-mono">{metrics.installs}</td>
-                                <td className="p-2 font-mono">{metrics.regs}</td>
-                                <td className="p-2 font-mono">{metrics.sales}</td>
+                                <td className="p-2 font-mono">{int(metrics.linkClicks)}</td>
+                                <td className="p-2 font-mono">{int(metrics.installs)}</td>
+                                <td className="p-2 font-mono">{int(metrics.regs)}</td>
+                                <td className="p-2 font-mono">{int(metrics.sales)}</td>
                                 <CostCell value={metrics.cpc} pair={thresholds?.clicks} />
                                 <CostCell value={metrics.cpi} pair={thresholds?.installs} />
                                 <CostCell value={metrics.cpr} pair={thresholds?.regs} />
