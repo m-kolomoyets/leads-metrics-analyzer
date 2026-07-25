@@ -1,6 +1,7 @@
 import type { AccountRollup } from '@/lib/domain/accounts';
 import type { GeoThresholds, ThresholdPair } from '@/lib/domain/types';
 import type { Locale } from '../../utils/i18n';
+import { useState } from 'react';
 import { zoneFor } from '@/lib/domain/verdict';
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/Button';
@@ -46,6 +47,19 @@ function AccountBlock({
     onToggleReviewed,
 }: AccountBlockProps) {
     const { metrics, counts, problem } = account;
+
+    const [campaignsOpen, setCampaignsOpen] = useState(false);
+
+    const salesIds = new Set(
+        account.salesCampaigns.map((campaign) => {
+            return campaign.campaign;
+        })
+    );
+    // Everything the sales table above doesn't already show — excluded sales campaigns land here too,
+    // since exclusion drops them from `salesCampaigns`.
+    const otherCampaigns = account.campaigns.filter((campaign) => {
+        return !salesIds.has(campaign.campaign);
+    });
 
     const included = account.campaigns.filter((campaign) => {
         return !campaign.excluded;
@@ -200,13 +214,37 @@ function AccountBlock({
                         </div>
                     )}
 
-                    <AccountCampaigns
-                        campaigns={account.campaigns}
-                        thresholds={thresholds}
-                        locale={locale}
-                        isExcluded={isExcluded}
-                        onToggle={onToggleExcluded}
-                    />
+                    {/* Sales ids get copied straight from the blocks above, so the no-sales campaigns —
+                        the long tail nobody reads row by row — stay folded until asked for. */}
+                    {otherCampaigns.length > 0 && (
+                        <div className="flex flex-col gap-2">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="text-muted-foreground w-fit gap-2"
+                                aria-expanded={campaignsOpen}
+                                onClick={() => {
+                                    setCampaignsOpen((prev) => {
+                                        return !prev;
+                                    });
+                                }}
+                            >
+                                <span aria-hidden>{campaignsOpen ? '▾' : '▸'}</span>
+                                {ui('noSalesCampaigns', locale)} ({otherCampaigns.length})
+                            </Button>
+
+                            {campaignsOpen && (
+                                <AccountCampaigns
+                                    campaigns={otherCampaigns}
+                                    thresholds={thresholds}
+                                    locale={locale}
+                                    isExcluded={isExcluded}
+                                    onToggle={onToggleExcluded}
+                                />
+                            )}
+                        </div>
+                    )}
                 </div>
             )}
         </section>

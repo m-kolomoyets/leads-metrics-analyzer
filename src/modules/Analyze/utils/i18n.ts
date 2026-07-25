@@ -98,6 +98,7 @@ const UI: Record<Locale, Record<string, string>> = {
         summaryHint: 'клік — до блоку',
         wasteCol: 'Злито',
         wasteEstimate: 'Злито — оцінка (Spend⁺ понад лінію жовт→черв).',
+        noSalesCampaigns: 'Кампанії без продажів',
     },
     en: {
         sales: 'WITH SALES',
@@ -169,6 +170,7 @@ const UI: Record<Locale, Record<string, string>> = {
         summaryHint: 'click a row to jump',
         wasteCol: 'Waste',
         wasteEstimate: 'Waste is an estimate (Spend⁺ over the yellow→red line).',
+        noSalesCampaigns: 'Campaigns without sales',
     },
 };
 
