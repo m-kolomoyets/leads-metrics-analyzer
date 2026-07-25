@@ -1,5 +1,5 @@
 import type { GeoThresholds, Totals } from './types';
-import { problemAccount, verdictFor, waste, zoneFor } from './verdict';
+import { accountWaste, problemAccount, verdictFor, waste, zoneFor } from './verdict';
 
 const TH: GeoThresholds = {
     installs: { gy: 2, yr: 4 },
@@ -62,6 +62,19 @@ describe('verdictFor waste (doc 06)', () => {
 
     it('zero-result red spends its whole Spend⁺ as waste (nothing achieved)', () => {
         expect(verdictFor(totals({ spendPlus: 5 }), TH).waste).toBe(5); // > clicks.yr, 0 results
+    });
+});
+
+describe('accountWaste (ADR-0014)', () => {
+    it('bills one bar when nothing was installed', () => {
+        expect(accountWaste(55, 0, TH, 10)).toBe(15); // bar 40; due to pause at 40, spent 55
+    });
+    it('bills the bar per install once the account bought some', () => {
+        expect(accountWaste(102, 3, TH, 2)).toBe(78); // bar 8
+    });
+    it('floors at zero below the bar', () => {
+        expect(accountWaste(5, 0, TH, 2)).toBe(0);
+        expect(accountWaste(10, 5, TH, 2)).toBe(0);
     });
 });
 

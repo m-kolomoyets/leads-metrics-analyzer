@@ -164,7 +164,7 @@ function Analyze() {
         return flipped ? !startsOpen(account) : startsOpen(account);
     };
 
-    // Geo waste = Σ each account's Spend⁺ wasted over the line — in lock-step with the shown verdicts.
+    // Geo waste = Σ each account's waste, whichever grain that account is measured at (ADR-0014).
     const geoWaste = accounts.reduce((sum, account) => {
         return sum + account.waste;
     }, 0);

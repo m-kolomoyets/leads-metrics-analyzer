@@ -98,6 +98,9 @@ const UI: Record<Locale, Record<string, string>> = {
         summaryHint: 'клік — до блоку',
         wasteCol: 'Злито',
         wasteEstimate: 'Злито — оцінка (Spend⁺ понад лінію жовт→черв).',
+        wasteAccountGrain:
+            'Проблемний акаунт: злите рахується по акаунту цілком (Spend⁺ понад бар перевірки), а не як сума кампаній — тож із рядками кампаній не збігається.',
+        wasteAccountGrainNote: '* — злите пораховано по акаунту цілком, не сумою кампаній.',
         noSalesCampaigns: 'Кампанії без продажів',
     },
     en: {
@@ -170,6 +173,9 @@ const UI: Record<Locale, Record<string, string>> = {
         summaryHint: 'click a row to jump',
         wasteCol: 'Waste',
         wasteEstimate: 'Waste is an estimate (Spend⁺ over the yellow→red line).',
+        wasteAccountGrain:
+            'Problem account: waste is measured over the whole account (Spend⁺ past the review bar), not summed from its campaigns — so it will not match the campaign rows.',
+        wasteAccountGrainNote: '* waste measured over the whole account, not summed from its campaigns.',
         noSalesCampaigns: 'Campaigns without sales',
     },
 };

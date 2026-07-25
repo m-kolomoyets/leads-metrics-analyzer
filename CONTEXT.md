@@ -216,10 +216,19 @@ red = **СТОП**, yellow = **ТРИМАЄМО**, green = **БУСТ**, neutral
 _Avoid_: Bucket, status, decision, recommendation
 
 **Waste**:
-Spend that exceeds the red Threshold for the results achieved: `spend − yr × count`, floored at
-zero. Spend below that line is not waste — it is budget still legitimately working toward the
-next result. Only ever non-zero for a red Verdict.
+A **Campaign's** Spend that exceeds the red Threshold for the results achieved: `spend − yr × count`,
+floored at zero. Spend below that line is not waste — it is budget still legitimately working toward
+the next result. Only ever non-zero for a red Verdict.
 _Avoid_: Loss, burn, overspend
+
+**Account Waste**:
+A **Problem Account's** waste, measured over the whole Account rather than summed from its Campaigns:
+`Spend⁺ − bar × Installs`, where `bar` is the Review Multiplier × the Geo's install `yr`. Once an
+Account is flagged, the pause was due for the Account, so every dollar past the bar is lost —
+including dollars spent by Campaigns that graded green on their own. Deliberately **not** the sum of
+its Campaigns' Waste, and it may be larger *or* smaller than that sum (ADR-0014). An Account that is
+not a Problem Account has no Account Waste; it is measured bottom-up from Waste as before.
+_Avoid_: Overspend, account loss, total waste
 
 **Ruleset**:
 The complete set of tunable judgement inputs: every Geo's Threshold Pairs, plus the global Waste

@@ -2,7 +2,7 @@ import type { Metrics } from './aggregate';
 import type { Fact, GeoThresholds, Totals, Zone } from './types';
 import type { ProblemAccount, Verdict } from './verdict';
 import { metricsFor, sumTotals } from './aggregate';
-import { problemAccount, verdictFor } from './verdict';
+import { accountWaste, problemAccount, verdictFor } from './verdict';
 
 // Per-Account roll-up for the analyzer shell (S2). Aggregates graded Facts to Campaign grain, groups
 // them under their Account, buckets each by its Verdict zone, and flags Problem Accounts (doc 04).
@@ -32,8 +32,13 @@ export type AccountRollup = {
     counts: AccountCounts;
     // Non-null when a Problem-Account rule fires (doc 04) over the included campaigns.
     problem: ProblemAccount | null;
-    // Σ Spend⁺ wasted over the included red campaigns (doc 06) — the account's slice of geo waste.
+    // The account's slice of geo waste. Grain depends on `wasteGrain` (ADR-0014).
     waste: number;
+    // Which measurement `waste` is: 'campaign' = Σ the included red campaigns' Waste; 'account' =
+    // Account Waste, this account's own Spend⁺ past the review-multiplied bar. A Problem Account is
+    // always 'account', and its `waste` will NOT equal the sum of its campaign rows — the UI must say
+    // so rather than let the mismatch read as an arithmetic bug.
+    wasteGrain: 'campaign' | 'account';
     // Included campaigns that produced ≥1 sale — surfaced in their own block, sales desc.
     salesCampaigns: CampaignRollup[];
 };
@@ -112,19 +117,26 @@ export function accountsFor(
             counts[rollup.verdict.verdict] += 1;
         }
 
+        // No included spend → no verdict to alarm on (rule 2's CPI would divide 0/0 to Infinity).
+        const problem =
+            thresholds && totals.spendPlus > 0 ? problemAccount(account, totals, thresholds, reviewMultiplier) : null;
+
         accounts.push({
             account,
             metrics: metricsFor(totals),
             campaigns: rollups,
             counts,
-            waste: included.reduce((sum, rollup) => {
-                return sum + rollup.verdict.waste;
-            }, 0),
-            // No included spend → no verdict to alarm on (rule 2's CPI would divide 0/0 to Infinity).
-            problem:
-                thresholds && totals.spendPlus > 0
-                    ? problemAccount(account, totals, thresholds, reviewMultiplier)
-                    : null,
+            // A flagged account is judged whole: the pause was due at the bar, so its own Spend⁺ past
+            // that line is the loss — not the sum of its red campaigns, which misses the money burned
+            // by campaigns that graded fine on their own. Everyone else stays bottom-up (ADR-0014).
+            waste:
+                problem && thresholds
+                    ? accountWaste(totals.spendPlus, totals.installs, thresholds, reviewMultiplier)
+                    : included.reduce((sum, rollup) => {
+                          return sum + rollup.verdict.waste;
+                      }, 0),
+            wasteGrain: problem ? 'account' : 'campaign',
+            problem,
             salesCampaigns: included
                 .filter((rollup) => {
                     return rollup.metrics.sales > 0;

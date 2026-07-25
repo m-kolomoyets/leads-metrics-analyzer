@@ -48,6 +48,23 @@ result. Example (payout $250 red line, 1 sale): spend $300 → Waste $0 (runway 
 spend $350 → Waste $25. Aggregated per Account, then per Geo, and shown against the per-geo Waste
 Zone band (% of spend).
 
+### Account Waste — Problem Accounts are measured whole
+
+The roll-up above is bottom-up, and it holds for ordinary accounts only. A **Problem Account** is
+already a judgement that the *account* should have been paused, so its loss is measured over the
+account rather than summed from its campaigns ([ADR-0014](../adr/0014-problem-accounts-waste-at-account-grain.md)):
+
+```
+bar           = K × installs.yr                              // the same bar the rules fire on
+Account Waste = max(0, Spend⁺ − bar × max(installs, 1))      // only for a Problem Account
+```
+
+So spend by campaigns that graded green on their own is billed too — the account was burning
+regardless of how any one campaign looked. The figure is **not** the sum of the account's campaign
+rows and may come out larger or smaller than it; `AccountRollup.wasteGrain` names which measurement
+is in play, and the UI marks it. Campaign Waste is unchanged, and geo waste sums whichever grain
+each account is measured at.
+
 ## Problem Account
 
 An account-level alarm for **broken tracking / launch**, distinct from a mere red Verdict. With
