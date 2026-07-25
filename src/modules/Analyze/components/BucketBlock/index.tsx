@@ -3,7 +3,7 @@ import type { BucketZone } from '../../constants';
 import type { Locale } from '../../utils/i18n';
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/Button';
-import { ZONE_CARD_CLASS, ZONE_GLYPH } from '../../constants';
+import { ZONE_BUTTON_CLASS, ZONE_CARD_CLASS, ZONE_GLYPH } from '../../constants';
 import { actionLabel, ui } from '../../utils/i18n';
 import { Pill } from '../Pill';
 
@@ -38,13 +38,14 @@ function BucketBlock({ zone, campaigns, locale, copiedKey, onCopy, copyKey }: Bu
                 readOnly
                 value={idLine}
                 aria-label={`${actionLabel(zone, locale)} campaign ids`}
-                className="bg-background/60 h-14 w-full resize-y rounded-md border p-2 font-mono text-[11px]"
+                className="bg-background/60 min-h-14 w-full flex-1 resize-none rounded-md border p-2 font-mono text-[11px]"
             />
 
             <Button
                 type="button"
                 variant="outline"
                 size="sm"
+                className={cn('mt-auto', ZONE_BUTTON_CLASS[zone])}
                 disabled={campaigns.length === 0}
                 onClick={() => {
                     onCopy(idLine, copyKey);

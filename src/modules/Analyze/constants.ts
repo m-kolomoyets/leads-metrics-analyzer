@@ -31,6 +31,18 @@ export const ZONE_ACCENT_CLASS: Record<Zone, string> = {
     neutral: 'bg-neutral',
 };
 
+// Zone-tinted outline button (bucket "copy ids"), so the action reads in its bucket's colour.
+export const ZONE_BUTTON_CLASS: Record<Zone, string> = {
+    green: 'border-success/40 bg-success/10 text-success hover:bg-success/20 hover:text-success dark:bg-success/10 dark:border-success/40 dark:hover:bg-success/20',
+    yellow: 'border-warning/40 bg-warning/10 text-warning hover:bg-warning/20 hover:text-warning dark:bg-warning/10 dark:border-warning/40 dark:hover:bg-warning/20',
+    red: 'border-danger/40 bg-danger/10 text-danger hover:bg-danger/20 hover:text-danger dark:bg-danger/10 dark:border-danger/40 dark:hover:bg-danger/20',
+    neutral: 'border-border bg-muted/30 text-muted-foreground hover:bg-muted/50',
+};
+
+// Sales panel's violet counterpart to `ZONE_BUTTON_CLASS` (sales is zone-independent).
+export const SALES_BUTTON_CLASS =
+    'border-violet-500/40 bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 hover:text-violet-400 dark:bg-violet-500/10 dark:border-violet-500/40 dark:hover:bg-violet-500/20';
+
 // Zone text colour for inline emphasis.
 export const ZONE_TEXT_CLASS: Record<Zone, string> = {
     green: 'text-success',

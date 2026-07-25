@@ -1,8 +1,10 @@
 import type { CampaignRollup } from '@/lib/domain/accounts';
 import type { Locale } from '../../utils/i18n';
 import { sumTotals } from '@/lib/domain/aggregate';
+import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { SALES_BUTTON_CLASS } from '../../constants';
 import { int, usd } from '../../utils/format';
 import { ui } from '../../utils/i18n';
 import { Pill } from '../Pill';
@@ -42,13 +44,14 @@ function SalesBlock({ campaigns, locale, copiedKey, onCopy, copyKey }: SalesBloc
                 readOnly
                 value={idLine}
                 aria-label="sales campaign ids"
-                className="bg-background/60 h-10 w-full resize-y rounded-md border p-2 font-mono text-[11px]"
+                className="bg-background/60 min-h-10 w-full flex-1 resize-none rounded-md border p-2 font-mono text-[11px]"
             />
 
             <Button
                 type="button"
                 variant="outline"
                 size="sm"
+                className={cn('mt-auto', SALES_BUTTON_CLASS)}
                 onClick={() => {
                     onCopy(idLine, copyKey);
                 }}
