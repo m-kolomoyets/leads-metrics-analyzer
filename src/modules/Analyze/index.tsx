@@ -34,8 +34,8 @@ import { CreativeTable } from './components/CreativeTable';
 import { FileDropzones } from './components/FileDropzones';
 import { GeoStat } from './components/GeoStat';
 import { GeoTabs } from './components/GeoTabs';
-import { ModelTable } from './components/ModelTable';
 import { OffersTable } from './components/OffersTable';
+import { OsTable } from './components/OsTable';
 import { PresetCreator } from './components/PresetCreator';
 import { ProblemAccounts } from './components/ProblemAccounts';
 import { SectionCard } from './components/SectionCard';
@@ -427,13 +427,13 @@ function Analyze() {
                                     />
                                 </SectionCard>
                                 <SectionCard tone="blue">
-                                    <ModelTable
+                                    <OsTable
                                         title={`💻 ${ui('osTable', locale)} · ${activeGeo}`}
                                         firstCol={ui('osTable', locale)}
                                         rows={geoRollup.allocation.os}
+                                        unallocated={geoRollup.allocation.unallocated}
                                         thresholds={thresholds}
                                         locale={locale}
-                                        showCpc
                                     />
                                 </SectionCard>
                                 <SectionCard tone="blue">
