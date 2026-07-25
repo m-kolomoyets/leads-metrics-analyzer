@@ -1,10 +1,12 @@
 import type { AccountRollup } from '@/lib/domain/accounts';
-import type { GeoThresholds, ThresholdPair } from '@/lib/domain/types';
+import type { Metrics } from '@/lib/domain/aggregate';
+import type { GeoThresholds, ThresholdPair, Zone } from '@/lib/domain/types';
 import type { Locale } from '../../utils/i18n';
+import { metricsFor, sumTotals } from '@/lib/domain/aggregate';
 import { zoneFor } from '@/lib/domain/verdict';
 import { cn } from '@/lib/utils/cn';
 import { ZONE_TEXT_CLASS } from '../../constants';
-import { cost, pct, usd, usdRound } from '../../utils/format';
+import { cost, int, pct, usd, usdRound, usdSigned } from '../../utils/format';
 import { ui } from '../../utils/i18n';
 
 type AccountSummaryProps = {
@@ -18,24 +20,124 @@ type AccountSummaryProps = {
     onJump: (account: string) => void;
 };
 
+// Column groups, mirroring CreativeTable: a `border-l` on the first column of each block draws the
+// divider across head, body and foot. Funnel counts (Clicks…EPC) | money | cost-per | waste.
+const BLOCK_START = 'border-l';
+
+// Block-start columns: Rev, CPC and Waste open blocks 2/3/4 (block 1 runs Clicks…EPC).
+const HEAD_COLS: Array<{ label: string; start?: boolean }> = [
+    { label: 'Clicks' },
+    { label: 'Inst' },
+    { label: 'Reg' },
+    { label: 'Sale' },
+    { label: 'EPC' },
+    { label: 'Rev', start: true },
+    { label: 'Spend' },
+    { label: 'Profit' },
+    { label: 'ROI' },
+    { label: 'CPC', start: true },
+    { label: 'CPI' },
+    { label: 'CPR' },
+    { label: 'CPS' },
+];
+
+const ZONES: Zone[] = ['red', 'yellow', 'green', 'neutral'];
+const ZONE_EMOJI: Record<Zone, string> = { red: '🔴', yellow: '🟡', green: '🟢', neutral: '⚪' };
+
 // A zone-graded cost cell, mirroring ModelTable: em dash on null, else band-tinted (or plain when the
-// geo carries no thresholds).
-function CostCell({ value, pair }: { value: number | null; pair: ThresholdPair | undefined }) {
+// geo carries no thresholds, or in the totals footer).
+function CostCell({
+    value,
+    pair,
+    className,
+    plain,
+}: {
+    value: number | null;
+    pair: ThresholdPair | undefined;
+    className?: string;
+    plain?: boolean;
+}) {
     if (value === null) {
-        return <td className="p-2 font-mono">—</td>;
+        return <td className={cn('p-2 font-mono', className)}>—</td>;
     }
-    if (!pair) {
-        return <td className="p-2 font-mono">{cost(value)}</td>;
-    }
-    return <td className={cn('p-2 font-mono', ZONE_TEXT_CLASS[zoneFor(value, pair)])}>{cost(value)}</td>;
+    const zone = pair && !plain ? ZONE_TEXT_CLASS[zoneFor(value, pair)] : undefined;
+    return <td className={cn('p-2 font-mono', zone, className)}>{cost(value)}</td>;
+}
+
+// The metric cells shared by an account row and the totals footer. `plain` (footer) drops the tints
+// so the sums / re-derived averages render in the default foreground.
+function MetricCells({
+    m,
+    waste,
+    thresholds,
+    plain,
+}: {
+    m: Metrics;
+    waste: number;
+    thresholds: GeoThresholds | undefined;
+    plain?: boolean;
+}) {
+    const dim = plain ? undefined : 'text-muted-foreground';
+    return (
+        <>
+            <td className="p-2 font-mono">{int(m.linkClicks)}</td>
+            <td className="p-2 font-mono">{int(m.installs)}</td>
+            <td className="p-2 font-mono">{int(m.regs)}</td>
+            <td className="p-2 font-mono">{int(m.sales)}</td>
+            <td className={cn('p-2 font-mono', dim)}>{cost(m.epc)}</td>
+            <td className={cn('p-2 font-mono', BLOCK_START, !plain && m.revenue > 0 && 'text-success')}>
+                {m.revenue > 0 ? usdRound(m.revenue) : '—'}
+            </td>
+            <td className="p-2 font-mono font-bold">{usd(m.spendPlus)}</td>
+            <td className={cn('p-2 font-mono font-bold', !plain && (m.profit >= 0 ? 'text-success' : 'text-danger'))}>
+                {usdSigned(m.profit)}
+            </td>
+            <td
+                className={cn(
+                    'p-2 font-mono font-bold',
+                    !plain && m.roi !== null && (m.roi >= 0 ? 'text-success' : 'text-danger')
+                )}
+            >
+                {pct(m.roi)}
+            </td>
+            <CostCell value={m.cpc} pair={thresholds?.clicks} className={BLOCK_START} plain={plain} />
+            <CostCell value={m.cpi} pair={thresholds?.installs} plain={plain} />
+            <CostCell value={m.cpr} pair={thresholds?.regs} plain={plain} />
+            <CostCell value={m.cps} pair={thresholds?.sales} plain={plain} />
+            <td className={cn('p-2 font-mono', BLOCK_START, waste > 0 && !plain ? 'text-danger' : dim)}>
+                {waste > 0 ? usd(waste) : '—'}
+            </td>
+        </>
+    );
 }
 
 // Per-geo jump-to-block nav table over the S2 account roll-ups (#36). Pure UI — every figure comes from
 // the same `accountsFor` compute the AccountBlocks render, so totals / zone counts / problem flag match
-// exactly. A row click uncollapses + scrolls to its AccountBlock. Waste reuses the S4 estimate.
+// exactly. A row click uncollapses + scrolls to its AccountBlock. Waste reuses the S4 estimate. The
+// footer rolls every account up via metricsFor(Σ totals): counts / money summed, EPC / ROI / cost-per
+// re-derived off the sums (never averaged averages), zone markers summed. Hidden for a single account,
+// where the total would just repeat the row.
 function AccountSummary({ accounts, thresholds, locale, isReviewed, onJump }: AccountSummaryProps) {
     if (accounts.length === 0) {
         return null;
+    }
+
+    const showFooter = accounts.length > 1;
+    const totals = metricsFor(
+        sumTotals(
+            accounts.map((account) => {
+                return account.metrics;
+            })
+        )
+    );
+    const totalWaste = accounts.reduce((sum, account) => {
+        return sum + account.waste;
+    }, 0);
+    const totalCounts: Record<Zone, number> = { green: 0, yellow: 0, red: 0, neutral: 0 };
+    for (const account of accounts) {
+        for (const zone of ZONES) {
+            totalCounts[zone] += account.counts[zone];
+        }
     }
 
     return (
@@ -51,17 +153,33 @@ function AccountSummary({ accounts, thresholds, locale, isReviewed, onJump }: Ac
                                 <span className="sr-only">{ui('reviewed', locale)}</span>
                             </th>
                             <th className="p-2 text-left font-normal whitespace-nowrap">Account ID</th>
-                            {['Spend', 'Rev', 'ROI', ui('wasteCol', locale), 'CPC', 'CPI', 'CPR', 'CPS'].map((col) => {
+                            {HEAD_COLS.map((col) => {
                                 return (
-                                    <th key={col} className="p-2 font-normal whitespace-nowrap">
-                                        {col}
+                                    <th
+                                        key={col.label}
+                                        className={cn('p-2 font-normal whitespace-nowrap', col.start && BLOCK_START)}
+                                    >
+                                        {col.label}
                                     </th>
                                 );
                             })}
-                            <th className={cn('p-2 font-normal', ZONE_TEXT_CLASS.red)}>🔴</th>
-                            <th className={cn('p-2 font-normal', ZONE_TEXT_CLASS.yellow)}>🟡</th>
-                            <th className={cn('p-2 font-normal', ZONE_TEXT_CLASS.green)}>🟢</th>
-                            <th className={cn('p-2 font-normal', ZONE_TEXT_CLASS.neutral)}>⚪</th>
+                            <th className={cn('p-2 font-normal whitespace-nowrap', BLOCK_START)}>
+                                {ui('wasteCol', locale)}
+                            </th>
+                            {ZONES.map((zone) => {
+                                return (
+                                    <th
+                                        key={zone}
+                                        className={cn(
+                                            'p-2 font-normal',
+                                            ZONE_TEXT_CLASS[zone],
+                                            zone === 'red' && BLOCK_START
+                                        )}
+                                    >
+                                        {ZONE_EMOJI[zone]}
+                                    </th>
+                                );
+                            })}
                         </tr>
                     </thead>
                     <tbody>
@@ -86,38 +204,50 @@ function AccountSummary({ accounts, thresholds, locale, isReviewed, onJump }: Ac
                                     <td className={cn('p-2 text-left font-mono', alarm && 'font-bold text-danger')}>
                                         {account.account} {alarm && '🚨'}
                                     </td>
-                                    <td className="p-2 font-mono font-bold">{usd(metrics.spendPlus)}</td>
-                                    <td className={cn('p-2 font-mono', metrics.revenue > 0 && 'text-success')}>
-                                        {metrics.revenue > 0 ? usdRound(metrics.revenue) : '—'}
-                                    </td>
-                                    <td
-                                        className={cn(
-                                            'p-2 font-mono font-bold',
-                                            metrics.roi !== null && (metrics.roi >= 0 ? 'text-success' : 'text-danger')
-                                        )}
-                                    >
-                                        {pct(metrics.roi)}
-                                    </td>
-                                    <td
-                                        className={cn(
-                                            'p-2 font-mono',
-                                            waste > 0 ? 'text-danger' : 'text-muted-foreground'
-                                        )}
-                                    >
-                                        {waste > 0 ? usd(waste) : '—'}
-                                    </td>
-                                    <CostCell value={metrics.cpc} pair={thresholds?.clicks} />
-                                    <CostCell value={metrics.cpi} pair={thresholds?.installs} />
-                                    <CostCell value={metrics.cpr} pair={thresholds?.regs} />
-                                    <CostCell value={metrics.cps} pair={thresholds?.sales} />
-                                    <td className={cn('p-2 font-mono', ZONE_TEXT_CLASS.red)}>{counts.red}</td>
-                                    <td className={cn('p-2 font-mono', ZONE_TEXT_CLASS.yellow)}>{counts.yellow}</td>
-                                    <td className={cn('p-2 font-mono', ZONE_TEXT_CLASS.green)}>{counts.green}</td>
-                                    <td className={cn('p-2 font-mono', ZONE_TEXT_CLASS.neutral)}>{counts.neutral}</td>
+                                    <MetricCells m={metrics} waste={waste} thresholds={thresholds} />
+                                    {ZONES.map((zone) => {
+                                        return (
+                                            <td
+                                                key={zone}
+                                                className={cn(
+                                                    'p-2 font-mono',
+                                                    ZONE_TEXT_CLASS[zone],
+                                                    zone === 'red' && BLOCK_START
+                                                )}
+                                            >
+                                                {counts[zone]}
+                                            </td>
+                                        );
+                                    })}
                                 </tr>
                             );
                         })}
                     </tbody>
+                    {showFooter && (
+                        <tfoot>
+                            <tr className="border-t-2 font-semibold">
+                                <td className="w-6 p-2" />
+                                <td className="text-muted-foreground p-2 text-left whitespace-nowrap">
+                                    {ui('totalAvg', locale)}
+                                </td>
+                                <MetricCells m={totals} waste={totalWaste} thresholds={thresholds} plain />
+                                {ZONES.map((zone) => {
+                                    return (
+                                        <td
+                                            key={zone}
+                                            className={cn(
+                                                'p-2 font-mono',
+                                                ZONE_TEXT_CLASS[zone],
+                                                zone === 'red' && BLOCK_START
+                                            )}
+                                        >
+                                            {totalCounts[zone]}
+                                        </td>
+                                    );
+                                })}
+                            </tr>
+                        </tfoot>
+                    )}
                 </table>
             </div>
             <p className="text-muted-foreground text-[10px]">{ui('wasteEstimate', locale)}</p>
