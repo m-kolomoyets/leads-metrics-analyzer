@@ -14,12 +14,14 @@ export const presetThresholdsSchema = z.object({
     regs: thresholdPairSchema,
     sales: thresholdPairSchema,
     clicks: thresholdPairSchema,
-    wasteZones: thresholdPairSchema,
 });
 
 export const sharedSettingsPayloadSchema = z.object({
     reviewMultiplier: z.number(),
     defaultCommission: z.number(),
+    // Defaulted, not required: shared-settings versions are immutable, so the rows written before waste
+    // zones moved here must keep parsing. 0/0 reads as "no band" — GeoStat then greys the waste readout.
+    wasteZones: thresholdPairSchema.default({ gy: 0, yr: 0 }),
     sellers: z.array(
         z.object({
             rate: z.number(),

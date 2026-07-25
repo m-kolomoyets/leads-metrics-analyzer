@@ -8,20 +8,16 @@ const DEFAULT_COMMISSION = 0;
 const DEFAULT_REVIEW_MULTIPLIER = 1;
 
 // Bridge the persistence shapes (read-only, ADR-0002) to the pure compute `Ruleset` (ADR-0010).
-// Presets supply per-Geo thresholds (dropping `wasteZones` — a slice-4 concern the verdict engine
-// ignores); shared settings supply commission + review multiplier. First active preset per Geo wins.
+// Presets supply per-Geo thresholds; shared settings supply commission + review multiplier (their
+// `wasteZones` band is a slice-4 colouring concern the verdict engine ignores). First active preset
+// per Geo wins.
 export function toRuleset(presets: PresetView[], shared: SharedSettingsView | null): Ruleset {
     const thresholds: Record<string, GeoThresholds> = {};
     for (const preset of presets) {
         if (!preset.thresholds || thresholds[preset.geo]) {
             continue;
         }
-        thresholds[preset.geo] = {
-            installs: preset.thresholds.installs,
-            regs: preset.thresholds.regs,
-            sales: preset.thresholds.sales,
-            clicks: preset.thresholds.clicks,
-        };
+        thresholds[preset.geo] = preset.thresholds;
     }
 
     const payload = shared?.payload;

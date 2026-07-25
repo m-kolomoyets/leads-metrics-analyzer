@@ -7,7 +7,6 @@ const THRESHOLDS = {
     regs: { gy: 5, yr: 10 },
     sales: { gy: 30, yr: 60 },
     clicks: { gy: 0.2, yr: 0.5 },
-    wasteZones: { gy: 10, yr: 20 },
 };
 
 function preset(overrides: Partial<PresetView>): PresetView {

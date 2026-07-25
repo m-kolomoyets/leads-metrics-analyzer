@@ -222,8 +222,8 @@ next result. Only ever non-zero for a red Verdict.
 _Avoid_: Loss, burn, overspend
 
 **Ruleset**:
-The complete set of tunable judgement inputs: every Geo's Threshold Pairs and Waste Zones, plus
-the global Review Multiplier, default Commission and Seller rules.
+The complete set of tunable judgement inputs: every Geo's Threshold Pairs, plus the global Waste
+Zones, Review Multiplier, default Commission and Seller rules.
 
 **Ruleset Version**:
 An immutable snapshot of a Ruleset. Editing never mutates — saving mints a new version. The unit

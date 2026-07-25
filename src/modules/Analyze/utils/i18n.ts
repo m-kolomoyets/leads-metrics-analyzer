@@ -55,6 +55,7 @@ const UI: Record<Locale, Record<string, string>> = {
         sharedSettings: 'Спільні налаштування',
         defaultCommission: 'Комісія за замовч. (%)',
         reviewMultiplier: 'Коефіцієнт проблемності',
+        wasteRange: 'Діапазон допустимих втрат спенду у %',
         sellers: 'Сейлери аккаунтів',
         rate: 'ставка (%)',
         accountIds: 'ID акаунтів (через кому)',
@@ -124,6 +125,7 @@ const UI: Record<Locale, Record<string, string>> = {
         sharedSettings: 'Shared settings',
         defaultCommission: 'Default commission (%)',
         reviewMultiplier: 'Review multiplier',
+        wasteRange: 'Tolerated spend loss range, %',
         sellers: 'Sellers',
         rate: 'rate (%)',
         accountIds: 'Account IDs (comma-separated)',
@@ -170,14 +172,15 @@ const UI: Record<Locale, Record<string, string>> = {
     },
 };
 
-// The five editable threshold rows, in the reference's order. Keyed to `PresetThresholds`.
-export const THRESHOLD_METRICS = ['installs', 'regs', 'sales', 'clicks', 'wasteZones'] as const;
+// The four editable threshold rows, in the reference's order. Keyed to `PresetThresholds`. Waste
+// zones are no longer one of them — they live in the shared-settings block (SharedSettingsPayload).
+export const THRESHOLD_METRICS = ['installs', 'regs', 'sales', 'clicks'] as const;
 
 export type ThresholdMetric = (typeof THRESHOLD_METRICS)[number];
 
 const METRIC_LABEL: Record<Locale, Record<ThresholdMetric, string>> = {
-    uk: { installs: 'Інстали', regs: 'Реги', sales: 'Продажі', clicks: 'Кліки', wasteZones: 'Зони втрат' },
-    en: { installs: 'Installs', regs: 'Regs', sales: 'Sales', clicks: 'Clicks', wasteZones: 'Waste zones' },
+    uk: { installs: 'Інстали', regs: 'Реги', sales: 'Продажі', clicks: 'Кліки' },
+    en: { installs: 'Installs', regs: 'Regs', sales: 'Sales', clicks: 'Clicks' },
 };
 
 export function metricLabel(metric: ThresholdMetric, locale: Locale): string {

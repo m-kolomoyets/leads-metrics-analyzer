@@ -22,11 +22,10 @@ const IN_THRESHOLDS = {
     regs: { gy: 5, yr: 10 },
     sales: { gy: 30, yr: 60 },
     clicks: { gy: 0.2, yr: 0.5 },
-    wasteZones: { gy: 10, yr: 20 },
 };
 
 describe('toRuleset', () => {
-    it('maps active preset thresholds per geo, dropping wasteZones', () => {
+    it('maps active preset thresholds per geo', () => {
         const ruleset = toRuleset([preset('IN', IN_THRESHOLDS)], null);
         expect(ruleset.thresholds.IN).toEqual({
             installs: { gy: 2, yr: 4 },
@@ -56,6 +55,7 @@ describe('toRuleset', () => {
                 reviewMultiplier: 3,
                 // Stored as percents; toRuleset converts to fractions for the domain.
                 defaultCommission: 6,
+                wasteZones: { gy: 10, yr: 20 },
                 sellers: [{ rate: 10, accountIds: ['acc-1'] }],
             },
         };

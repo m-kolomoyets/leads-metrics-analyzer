@@ -4,7 +4,7 @@ Thresholds, commission, seller rules and waste zones are all tunable, and a Snap
 depend on them. The prototype autosaved presets in place on every keystroke, so any past judgement
 became irreproducible the moment a threshold was retuned.
 
-We make the **Ruleset** (all geo Threshold Pairs and Waste Zones + global Review Multiplier,
+We make the **Ruleset** (all geo Threshold Pairs + global Waste Zones, Review Multiplier,
 default Commission and Seller rules) **immutable and versioned**. Editing never mutates; an
 explicit save mints a new `ruleset_version`. A Snapshot references exactly one
 `ruleset_version_id`, so a past judgement reproduces forever.

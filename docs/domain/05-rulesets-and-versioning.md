@@ -8,15 +8,16 @@ reproducible. See [ADR-0002](../adr/0002-immutable-ruleset-versions.md).
 | Setting | Scope | Feeds |
 |---|---|---|
 | Threshold Pairs: installs / regs / sales / clicks `{gy, yr}` | **per-Geo** | Verdict zones |
-| Waste Zones `{gy, yr}` (% of spend) | **per-Geo** | Waste colouring |
+| Waste Zones `{gy, yr}` (% of spend) | **global** | Waste colouring |
 | ROI bands | (tunable input) | ROI zone colouring |
 | Review Multiplier `K` | **global** | Problem Account |
 | Default Commission | **global** | Spend⁺ |
 | Seller rules (rate → Account IDs) | **global** | Spend⁺ per Account |
 
 Per-Geo, a Geo may hold **several named presets** (e.g. `KR Olympus Slot`, `IN Slot`) with one
-active. `wasteZones` is per-Geo because waste tolerance is a market-maturity judgement; `K` is
-global because it already scales off a per-Geo threshold.
+active. `wasteZones` is global — the tolerated-loss band reads as one team-wide policy, edited in the
+shared-settings block beside the Review Multiplier and the Commission; `K` is likewise global because
+it already scales off a per-Geo threshold.
 
 ## Sellers
 

@@ -16,9 +16,15 @@ type SharedSettingsEditorProps = {
     shared: SharedSettingsView | null;
     canEdit: boolean;
     locale: Locale;
-    // Review-multiplier / default-commission lifted from an imported preset file. Seeds the initial
-    // draft (over the saved payload); the parent remounts on a fresh import so this re-seeds.
+    // Review-multiplier / default-commission / waste zones lifted from an imported preset file. Seeds
+    // the initial draft (over the saved payload); the parent remounts on a fresh import so this
+    // re-seeds. Still needs an explicit Save to mint a version.
     seed?: ImportedShared;
+    // Fired once a save lands, so the parent can drop the `seed` it is holding. Without this the seed
+    // outlives the save: the parent remounts this editor on the new `activeVersionId`, the stale seed
+    // wins over the payload just written, and the next save re-writes the imported values — the edit
+    // reads as "nothing was saved".
+    onSaved?: () => void;
 };
 
 type SellerDraft = { rate: string; accountIds: string };
@@ -26,10 +32,16 @@ type SellerDraft = { rate: string; accountIds: string };
 type Draft = {
     reviewMultiplier: string;
     defaultCommission: string;
+    wasteZones: { gy: string; yr: string };
     sellers: SellerDraft[];
 };
 
-const DEFAULTS: SharedSettingsPayload = { reviewMultiplier: 1, defaultCommission: 0, sellers: [] };
+const DEFAULTS: SharedSettingsPayload = {
+    reviewMultiplier: 1,
+    defaultCommission: 0,
+    wasteZones: { gy: 0, yr: 0 },
+    sellers: [],
+};
 
 function toNumber(value: string): number | null {
     const trimmed = value.trim();
@@ -44,6 +56,7 @@ function toDraft(payload: SharedSettingsPayload): Draft {
     return {
         reviewMultiplier: String(payload.reviewMultiplier),
         defaultCommission: String(payload.defaultCommission),
+        wasteZones: { gy: String(payload.wasteZones.gy), yr: String(payload.wasteZones.yr) },
         sellers: payload.sellers.map((seller) => {
             return { rate: String(seller.rate), accountIds: seller.accountIds.join(', ') };
         }),
@@ -66,7 +79,7 @@ function parseAccountIds(value: string): string[] {
 // values disabled. Saving mints a new immutable shared-settings version; the query invalidates,
 // `toRuleset` re-derives, and grading (Problem-Account escalation + Spend⁺) re-runs. Parent remounts
 // on `activeVersionId` change to reset drafts to the saved values.
-function SharedSettingsEditor({ shared, canEdit, locale, seed }: SharedSettingsEditorProps) {
+function SharedSettingsEditor({ shared, canEdit, locale, seed, onSaved }: SharedSettingsEditorProps) {
     const [draft, setDraft] = useState<Draft>(() => {
         const base = shared?.payload ?? DEFAULTS;
         return toDraft(seed ? { ...base, ...seed } : base);
@@ -75,12 +88,16 @@ function SharedSettingsEditor({ shared, canEdit, locale, seed }: SharedSettingsE
 
     const reviewMultiplier = toNumber(draft.reviewMultiplier);
     const defaultCommission = toNumber(draft.defaultCommission);
+    const wasteGy = toNumber(draft.wasteZones.gy);
+    const wasteYr = toNumber(draft.wasteZones.yr);
     const sellerRates = draft.sellers.map((seller) => {
         return toNumber(seller.rate);
     });
     const isValid =
         reviewMultiplier !== null &&
         defaultCommission !== null &&
+        wasteGy !== null &&
+        wasteYr !== null &&
         sellerRates.every((rate) => {
             return rate !== null;
         });
@@ -88,6 +105,12 @@ function SharedSettingsEditor({ shared, canEdit, locale, seed }: SharedSettingsE
     function setField(field: 'reviewMultiplier' | 'defaultCommission', value: string) {
         setDraft((current) => {
             return { ...current, [field]: value };
+        });
+    }
+
+    function setWasteBound(bound: 'gy' | 'yr', value: string) {
+        setDraft((current) => {
+            return { ...current, wasteZones: { ...current.wasteZones, [bound]: value } };
         });
     }
 
@@ -126,6 +149,7 @@ function SharedSettingsEditor({ shared, canEdit, locale, seed }: SharedSettingsE
         const payload: SharedSettingsPayload = {
             reviewMultiplier,
             defaultCommission,
+            wasteZones: { gy: wasteGy ?? 0, yr: wasteYr ?? 0 },
             sellers: draft.sellers.map((seller, index) => {
                 return { rate: sellerRates[index] ?? 0, accountIds: parseAccountIds(seller.accountIds) };
             }),
@@ -136,6 +160,7 @@ function SharedSettingsEditor({ shared, canEdit, locale, seed }: SharedSettingsE
             {
                 onSuccess() {
                     toast.success(ui('sharedSettings', locale));
+                    onSaved?.();
                 },
                 onError() {
                     toast.error('Failed to save shared settings');
@@ -203,6 +228,43 @@ function SharedSettingsEditor({ shared, canEdit, locale, seed }: SharedSettingsE
                             setField('defaultCommission', event.target.value);
                         }}
                     />
+                </div>
+            </div>
+
+            {/* Tolerated-loss band (% of Spend⁺). Same green→yellow→red shape as a threshold pair, but a
+                team-global policy, so it saves with the shared settings rather than a preset version. */}
+            <div className="border-border/60 flex flex-col gap-2 border-t pt-3">
+                <h5 className="text-muted-foreground text-[11px] font-normal tracking-wider uppercase">
+                    {ui('wasteRange', locale)}
+                </h5>
+                <div className="flex flex-wrap items-center gap-2.5">
+                    <span className="text-success text-[11px]">{ui('zGreen', locale)}</span>
+                    <Input
+                        id="ss-waste-gy"
+                        type="number"
+                        inputMode="decimal"
+                        className="h-8 w-16 font-mono text-[13px]"
+                        aria-label={`${ui('wasteRange', locale)} ${ui('gy', locale)}`}
+                        disabled={!canEdit || isPending}
+                        value={draft.wasteZones.gy}
+                        onChange={(event) => {
+                            setWasteBound('gy', event.target.value);
+                        }}
+                    />
+                    <span className="text-warning text-[11px]">{ui('zYellow', locale)}</span>
+                    <Input
+                        id="ss-waste-yr"
+                        type="number"
+                        inputMode="decimal"
+                        className="h-8 w-16 font-mono text-[13px]"
+                        aria-label={`${ui('wasteRange', locale)} ${ui('yr', locale)}`}
+                        disabled={!canEdit || isPending}
+                        value={draft.wasteZones.yr}
+                        onChange={(event) => {
+                            setWasteBound('yr', event.target.value);
+                        }}
+                    />
+                    <span className="text-danger text-[11px]">{ui('zRed', locale)}</span>
                 </div>
             </div>
 

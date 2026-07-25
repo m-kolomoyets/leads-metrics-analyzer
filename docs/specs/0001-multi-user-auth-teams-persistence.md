@@ -178,8 +178,8 @@ work.
 
 - A **Preset** is a per-Geo named threshold set (identity: owner, team, geo, name). Editing never
   mutates in place — each save appends an **immutable Preset version** carrying that Geo's threshold
-  pairs (installs/regs/sales/clicks `{gy, yr}`) and its Waste Zones.
-- **Shared settings** (global Review Multiplier, default Commission, Seller rules — per
+  pairs (installs/regs/sales/clicks `{gy, yr}`).
+- **Shared settings** (global Waste Zones, Review Multiplier, default Commission, Seller rules — per
   [ADR-0002]/domain doc 05) are versioned per team, immutably, the same way.
 - A **Snapshot spans multiple Geos**, so it pins a **fully-resolved, frozen Applied Ruleset**: the
   exact Preset version chosen for each analyzed Geo plus the Shared-settings version in force. This

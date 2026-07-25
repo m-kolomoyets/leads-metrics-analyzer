@@ -1,6 +1,6 @@
 import type { ChangeEvent } from 'react';
 import type { Locale, ThresholdMetric } from '../../utils/i18n';
-import type { ImportedPreset, ImportedShared } from '../../utils/importPresets';
+import type { ImportedPreset, ImportedShared, ImportPresetsFile } from '../../utils/importPresets';
 import type { ThresholdDraft } from '../ThresholdFields';
 import { useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
@@ -10,15 +10,21 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { ui } from '../../utils/i18n';
-import { importedPresetsForGeo, importedSharedFrom, parseImportPresetsFile } from '../../utils/importPresets';
+import {
+    importedPresetsForGeo,
+    importedSharedFor,
+    importedSharedFrom,
+    parseImportPresetsFile,
+} from '../../utils/importPresets';
 import { EMPTY_THRESHOLD_DRAFT, parseThresholdDraft, ThresholdFields, toThresholdDraft } from '../ThresholdFields';
 
 type PresetCreatorProps = {
     geo: string;
     locale: Locale;
-    // Invoked when an imported file carries the team-global tunables, so the page can seed the shared
-    // settings editor with them (the file's shared block is Geo-independent). Optional — the presets
-    // manager reuses this component but has no shared-settings surface to seed.
+    // Invoked when an import carries team-global tunables (review multiplier, commission, waste zones),
+    // so the page can seed the shared-settings editor with them — from the file's Geo-independent shared
+    // block, or from the picked preset's own waste band. Optional — the presets manager reuses this
+    // component but has no shared-settings surface to seed.
     onImportShared?: (shared: ImportedShared) => void;
 };
 
@@ -33,6 +39,8 @@ function PresetCreator({ geo, locale, onImportShared }: PresetCreatorProps) {
     const [draft, setDraft] = useState<ThresholdDraft>(EMPTY_THRESHOLD_DRAFT);
     // Set only when an imported file holds several presets for this Geo — the owner picks one.
     const [candidates, setCandidates] = useState<ImportedPreset[] | null>(null);
+    // The file behind those candidates, kept so the pick can resolve the shared tunables to seed.
+    const [file, setFile] = useState<ImportPresetsFile | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { mutateAsync: create, isPending } = useMutation(createPresetMutationOptions());
 
@@ -45,15 +53,23 @@ function PresetCreator({ geo, locale, onImportShared }: PresetCreatorProps) {
     function reset() {
         setIsOpen(false);
         setCandidates(null);
+        setFile(null);
         setName('');
         setDraft(EMPTY_THRESHOLD_DRAFT);
     }
 
-    function prefill(preset: ImportedPreset) {
+    // `source` defaults to the stored file (a candidate click); the single-preset path passes the file
+    // it just parsed, before state has caught up.
+    function prefill(preset: ImportedPreset, source = file) {
         setName(preset.name);
         setDraft(toThresholdDraft(preset.thresholds));
         setCandidates(null);
         setIsOpen(true);
+        // Waste zones are a shared setting, so a band on the imported preset lands in that editor.
+        const shared = source && importedSharedFor(source, preset);
+        if (shared) {
+            onImportShared?.(shared);
+        }
     }
 
     function openManual() {
@@ -77,24 +93,27 @@ function PresetCreator({ geo, locale, onImportShared }: PresetCreatorProps) {
             return;
         }
 
-        // The shared block is Geo-independent — surface it to the shared-settings editor even if this
-        // Geo has no preset in the file.
+        const imported = importedPresetsForGeo(parsed, geo);
+        // One preset for this Geo → prefill straight away; that also seeds the shared tunables, letting
+        // the preset's own waste band win over the file's shared one.
+        if (imported.length === 1) {
+            prefill(imported[0], parsed);
+            return;
+        }
+
+        // Nothing picked yet, so only the Geo-independent shared block can be seeded — surfaced even
+        // when this Geo has no preset in the file at all.
         const shared = importedSharedFrom(parsed);
         if (shared) {
             onImportShared?.(shared);
         }
 
-        const imported = importedPresetsForGeo(parsed, geo);
         if (imported.length === 0) {
             toast.error(`No preset for ${geo} in file`);
             return;
         }
 
-        if (imported.length === 1) {
-            prefill(imported[0]);
-            return;
-        }
-
+        setFile(parsed);
         setCandidates(imported);
         setIsOpen(true);
     }

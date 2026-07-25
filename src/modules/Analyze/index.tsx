@@ -48,17 +48,13 @@ const PRESET_WRITE_ROLES = ['buyer', 'team_lead', 'head'];
 // The zone-metrics accordion holds a single item; its value is arbitrary but must be stable.
 const ZONE_ITEM = 'zone-metrics';
 
-// The GeoThresholds the active geo grades against: the focused preset's four pairs (dropping the
-// slice-4 `wasteZones` the verdict engine ignores), or the ruleset's first-wins fallback.
+// The GeoThresholds the active geo grades against: the focused preset's four pairs, or the ruleset's
+// first-wins fallback.
 function thresholdsFor(
     activePreset: PresetView | undefined,
     fallback: GeoThresholds | undefined
 ): GeoThresholds | undefined {
-    if (!activePreset?.thresholds) {
-        return fallback;
-    }
-    const { installs, regs, sales, clicks } = activePreset.thresholds;
-    return { installs, regs, sales, clicks };
+    return activePreset?.thresholds ?? fallback;
 }
 
 const routeApi = getRouteApi('/_authenticated');
@@ -121,8 +117,8 @@ function Analyze() {
     // active). Team Leads own the team-global shared-settings write.
     const geoPresets = activeGeo ? presetsForGeo(presets, activeGeo) : [];
     const activePreset = activeGeo ? presetForGeo(presets, activeGeo, selectedPresetByGeo[activeGeo]) : undefined;
-    // Grade against the focused preset's thresholds (dropping `wasteZones`), overriding the ruleset's
-    // first-wins pick when the owner selected a different one; else fall back to that first-wins pick.
+    // Grade against the focused preset's thresholds, overriding the ruleset's first-wins pick when the
+    // owner selected a different one; else fall back to that first-wins pick.
     const thresholds = thresholdsFor(activePreset, activeGeo ? ruleset.thresholds[activeGeo] : undefined);
     const canEditShared = PRESET_WRITE_ROLES.includes(role);
     const canWritePresets = PRESET_WRITE_ROLES.includes(role);
@@ -172,8 +168,9 @@ function Analyze() {
     const geoWaste = accounts.reduce((sum, account) => {
         return sum + account.waste;
     }, 0);
-    // Waste Zone band (% of Spend⁺) from the focused preset; verdict engine ignores it (S4-only).
-    const wasteZone = activePreset?.thresholds?.wasteZones;
+    // Waste Zone band (% of Spend⁺) — a team-global shared setting, so one band across every geo; the
+    // verdict engine ignores it (S4-only, colouring the waste readout).
+    const wasteZone = shared?.payload?.wasteZones;
 
     function toggleExcluded(campaign: string) {
         const key = `${activeGeo}:${campaign}`;
@@ -268,6 +265,11 @@ function Analyze() {
                 canEdit={canEditShared}
                 locale={locale}
                 seed={importedShared?.seed}
+                onSaved={() => {
+                    // The import has landed in a version — drop the seed so it stops overriding the
+                    // saved payload on every later remount of the editor.
+                    setImportedShared(null);
+                }}
             />
         </div>
     );

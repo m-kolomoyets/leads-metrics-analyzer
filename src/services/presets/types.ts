@@ -10,14 +10,13 @@ export type ThresholdPair = {
     yr: number;
 };
 
-// A preset version's frozen thresholds for one Geo: the four metric pairs plus its Waste Zones
-// (% of spend). What `preset_version.thresholds` carries.
+// A preset version's frozen thresholds for one Geo: the four metric pairs. What
+// `preset_version.thresholds` carries. Waste Zones moved to the team-global `SharedSettingsPayload`.
 export type PresetThresholds = {
     installs: ThresholdPair;
     regs: ThresholdPair;
     sales: ThresholdPair;
     clicks: ThresholdPair;
-    wasteZones: ThresholdPair;
 };
 
 // One Seller's commission rate and the Account IDs it covers (domain doc 05 §Sellers).
@@ -26,10 +25,13 @@ export type SellerRule = {
     accountIds: string[];
 };
 
-// Team-global tunables. What `shared_settings_version.payload` carries.
+// Team-global tunables. What `shared_settings_version.payload` carries. `wasteZones` (% of Spend⁺)
+// sits here rather than on a preset: the tolerated-loss band reads as one team-wide policy alongside
+// the review multiplier and the commission, not a per-Geo threshold.
 export type SharedSettingsPayload = {
     reviewMultiplier: number;
     defaultCommission: number;
+    wasteZones: ThresholdPair;
     sellers: SellerRule[];
 };
 
