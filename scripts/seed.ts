@@ -1,3 +1,4 @@
+import { deriveNicknameFromEmail } from '../src/lib/auth/nickname';
 import { hashPassword } from '../src/lib/auth/password';
 import { db } from '../src/lib/db';
 import { user } from '../src/lib/db/schema';
@@ -13,7 +14,7 @@ const passwordHash = await hashPassword(password);
 
 await db
     .insert(user)
-    .values({ email, passwordHash, role: 'head', status: 'active' })
+    .values({ email, nickname: deriveNicknameFromEmail(email), passwordHash, role: 'head', status: 'active' })
     .onConflictDoUpdate({
         target: user.email,
         set: { passwordHash, role: 'head', status: 'active' },

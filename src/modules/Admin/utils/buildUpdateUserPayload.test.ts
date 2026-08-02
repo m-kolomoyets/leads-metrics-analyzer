@@ -11,6 +11,7 @@ const NONE = '__none__';
 const baseUser: AdminUser = {
     id: 'u1',
     email: 'a@b.co',
+    nickname: 'anna',
     role: 'buyer',
     status: 'active',
     teamId: 't1',
@@ -18,31 +19,65 @@ const baseUser: AdminUser = {
 
 describe('buildUpdateUserPayload', () => {
     it('returns id-only diff when nothing changed', () => {
-        const payload = buildUpdateUserPayload(baseUser, { role: 'buyer', status: 'active', teamId: 't1' }, NONE);
+        const payload = buildUpdateUserPayload(
+            baseUser,
+            { nickname: 'anna', role: 'buyer', status: 'active', teamId: 't1' },
+            NONE
+        );
         expect(payload).toEqual({ id: 'u1' });
     });
 
     it('includes only the changed fields', () => {
-        const payload = buildUpdateUserPayload(baseUser, { role: 'team_lead', status: 'active', teamId: 't1' }, NONE);
+        const payload = buildUpdateUserPayload(
+            baseUser,
+            { nickname: 'anna', role: 'team_lead', status: 'active', teamId: 't1' },
+            NONE
+        );
         expect(payload).toEqual({ id: 'u1', role: 'team_lead' });
     });
 
     it('maps the sentinel team value to null (unassign) as a real change', () => {
-        const payload = buildUpdateUserPayload(baseUser, { role: 'buyer', status: 'active', teamId: NONE }, NONE);
+        const payload = buildUpdateUserPayload(
+            baseUser,
+            { nickname: 'anna', role: 'buyer', status: 'active', teamId: NONE },
+            NONE
+        );
         expect(payload).toEqual({ id: 'u1', teamId: null });
     });
 
     it('does not emit teamId when both current and next are unassigned', () => {
         const payload = buildUpdateUserPayload(
             { ...baseUser, teamId: null },
-            { role: 'buyer', status: 'active', teamId: NONE },
+            { nickname: 'anna', role: 'buyer', status: 'active', teamId: NONE },
+            NONE
+        );
+        expect(payload).toEqual({ id: 'u1' });
+    });
+
+    it('includes a changed nickname, trimmed', () => {
+        const payload = buildUpdateUserPayload(
+            baseUser,
+            { nickname: '  Annie  ', role: 'buyer', status: 'active', teamId: 't1' },
+            NONE
+        );
+        expect(payload).toEqual({ id: 'u1', nickname: 'Annie' });
+    });
+
+    it('treats a whitespace-only nickname edit as unchanged', () => {
+        const payload = buildUpdateUserPayload(
+            baseUser,
+            { nickname: '  anna  ', role: 'buyer', status: 'active', teamId: 't1' },
             NONE
         );
         expect(payload).toEqual({ id: 'u1' });
     });
 
     it('emits every changed field together', () => {
-        const payload = buildUpdateUserPayload(baseUser, { role: 'designer', status: 'disabled', teamId: 't2' }, NONE);
+        const payload = buildUpdateUserPayload(
+            baseUser,
+            { nickname: 'anna', role: 'designer', status: 'disabled', teamId: 't2' },
+            NONE
+        );
         expect(payload).toEqual({ id: 'u1', role: 'designer', status: 'disabled', teamId: 't2' });
     });
 });

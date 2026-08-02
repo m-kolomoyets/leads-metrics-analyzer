@@ -36,6 +36,7 @@ function UsersSection({ users, teams, currentUserId }: UsersSectionProps) {
                 <table className="w-full text-sm">
                     <thead className="text-muted-foreground border-b">
                         <tr>
+                            <th className="px-3 py-2 text-left font-medium">Nickname</th>
                             <th className="px-3 py-2 text-left font-medium">Email</th>
                             <th className="px-3 py-2 text-left font-medium">Role</th>
                             <th className="px-3 py-2 text-left font-medium">Team</th>

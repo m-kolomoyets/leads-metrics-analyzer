@@ -16,30 +16,57 @@ describe('createUserInputSchema', () => {
     it('accepts a valid user and trims the email', () => {
         const parsed = createUserInputSchema.parse({
             email: '  buyer@example.com  ',
+            nickname: 'buyer',
             role: 'buyer',
             teamId: UUID_A,
         });
-        expect(parsed).toEqual({ email: 'buyer@example.com', role: 'buyer', status: 'invited', teamId: UUID_A });
+        expect(parsed).toEqual({
+            email: 'buyer@example.com',
+            nickname: 'buyer',
+            role: 'buyer',
+            status: 'invited',
+            teamId: UUID_A,
+        });
     });
 
     it('defaults status to invited when omitted', () => {
-        expect(createUserInputSchema.parse({ email: 'a@b.co', role: 'bdm' }).status).toBe('invited');
+        expect(createUserInputSchema.parse({ email: 'a@b.co', nickname: 'a', role: 'bdm' }).status).toBe('invited');
     });
 
     it('allows a null teamId (teamless user)', () => {
-        expect(createUserInputSchema.parse({ email: 'a@b.co', role: 'head', teamId: null }).teamId).toBeNull();
+        expect(
+            createUserInputSchema.parse({ email: 'a@b.co', nickname: 'a', role: 'head', teamId: null }).teamId
+        ).toBeNull();
     });
 
     it('rejects an unknown role', () => {
-        expect(createUserInputSchema.safeParse({ email: 'a@b.co', role: 'admin' }).success).toBe(false);
+        expect(createUserInputSchema.safeParse({ email: 'a@b.co', nickname: 'a', role: 'admin' }).success).toBe(false);
     });
 
     it('rejects a malformed email', () => {
-        expect(createUserInputSchema.safeParse({ email: 'nope', role: 'buyer' }).success).toBe(false);
+        expect(createUserInputSchema.safeParse({ email: 'nope', nickname: 'a', role: 'buyer' }).success).toBe(false);
     });
 
     it('rejects a non-uuid teamId', () => {
-        expect(createUserInputSchema.safeParse({ email: 'a@b.co', role: 'buyer', teamId: 'x' }).success).toBe(false);
+        expect(
+            createUserInputSchema.safeParse({ email: 'a@b.co', nickname: 'a', role: 'buyer', teamId: 'x' }).success
+        ).toBe(false);
+    });
+
+    it('trims the nickname', () => {
+        expect(createUserInputSchema.parse({ email: 'a@b.co', nickname: '  Nick  ', role: 'buyer' }).nickname).toBe(
+            'Nick'
+        );
+    });
+
+    it('rejects a missing nickname', () => {
+        expect(createUserInputSchema.safeParse({ email: 'a@b.co', role: 'buyer' }).success).toBe(false);
+    });
+
+    it('rejects a blank nickname', () => {
+        expect(createUserInputSchema.safeParse({ email: 'a@b.co', nickname: '   ', role: 'buyer' }).success).toBe(
+            false
+        );
     });
 });
 
@@ -57,6 +84,17 @@ describe('updateUserInputSchema', () => {
 
     it('rejects an update carrying no changed field', () => {
         expect(updateUserInputSchema.safeParse({ id: UUID_A }).success).toBe(false);
+    });
+
+    it('accepts a nickname-only update and trims it', () => {
+        expect(updateUserInputSchema.parse({ id: UUID_A, nickname: '  Nick  ' })).toEqual({
+            id: UUID_A,
+            nickname: 'Nick',
+        });
+    });
+
+    it('rejects a blank nickname', () => {
+        expect(updateUserInputSchema.safeParse({ id: UUID_A, nickname: '  ' }).success).toBe(false);
     });
 
     it('rejects a non-uuid id', () => {

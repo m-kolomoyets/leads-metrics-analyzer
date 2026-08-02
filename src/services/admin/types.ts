@@ -4,6 +4,8 @@ import type { UserRole, UserStatus } from '@/lib/constants';
 export type AdminUser = {
     id: string;
     email: string;
+    // Human handle (#52) — how the user is named across the app.
+    nickname: string;
     role: UserRole;
     status: UserStatus;
     teamId: string | null;
