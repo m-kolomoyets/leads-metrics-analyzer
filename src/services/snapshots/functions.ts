@@ -16,7 +16,10 @@ import {
     presetVersion,
     sharedSettingsVersion,
     snapshot,
+    snapshotCampaignModel,
+    snapshotCreative,
     snapshotFact,
+    snapshotGeo,
 } from '@/lib/db/schema';
 import { createSnapshotInputSchema, snapshotIdInputSchema } from './schemas';
 
@@ -211,6 +214,7 @@ export const getSnapshotFactsFn = createServerFn({ method: 'GET' })
         return facts.map((fact): SnapshotFactView => {
             return {
                 id: fact.id,
+                attribution: fact.attribution,
                 campaign: fact.campaign,
                 creative: fact.creative,
                 reportDate: fact.reportDate,
@@ -326,17 +330,26 @@ export const createSnapshotFn = createServerFn({ method: 'POST' })
             data.sharedSettingsVersionId
         );
 
-        // Applied Ruleset + Snapshot + facts are written together — all or nothing — so a Snapshot is
-        // never half-frozen. Creator-owned and stamped with the creator's CURRENT team.
+        // Applied Ruleset + Snapshot + facts + the completeness tables are written together — all or
+        // nothing — so a Snapshot is never half-frozen: a report missing its Creative Splits or its
+        // Frozen Geo Rollup would render partly `—` with nothing to say why (ADR-0015). Creator-owned
+        // and stamped with the creator's CURRENT team.
         const snapshotId = await db.transaction(async (tx) => {
             const [ruleset] = await tx
                 .insert(appliedRuleset)
-                .values({ sharedSettingsVersionId: data.sharedSettingsVersionId })
+                .values({ sharedSettingsVersionId: data.sharedSettingsVersionId, settings: data.settings })
                 .returning({ id: appliedRuleset.id });
 
             await tx.insert(appliedRulesetGeo).values(
                 data.geos.map((geo) => {
-                    return { appliedRulesetId: ruleset.id, geo: geo.geo, presetVersionId: geo.presetVersionId };
+                    return {
+                        appliedRulesetId: ruleset.id,
+                        geo: geo.geo,
+                        presetVersionId: geo.presetVersionId,
+                        // Copied, not merely referenced: the pin above is `set null` when a Preset is
+                        // deleted, and grading that a delete can erase is not frozen.
+                        thresholds: geo.thresholds,
+                    };
                 })
             );
 
@@ -356,6 +369,33 @@ export const createSnapshotFn = createServerFn({ method: 'POST' })
                     return { ...fact, snapshotId: created.id };
                 })
             );
+
+            // The three completeness tables. Each can legitimately be empty — a Snapshot pushed by an
+            // older client carries none of them (ADR-0015) — so an empty array is skipped rather than
+            // sent as a zero-row INSERT, which drizzle rejects.
+            if (data.geoRollups.length > 0) {
+                await tx.insert(snapshotGeo).values(
+                    data.geoRollups.map((geo) => {
+                        return { ...geo, snapshotId: created.id };
+                    })
+                );
+            }
+
+            if (data.creatives.length > 0) {
+                await tx.insert(snapshotCreative).values(
+                    data.creatives.map((creative) => {
+                        return { ...creative, snapshotId: created.id };
+                    })
+                );
+            }
+
+            if (data.campaignModels.length > 0) {
+                await tx.insert(snapshotCampaignModel).values(
+                    data.campaignModels.map((model) => {
+                        return { ...model, snapshotId: created.id };
+                    })
+                );
+            }
 
             return created.id;
         });

@@ -1,6 +1,6 @@
 import type { RollupDimension } from '@/lib/auth/dimensionRollup';
 import type { SnapshotAccess } from '@/lib/auth/snapshotAccess';
-import type { FactZone } from './schemas';
+import type { FactAttribution, FactZone } from './schemas';
 
 // Domain shapes for the T6 Snapshots API. A Snapshot pins a frozen Applied Ruleset (the Preset
 // version per Geo + the Shared-settings version in force) so later preset edits never change its
@@ -32,6 +32,9 @@ export type SnapshotView = {
 // and `zone` are the traffic-light grades frozen at save.
 export type SnapshotFactView = {
     id: string;
+    // How completely the fact was attributed at analysis time (ADR-0012). Frozen at save rather than
+    // re-derived, because the Problem Account detector skips non-`full` facts on purpose (ADR-0015).
+    attribution: FactAttribution;
     campaign: string;
     creative: string;
     reportDate: string;

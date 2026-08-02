@@ -1,7 +1,7 @@
 import type { Metrics } from './aggregate';
 import type { GeoAllocation } from './allocate';
 import type { CommissionConfig } from './commission';
-import type { CampaignCreatives, RawFact, RawTotals } from './join';
+import type { CampaignCreatives, CampaignModel, RawFact, RawTotals } from './join';
 import type { ParsedFiles } from './parse';
 import type { Fact, GeoThresholds, Totals } from './types';
 import type { ProblemAccount } from './verdict';
@@ -38,6 +38,10 @@ export type AnalyzeResult = {
     // Per-campaign FB creative Spend/Impressions (#35). The per-Geo Creative table (`creativesFor`)
     // allocates the funnel over these; kept raw here since grading depends on the UI-active preset.
     campaignCreatives: Map<string, CampaignCreatives>;
+    // Per-campaign Offer/OS funnel breakdown (doc 06) — the input `allocation` is derived from. Kept
+    // on the result so a Snapshot can persist it: it sits below the Fact Grain, so without it a saved
+    // report has the Offers/OS totals but no way to reproduce their rows (ADR-0015).
+    campaignModels: Map<string, CampaignModel>;
     problemAccounts: ProblemAccount[];
     // Accounts no Seller claims → costed at the default (surface, doc 03 §Sellers).
     unclaimedAccounts: string[];
@@ -150,6 +154,7 @@ export function analyzeParsed(parsed: ParsedFiles, ruleset: Ruleset): AnalyzeRes
         facts,
         geos,
         campaignCreatives,
+        campaignModels,
         problemAccounts,
         unclaimedAccounts: unclaimedAccounts(
             facts.map((f) => {
