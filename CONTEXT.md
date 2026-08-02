@@ -86,10 +86,25 @@ _Avoid_: Ad, ad name, banner, media
 ### Attribution
 
 **Fact Grain**:
-`Campaign × Creative × Date` — the finest level at which both Facebook and Keitaro can speak.
-Geo and Account are attributes of the Campaign, not part of the key, because a Campaign runs one
-Geo from one Account. Every table in the app is a roll-up of one join at this grain, which is
-what guarantees creative totals sum to campaign totals sum to geo totals.
+`Campaign × Date` — the finest level at which both Facebook and Keitaro can speak. Geo and Account
+are attributes of the Campaign, not part of the key, because a Campaign runs one Geo from one
+Account. Creative, Offer and OS sit *below* the grain: a Fact carries one of each as a
+**representative label** (its top-spending creative, its top-spending offer, its OS when a campaign
+has exactly one), never as part of the key. Campaign and Geo tables are roll-ups of Facts and sum
+exactly; Creative, Offer and OS tables are **allocations** and reconcile to their campaign only
+because each campaign's shares total one.
+
+**Creative Split**:
+A Campaign's real per-creative Spend and Impressions, as Facebook reports them — the only
+per-creative truth there is, and the basis every Creative row's funnel is allocated over. Sits below
+the Fact Grain, so it is kept beside the Facts rather than inside them.
+_Avoid_: Ad breakdown, creative fact
+
+**Campaign Model**:
+A Campaign's Offer and OS funnel breakdown, as Keitaro reports it — the basis the Offers and OS
+tables allocate over. Like the Creative Split, it sits below the Fact Grain and is kept beside the
+Facts.
+_Avoid_: Offer fact, OS fact, breakdown
 
 **Geo Total**:
 All Spend and Revenue recorded for a Geo, including Revenue that carries no Sub IDs because
@@ -239,8 +254,32 @@ An immutable snapshot of a Ruleset. Editing never mutates — saving mints a new
 a Snapshot references, so that a past judgement can always be reproduced exactly.
 
 **Snapshot**:
-A stored analysis: the Facts at Fact Grain plus the Verdicts they produced, bound to the Ruleset
-Version that produced them. Self-sufficient — a report can be rebuilt from a Snapshot alone.
+A stored analysis: the Facts at Fact Grain plus the Verdicts they produced, the Creative Splits and
+Campaign Models the sub-grain tables allocate over, and the Frozen Geo Rollup — bound to the Ruleset
+Version that produced them, whose thresholds are copied in rather than merely referenced.
+Self-sufficient — a report can be rebuilt from a Snapshot alone, and no later edit or deletion
+anywhere else can change what it says.
+
+**Report**:
+An overseer's view of the Snapshots pushed by the people they can see, grouped by their author and by
+the day of data each describes. Not a thing anyone creates or submits — a Snapshot is pushed, and a
+Report is what an overseer assembles from Snapshots by asking for a date range. Two overseers asking
+different ranges read different Reports over the same Snapshots.
+_Avoid_: Submission, digest, roll-up, bundle
+
+**Frozen Geo Rollup**:
+The one part of a Snapshot that is stored rather than recomputed: a Geo's headline figures as the
+buyer saw them — Spend⁺, Geo Total, Profit, ROI, the cost-per line and Waste. Frozen because Geo
+Total counts Untagged Revenue, which never becomes a Fact and so can never be re-derived from a
+Snapshot's Facts. Every other table in a Report is recomputed from the Snapshot's Facts, Creative
+Splits and Campaign Models against its pinned Ruleset Version, which reproduces exactly by
+construction.
+_Avoid_: Cached rollup, summary row, header snapshot
+
+> **A Snapshot's two dates.** `report date` is the day the data describes, picked by the buyer at
+> push; `taken at` is when they pushed it. Reports group and filter by the **report date** — the only
+> one stable when a buyer re-pushes a corrected analysis of an old day. `taken at` is shown only as
+> freshness ("last reported at"), never as a grouping key.
 
 **Review Multiplier**:
 Global multiplier applied to a Geo's install `yr` threshold to detect a Problem Account.
