@@ -375,6 +375,10 @@ function Analyze() {
                                     <SaveSnapshot
                                         facts={result.facts}
                                         geos={geos}
+                                        rollups={result.geos}
+                                        campaignCreatives={result.campaignCreatives}
+                                        campaignModels={result.campaignModels}
+                                        ruleset={ruleset}
                                         presets={presets}
                                         shared={shared}
                                         selectedPresetByGeo={selectedPresetByGeo}

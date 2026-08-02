@@ -1,3 +1,5 @@
+import type { GeoRollup, Ruleset } from '@/lib/domain';
+import type { CampaignCreatives, CampaignModel } from '@/lib/domain/join';
 import type { Fact } from '@/lib/domain/types';
 import type { PresetView, SharedSettingsView } from '@/services/presets/types';
 import type { Locale } from '../../utils/i18n';
@@ -14,6 +16,12 @@ import { defaultReportDate, planSnapshot } from '../../utils/toSnapshot';
 type SaveSnapshotProps = {
     facts: Fact[];
     geos: string[];
+    // Everything a saved report needs beyond the Facts (ADR-0015): the on-screen per-Geo roll-ups and
+    // the sub-grain inputs the Creative / Offers / OS tables allocate over.
+    rollups: GeoRollup[];
+    campaignCreatives: Map<string, CampaignCreatives>;
+    campaignModels: Map<string, CampaignModel>;
+    ruleset: Ruleset;
     presets: PresetView[];
     shared: SharedSettingsView | null;
     selectedPresetByGeo: Record<string, string>;
@@ -32,7 +40,19 @@ function today(): string {
 // rules are exactly the ones that graded these facts (ADR-0002) and the numbers reproduce forever.
 // Every geo must already be saved — pinning some and skipping others would freeze a ruleset that
 // never graded the report, so an unsaved geo blocks the save rather than silently narrowing it.
-function SaveSnapshot({ facts, geos, presets, shared, selectedPresetByGeo, excluded, locale }: SaveSnapshotProps) {
+function SaveSnapshot({
+    facts,
+    geos,
+    rollups,
+    campaignCreatives,
+    campaignModels,
+    ruleset,
+    presets,
+    shared,
+    selectedPresetByGeo,
+    excluded,
+    locale,
+}: SaveSnapshotProps) {
     // Null until the analyst picks a day, so the default keeps tracking the facts: a fresh upload
     // covering another day re-defaults, while a hand-picked day survives every recompute. A
     // `useState` initializer would freeze the first upload's day and quietly stamp the wrong date.
@@ -40,7 +60,19 @@ function SaveSnapshot({ facts, geos, presets, shared, selectedPresetByGeo, exclu
     const reportDate = picked ?? defaultReportDate(facts, today());
     const { mutateAsync: createSnapshot, isPending } = useMutation(createSnapshotMutationOptions());
 
-    const plan = planSnapshot({ facts, geos, presets, shared, selectedPresetByGeo, excluded, reportDate });
+    const plan = planSnapshot({
+        facts,
+        geos,
+        rollups,
+        campaignCreatives,
+        campaignModels,
+        ruleset,
+        presets,
+        shared,
+        selectedPresetByGeo,
+        excluded,
+        reportDate,
+    });
     // One reason at a time, most actionable first: an unsaved geo, then a cleared date, then an empty
     // fact set (everything muted).
     function blockedReason(): string | null {

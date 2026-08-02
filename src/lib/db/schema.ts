@@ -5,10 +5,24 @@
 //   (#41) — password_reset (hand-delivered password reset)
 //   T5 (#7)  — preset, preset_version, shared_settings, shared_settings_version ✓
 //   T6 (#8)  — applied_ruleset, applied_ruleset_geo, snapshot, snapshot_fact ✓
-// See docs/specs/0001-multi-user-auth-teams-persistence.md and docs/adr/0002, 0006, 0007.
+//   S2a (#53) — snapshot_geo, snapshot_creative, snapshot_campaign_model, snapshot_fact.attribution,
+//               copied thresholds on applied_ruleset(_geo) ✓
+// See docs/specs/0001-multi-user-auth-teams-persistence.md, docs/specs/0003-reports-feed-archive-detailed-report.md
+// and docs/adr/0002, 0006, 0007, 0015.
 
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
-import { date, doublePrecision, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import {
+    date,
+    doublePrecision,
+    integer,
+    jsonb,
+    pgEnum,
+    pgTable,
+    text,
+    timestamp,
+    unique,
+    uuid,
+} from 'drizzle-orm/pg-core';
 
 // One role per user (spec §Roles). DB enum, not a TS enum — repo bans TS `enum`.
 export const userRole = pgEnum('user_role', ['head', 'team_lead', 'buyer', 'designer', 'bdm']);
@@ -224,6 +238,11 @@ export const appliedRuleset = pgTable('applied_ruleset', {
         },
         { onDelete: 'set null' }
     ),
+    // The RESOLVED shared settings, copied in at save (ADR-0015): Review Multiplier, Waste Zones and
+    // the default Commission. The version id above stays as provenance, but the reference cannot be
+    // relied on — it is `set null` when history is pruned, and a grade that a delete can erase is not
+    // frozen. Null for Snapshots written before S2a (#53); they read `—` rather than being backfilled.
+    settings: jsonb('settings'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -246,11 +265,21 @@ export const appliedRulesetGeo = pgTable('applied_ruleset_geo', {
         },
         { onDelete: 'set null' }
     ),
+    // That Geo's resolved Threshold Pairs, copied in at save (ADR-0015). `preset_version` cascades
+    // when its Preset is deleted and the pin above is `set null`, so a buyer tidying up Presets would
+    // otherwise un-grade every Snapshot that pinned them. Null for pre-S2a (#53) Snapshots.
+    thresholds: jsonb('thresholds'),
 });
 
 // The traffic-light grade a fact carries — a cost metric graded against a Threshold Pair, or the
 // funnel-derived Verdict (domain doc 04). `neutral` = no call yet.
 export const factZone = pgEnum('fact_zone', ['green', 'yellow', 'red', 'neutral']);
+
+// How completely a fact is attributed (ADR-0012). `campaign_lost` is an Unfired-Macro row: real
+// Account/Creative/Offer/OS/Geo, no Campaign and no Spend. Stored rather than inferred from the `—`
+// display placeholder, because the Problem Account detector skips non-`full` facts on purpose and a
+// money-losing safeguard must not hang off a UI string (ADR-0015).
+export const factAttribution = pgEnum('fact_attribution', ['full', 'campaign_lost']);
 
 // A saved Snapshot (spec §Snapshots). Creator-owned (`created_by_user_id`) and STAMPED with the
 // creator's team at creation (`team_id`) so a member's later transfer never re-attributes their past
@@ -298,6 +327,10 @@ export const snapshotFact = pgTable('snapshot_fact', {
             },
             { onDelete: 'cascade' }
         ),
+    // Frozen at save from the compute layer's own `fact.attribution` (S2a, #53). Defaulted so rows
+    // written before this column existed read `full`: it is the only class the old write path could
+    // grade, and no honest value can be recovered for the rest without inferring from a placeholder.
+    attribution: factAttribution('attribution').notNull().default('full'),
     campaign: text('campaign').notNull(),
     creative: text('creative').notNull(),
     reportDate: date('report_date').notNull(),
@@ -316,6 +349,118 @@ export const snapshotFact = pgTable('snapshot_fact', {
     zone: factZone('zone').notNull(),
 });
 
+// The Frozen Geo Rollup (S2a, #53, ADR-0015): the header figures exactly as the buyer saw them. Its
+// reason for existing is `geo_total` — the Geo Total counts Untagged Revenue, which never becomes a
+// Fact (ADR-0003, ADR-0012) and so is unreconstructable in principle. The rest of the line is frozen
+// alongside it so the Report feed renders hundreds of Geo rows without loading a single Fact.
+// NULLABLE BY DESIGN as a table: a Snapshot written before this shipped simply has no row here, and
+// the report renders `—` rather than fabricating an Attributed sum. Cost metrics are nullable for the
+// same reason they are null in the compute layer — a zero denominator means "not shown", never 0.
+export const snapshotGeo = pgTable(
+    'snapshot_geo',
+    {
+        id: uuid('id').primaryKey().defaultRandom(),
+        snapshotId: uuid('snapshot_id')
+            .notNull()
+            .references(
+                () => {
+                    return snapshot.id;
+                },
+                { onDelete: 'cascade' }
+            ),
+        geo: text('geo').notNull(),
+        spendPlus: doublePrecision('spend_plus').notNull(),
+        // Revenue INCLUDING untagged — the Geo Total (ADR-0003). Deliberately ≥ `attributed_revenue`.
+        geoTotal: doublePrecision('geo_total').notNull(),
+        // Revenue from matched campaigns only; its gap to `geo_total` is the tracking-health signal.
+        attributedRevenue: doublePrecision('attributed_revenue').notNull(),
+        profit: doublePrecision('profit').notNull(),
+        roi: doublePrecision('roi'),
+        cpc: doublePrecision('cpc'),
+        cpi: doublePrecision('cpi'),
+        cpr: doublePrecision('cpr'),
+        cps: doublePrecision('cps'),
+        // Σ each account's waste, mixed-grain by design (ADR-0014) — so it will not reconcile against
+        // the account totals table, and the Problem Accounts block is what decomposes it.
+        waste: doublePrecision('waste').notNull(),
+    },
+    (table) => {
+        return [unique('snapshot_geo_snapshot_geo_key').on(table.snapshotId, table.geo)];
+    }
+);
+
+// The Creative Split (S2a, #53): real per-creative Spend and Impressions, straight from Facebook —
+// never allocated. It lives BELOW the Fact Grain (a Fact's `creative` is only the top-spending label),
+// so without this the Creative table's CTR, CPM and Spend-share allocation have no inputs at all.
+export const snapshotCreative = pgTable(
+    'snapshot_creative',
+    {
+        id: uuid('id').primaryKey().defaultRandom(),
+        snapshotId: uuid('snapshot_id')
+            .notNull()
+            .references(
+                () => {
+                    return snapshot.id;
+                },
+                { onDelete: 'cascade' }
+            ),
+        geo: text('geo').notNull(),
+        campaign: text('campaign').notNull(),
+        // The raw FB ad name. Parsed to a creative key on read — parsing is a compute concern, and a
+        // frozen key would freeze the parser with it.
+        adName: text('ad_name').notNull(),
+        spend: doublePrecision('spend').notNull(),
+        impressions: integer('impressions').notNull(),
+    },
+    (table) => {
+        return [unique('snapshot_creative_grain_key').on(table.snapshotId, table.geo, table.campaign, table.adName)];
+    }
+);
+
+// The dimension a Campaign Model row breaks a campaign down by (domain doc 06).
+export const modelDimension = pgEnum('model_dimension', ['offer', 'os']);
+
+// The Campaign Model (S2a, #53): a campaign's Offer/OS funnel breakdown — the input the Offers and OS
+// tables allocate over at the Geo unit cost (ADR-0013). Also below the Fact Grain: a Fact's `offer` is
+// a representative label and its `os` is null whenever a campaign ran more than one. No Spend column —
+// Facebook never measures Offer or OS spend; it is imputed on read, which is the whole point of
+// keeping the allocation derived rather than frozen.
+export const snapshotCampaignModel = pgTable(
+    'snapshot_campaign_model',
+    {
+        id: uuid('id').primaryKey().defaultRandom(),
+        snapshotId: uuid('snapshot_id')
+            .notNull()
+            .references(
+                () => {
+                    return snapshot.id;
+                },
+                { onDelete: 'cascade' }
+            ),
+        campaign: text('campaign').notNull(),
+        dimension: modelDimension('dimension').notNull(),
+        // Offer ID or OS value — the reconciling identity; `label` is its display name.
+        key: text('key').notNull(),
+        label: text('label').notNull(),
+        revenue: doublePrecision('revenue').notNull(),
+        // KT clicks has no Offer, so an offer row's clicks are legitimately 0 (domain doc 06).
+        linkClicks: integer('link_clicks').notNull(),
+        installs: integer('installs').notNull(),
+        regs: integer('regs').notNull(),
+        sales: integer('sales').notNull(),
+    },
+    (table) => {
+        return [
+            unique('snapshot_campaign_model_grain_key').on(
+                table.snapshotId,
+                table.campaign,
+                table.dimension,
+                table.key
+            ),
+        ];
+    }
+);
+
 export type UserRow = typeof user.$inferSelect;
 export type SessionRow = typeof session.$inferSelect;
 export type TeamRow = typeof team.$inferSelect;
@@ -329,3 +474,6 @@ export type AppliedRulesetRow = typeof appliedRuleset.$inferSelect;
 export type AppliedRulesetGeoRow = typeof appliedRulesetGeo.$inferSelect;
 export type SnapshotRow = typeof snapshot.$inferSelect;
 export type SnapshotFactRow = typeof snapshotFact.$inferSelect;
+export type SnapshotGeoRow = typeof snapshotGeo.$inferSelect;
+export type SnapshotCreativeRow = typeof snapshotCreative.$inferSelect;
+export type SnapshotCampaignModelRow = typeof snapshotCampaignModel.$inferSelect;
