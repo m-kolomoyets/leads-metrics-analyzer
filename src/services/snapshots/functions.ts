@@ -250,10 +250,9 @@ export const getDimensionRollupFn = createServerFn({ method: 'GET' }).handler(
 
         const rows = await db
             .select({
+                // Funnel counts only — Spend / Spend⁺ / Revenue are never selected, so a dollar figure
+                // for these viewers does not exist server-side either (ADR-0009).
                 key: keyColumn,
-                spend: sum(snapshotFact.spend).mapWith(Number),
-                spendPlus: sum(snapshotFact.spendPlus).mapWith(Number),
-                revenue: sum(snapshotFact.revenue).mapWith(Number),
                 linkClicks: sum(snapshotFact.linkClicks).mapWith(Number),
                 installs: sum(snapshotFact.installs).mapWith(Number),
                 regs: sum(snapshotFact.regs).mapWith(Number),
@@ -267,9 +266,6 @@ export const getDimensionRollupFn = createServerFn({ method: 'GET' }).handler(
             return {
                 dimension,
                 key: row.key,
-                spend: row.spend ?? 0,
-                spendPlus: row.spendPlus ?? 0,
-                revenue: row.revenue ?? 0,
                 linkClicks: row.linkClicks ?? 0,
                 installs: row.installs ?? 0,
                 regs: row.regs ?? 0,

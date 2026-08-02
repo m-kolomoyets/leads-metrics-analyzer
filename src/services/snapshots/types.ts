@@ -53,12 +53,11 @@ export type SnapshotFactView = {
 // A company-wide roll-up row for a dimension-scoped viewer (T7, #9). Designer/BDM never see dollar
 // facts; they read all Snapshot facts summed by their single dimension — Creative for a Designer,
 // Offer for a BDM. `dimension` names which axis `key` indexes so the client renders one table.
+// Deliberately funnel-counts only: Spend / Spend⁺ / Revenue are absent from the wire, so no client
+// code path in the rollup branch can render a dollar even by mistake (ADR-0009).
 export type DimensionRollupView = {
     dimension: RollupDimension;
     key: string;
-    spend: number;
-    spendPlus: number;
-    revenue: number;
     linkClicks: number;
     installs: number;
     regs: number;

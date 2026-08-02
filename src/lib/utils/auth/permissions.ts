@@ -19,9 +19,11 @@ export const ROLES_PERMISSIONS = {
     admin: {
         view: [ROLES_IDS.head],
     },
-    // Live analyzer (spec 0002, S1). Dollar roles only; Designer/BDM get the rollup branch (S6).
+    // The `/analyze` route (spec 0002). One route for all five roles (ADR-0009): dollar roles get the
+    // live analyzer, Designer/BDM the dollar-free rollup branch (S6). Which branch renders is decided
+    // by `scopeFor`, not by this list — this gate only says who may open the route at all.
     analyze: {
-        view: [ROLES_IDS.head, ROLES_IDS.teamLead, ROLES_IDS.buyer],
+        view: [ROLES_IDS.head, ROLES_IDS.teamLead, ROLES_IDS.buyer, ROLES_IDS.designer, ROLES_IDS.bdm],
     },
     // Presets manager (#30 follow-up). Dollar roles only; server row-scope still narrows the rows
     // each one actually sees (Head all / Team Lead team / Buyer own).
