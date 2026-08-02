@@ -35,6 +35,7 @@ const isUniqueViolation = (error: unknown) => {
 const USER_COLUMNS = {
     id: user.id,
     email: user.email,
+    nickname: user.nickname,
     role: user.role,
     status: user.status,
     teamId: user.teamId,
@@ -98,6 +99,7 @@ export const createUserFn = createServerFn({ method: 'POST' })
                 .insert(user)
                 .values({
                     email: data.email,
+                    nickname: data.nickname,
                     passwordHash,
                     role: data.role,
                     status: data.status,
@@ -198,7 +200,16 @@ export const updateUserFn = createServerFn({ method: 'POST' })
 
         // Build the SET from present fields only. A null teamId is a real change (unassign), so it is
         // keyed on `!== undefined`, not truthiness.
-        const updates: Partial<{ role: AdminUser['role']; status: AdminUser['status']; teamId: string | null }> = {};
+        const updates: Partial<{
+            nickname: string;
+            role: AdminUser['role'];
+            status: AdminUser['status'];
+            teamId: string | null;
+        }> = {};
+
+        if (data.nickname !== undefined) {
+            updates.nickname = data.nickname;
+        }
 
         if (data.role !== undefined) {
             updates.role = data.role;

@@ -4,6 +4,7 @@ import type { AdminUser } from '@/services/admin/types';
 // Form values the edit form holds. `teamId` carries a sentinel string (not a real uuid) to mean
 // "no team", because Base UI Select values must be non-empty strings.
 export type EditUserFormValues = {
+    nickname: string;
     role: AdminUser['role'];
     status: AdminUser['status'];
     teamId: string;
@@ -18,6 +19,13 @@ export const buildUpdateUserPayload = (
     noTeamValue: string
 ): UpdateUserInput => {
     const payload: UpdateUserInput = { id: current.id };
+
+    // Compare trimmed — the API trims too, so padding alone is not an edit.
+    const nextNickname = values.nickname.trim();
+
+    if (nextNickname !== current.nickname) {
+        payload.nickname = nextNickname;
+    }
 
     if (values.role !== current.role) {
         payload.role = values.role;

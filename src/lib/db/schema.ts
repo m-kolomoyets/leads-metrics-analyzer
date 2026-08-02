@@ -19,6 +19,9 @@ export const userStatus = pgEnum('user_status', ['active', 'invited', 'disabled'
 export const user = pgTable('user', {
     id: uuid('id').primaryKey().defaultRandom(),
     email: text('email').notNull().unique(),
+    // Human handle shown wherever a person is named (Report feed, #52). Required — existing rows were
+    // backfilled once from the email local-part. Not unique: two people may share a first name.
+    nickname: text('nickname').notNull(),
     // Argon2id hash only — never the plaintext (spec story 5).
     passwordHash: text('password_hash').notNull(),
     role: userRole('role').notNull().default('buyer'),

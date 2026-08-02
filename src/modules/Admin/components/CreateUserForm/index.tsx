@@ -22,6 +22,7 @@ function CreateUserForm({ teams, onSuccess }: CreateUserFormProps) {
     const form = useAppForm({
         defaultValues: {
             email: '',
+            nickname: '',
             role: 'buyer',
             status: 'invited',
             teamId: NO_TEAM_VALUE,
@@ -29,17 +30,30 @@ function CreateUserForm({ teams, onSuccess }: CreateUserFormProps) {
         async onSubmit({ value, formApi }) {
             const parsed = createUserInputSchema.safeParse({
                 email: value.email,
+                nickname: value.nickname,
                 role: value.role,
                 status: value.status,
                 teamId: value.teamId === NO_TEAM_VALUE ? null : value.teamId,
             });
 
             if (!parsed.success) {
-                const emailIssue = parsed.error.issues.find((issue) => {
-                    return issue.path[0] === 'email';
-                });
+                const findIssue = (field: string) => {
+                    return parsed.error.issues.find((issue) => {
+                        return issue.path[0] === field;
+                    })?.message;
+                };
+                const nicknameMessage = findIssue('nickname');
+                // Fall back to a generic message on email when no field named the problem, so the
+                // form never fails silently.
+                const emailMessage = findIssue('email') ?? (nicknameMessage ? undefined : 'Invalid input');
+
                 formApi.setErrorMap({
-                    onSubmit: { fields: { email: { message: emailIssue?.message ?? 'Invalid input' } } },
+                    onSubmit: {
+                        fields: {
+                            email: { message: emailMessage },
+                            nickname: { message: nicknameMessage },
+                        },
+                    },
                 });
 
                 return;
@@ -101,6 +115,16 @@ function CreateUserForm({ teams, onSuccess }: CreateUserFormProps) {
                             return (
                                 <field.FormFieldWrapper label="Email">
                                     <field.InputField type="email" placeholder="you@example.com" />
+                                </field.FormFieldWrapper>
+                            );
+                        }}
+                    />
+                    <form.AppField
+                        name="nickname"
+                        children={(field) => {
+                            return (
+                                <field.FormFieldWrapper label="Nickname">
+                                    <field.InputField placeholder="How the team calls them" />
                                 </field.FormFieldWrapper>
                             );
                         }}
