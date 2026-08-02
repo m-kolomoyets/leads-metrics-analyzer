@@ -69,12 +69,18 @@ function CostCell({
 function MetricCells({
     m,
     waste,
+    wasteGrain,
     thresholds,
+    locale,
     plain,
 }: {
     m: Metrics;
     waste: number;
+    // 'account' marks Account Waste — measured whole, so it will not equal the account's campaign rows
+    // (ADR-0014). Marked rather than silently shown, or the mismatch reads as an arithmetic bug.
+    wasteGrain?: 'campaign' | 'account';
     thresholds: GeoThresholds | undefined;
+    locale: Locale;
     plain?: boolean;
 }) {
     const dim = plain ? undefined : 'text-muted-foreground';
@@ -106,6 +112,11 @@ function MetricCells({
             <CostCell value={m.cps} pair={thresholds?.sales} plain={plain} />
             <td className={cn('p-2 font-mono', BLOCK_START, waste > 0 && !plain ? 'text-danger' : dim)}>
                 {waste > 0 ? usd(waste) : '—'}
+                {wasteGrain === 'account' && waste > 0 ? (
+                    <abbr className="text-muted-foreground ml-0.5 no-underline" title={ui('wasteAccountGrain', locale)}>
+                        *
+                    </abbr>
+                ) : null}
             </td>
         </>
     );
@@ -130,6 +141,10 @@ function AccountSummary({ accounts, thresholds, locale, isReviewed, onJump }: Ac
             })
         )
     );
+    // The total mixes grains as soon as one account is problem-flagged, so it carries the marker too.
+    const anyAccountGrain = accounts.some((account) => {
+        return account.wasteGrain === 'account';
+    });
     const totalWaste = accounts.reduce((sum, account) => {
         return sum + account.waste;
     }, 0);
@@ -186,7 +201,7 @@ function AccountSummary({ accounts, thresholds, locale, isReviewed, onJump }: Ac
                     </thead>
                     <tbody>
                         {accounts.map((account) => {
-                            const { metrics, counts, problem, waste } = account;
+                            const { metrics, counts, problem, waste, wasteGrain } = account;
                             const reviewed = isReviewed(account.account);
                             // Reviewed rows keep full contrast — the figures stay readable so a call can
                             // be revisited; only the alarm styling (tint, rule, 🚨) is retired.
@@ -206,7 +221,13 @@ function AccountSummary({ accounts, thresholds, locale, isReviewed, onJump }: Ac
                                     <td className={cn('p-2 text-left font-mono', alarm && 'font-bold text-danger')}>
                                         {account.account} {alarm && '🚨'}
                                     </td>
-                                    <MetricCells m={metrics} waste={waste} thresholds={thresholds} />
+                                    <MetricCells
+                                        m={metrics}
+                                        waste={waste}
+                                        wasteGrain={wasteGrain}
+                                        thresholds={thresholds}
+                                        locale={locale}
+                                    />
                                     {ZONES.map((zone) => {
                                         return (
                                             <td
@@ -233,7 +254,14 @@ function AccountSummary({ accounts, thresholds, locale, isReviewed, onJump }: Ac
                                 <td className="text-muted-foreground p-2 text-left whitespace-nowrap">
                                     {ui('totalAvg', locale)}
                                 </td>
-                                <MetricCells m={totals} waste={totalWaste} thresholds={thresholds} plain />
+                                <MetricCells
+                                    m={totals}
+                                    waste={totalWaste}
+                                    wasteGrain={anyAccountGrain ? 'account' : 'campaign'}
+                                    thresholds={thresholds}
+                                    locale={locale}
+                                    plain
+                                />
                                 {ZONES.map((zone) => {
                                     return (
                                         <td
@@ -255,6 +283,9 @@ function AccountSummary({ accounts, thresholds, locale, isReviewed, onJump }: Ac
                 </table>
             </div>
             <p className="text-muted-foreground text-[10px]">{ui('wasteEstimate', locale)}</p>
+            {anyAccountGrain && (
+                <p className="text-muted-foreground text-[10px]">{ui('wasteAccountGrainNote', locale)}</p>
+            )}
         </section>
     );
 }

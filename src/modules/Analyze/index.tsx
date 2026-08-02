@@ -38,6 +38,7 @@ import { OffersTable } from './components/OffersTable';
 import { OsTable } from './components/OsTable';
 import { PresetCreator } from './components/PresetCreator';
 import { ProblemAccounts } from './components/ProblemAccounts';
+import { SaveSnapshot } from './components/SaveSnapshot';
 import { SectionCard } from './components/SectionCard';
 import { SharedSettingsEditor } from './components/SharedSettingsEditor';
 import { ThresholdEditor } from './components/ThresholdEditor';
@@ -121,6 +122,8 @@ function Analyze() {
     // owner selected a different one; else fall back to that first-wins pick.
     const thresholds = thresholdsFor(activePreset, activeGeo ? ruleset.thresholds[activeGeo] : undefined);
     const canEditShared = PRESET_WRITE_ROLES.includes(role);
+    // Freezing a Snapshot is a dollar-dimension action, so it rides the same role set as preset
+    // writes (`createSnapshotFn` gates on the campaign dimension server-side).
     const canWritePresets = PRESET_WRITE_ROLES.includes(role);
 
     const geoFacts =
@@ -164,7 +167,7 @@ function Analyze() {
         return flipped ? !startsOpen(account) : startsOpen(account);
     };
 
-    // Geo waste = Σ each account's Spend⁺ wasted over the line — in lock-step with the shown verdicts.
+    // Geo waste = Σ each account's waste, whichever grain that account is measured at (ADR-0014).
     const geoWaste = accounts.reduce((sum, account) => {
         return sum + account.waste;
     }, 0);
@@ -365,6 +368,23 @@ function Analyze() {
                                 <span className="text-muted-foreground text-xs">{ui('noPreset', locale)}</span>
                             )}
                         </div>
+
+                        {result && canWritePresets && (
+                            <SectionCard tone="violet">
+                                <div className="flex flex-col gap-2">
+                                    <SaveSnapshot
+                                        facts={result.facts}
+                                        geos={geos}
+                                        presets={presets}
+                                        shared={shared}
+                                        selectedPresetByGeo={selectedPresetByGeo}
+                                        excluded={excluded}
+                                        locale={locale}
+                                    />
+                                    <p className="text-muted-foreground text-xs">{ui('snapshotHint', locale)}</p>
+                                </div>
+                            </SectionCard>
+                        )}
 
                         {(activePreset || canWritePresets || shared || canEditShared) && (
                             <SectionCard tone="blue">

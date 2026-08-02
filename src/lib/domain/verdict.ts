@@ -85,6 +85,25 @@ export function waste(spendPlus: number, count: number, yr: number): number {
     return Math.max(0, spendPlus - yr * count);
 }
 
+// Account Waste — a Problem Account's waste, measured at ACCOUNT grain against the review-multiplied
+// bar, and deliberately NOT the sum of its campaigns' Waste (ADR-0014). Once an account is problem-
+// flagged the whole account should have been paused, so every dollar past the bar is lost — including
+// dollars spent by campaigns that graded green on their own.
+//
+// `max(installs, 1)` collapses both rules into one formula: rule 1 (installs 0) bills a single bar,
+// and so does the rule-2 case that fires on an Infinity CPI with no installs — which rule 1 declines
+// when spend sits under the bar, and which would otherwise bill the whole spend of a $5 account.
+// The floor is non-binding for the real cases: each rule's own condition already puts spend past it.
+export function accountWaste(
+    spendPlus: number,
+    installs: number,
+    thresholds: GeoThresholds,
+    reviewMultiplier: number
+): number {
+    const bar = reviewMultiplier * thresholds.installs.yr;
+    return Math.max(0, spendPlus - bar * Math.max(installs, 1));
+}
+
 export type ProblemAccount = {
     account: string;
     // Which alarm fired: money out with nothing tracked, or cost blown with the funnel dead.

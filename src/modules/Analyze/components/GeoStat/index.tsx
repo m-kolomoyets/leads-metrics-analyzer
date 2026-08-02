@@ -12,7 +12,8 @@ type GeoStatProps = {
     rollup: GeoRollup;
     // Grades the header CPC/CPI/CPR/CPS line by band; undefined (no preset) → plain neutral.
     thresholds: GeoThresholds | undefined;
-    // Σ Spend⁺ wasted over the geo's included red campaigns (from the account roll-ups).
+    // Σ each account's waste. Mixed-grain by design: a Problem Account contributes its Account Waste,
+    // everyone else the sum of their red campaigns' Waste (ADR-0014).
     waste: number;
     // The active preset's Waste Zones band (% of Spend⁺), or undefined when the geo has no preset.
     wasteZone: ThresholdPair | undefined;
