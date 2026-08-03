@@ -1,36 +1,21 @@
-import type { Metrics } from './aggregate';
-import type { GeoAllocation } from './allocate';
-import type { CommissionConfig } from './commission';
 import type { CampaignCreatives, CampaignModel, RawFact, RawTotals } from './join';
 import type { ParsedFiles } from './parse';
-import type { Fact, GeoThresholds, Totals } from './types';
+import type { GeoRollup } from './rollup';
+import type { Fact, Ruleset, Totals } from './types';
 import type { ProblemAccount } from './verdict';
-import { metricsFor, spendPlus, sumTotals } from './aggregate';
-import { allocateGeo } from './allocate';
-import { rateFor, unclaimedAccounts } from './commission';
+import { spendPlus, sumTotals } from './aggregate';
+import { rateFor } from './commission';
 import { join } from './join';
 import { parseFiles } from './parse';
-import { problemAccount, verdictFor } from './verdict';
+import { rollUp } from './rollup';
+import { verdictFor } from './verdict';
 
 // The compute layer's public entry (ADR-0010): raw CSV text → graded facts + roll-ups, pure. Data
-// flows parse → join → commission → aggregate → verdict. No React, no DB, no transport.
+// flows parse → join → commission → aggregate → verdict. No React, no DB, no transport. The roll-up
+// half lives in `rollup.ts` and is shared verbatim with `analyzeSnapshot` (snapshot.ts).
 
-export type Ruleset = {
-    // Active Verdict thresholds per Geo (ISO-2). A geo with no entry grades neutral.
-    thresholds: Record<string, GeoThresholds>;
-    commission: CommissionConfig;
-    reviewMultiplier: number;
-};
-
-export type GeoRollup = {
-    geo: string;
-    metrics: Metrics;
-    // The Attributed roll-up (matched campaigns only), excluding untagged — its divergence from
-    // `metrics` (which includes untagged) is the Geo-Total gap (ADR-0003).
-    attributed: Metrics;
-    // Offer/OS allocated-spend tables (doc 06). Estimated Spend⁺; installs reconcile to `attributed`.
-    allocation: GeoAllocation;
-};
+export type { GeoRollup, GeoTotal } from './rollup';
+export type { Ruleset } from './types';
 
 export type AnalyzeResult = {
     facts: Fact[];
@@ -100,55 +85,21 @@ export function analyzeParsed(parsed: ParsedFiles, ruleset: Ruleset): AnalyzeRes
         return gradeFact(raw, ruleset);
     });
 
-    // Roll up per Geo. `metrics` = attributed + untagged (the Geo Total, ADR-0003); `attributed`
-    // excludes untagged so the divergence is inspectable.
-    const byGeo = new Map<string, Fact[]>();
-    for (const fact of facts) {
-        const list = byGeo.get(fact.geo) ?? [];
-        list.push(fact);
-        byGeo.set(fact.geo, list);
-    }
-    const geos: GeoRollup[] = [];
-    for (const [geo, geoFacts] of byGeo) {
-        const attributed = sumTotals(geoFacts);
-        const untagged = geoUntagged.get(geo);
-        const total = untagged ? sumTotals([attributed, untaggedTotals(untagged)]) : attributed;
-        geos.push({
-            geo,
-            metrics: metricsFor(total),
-            attributed: metricsFor(attributed),
-            allocation: allocateGeo(geoFacts, campaignModels),
-        });
-    }
-
-    // Problem Accounts: aggregate per (geo, account), test against the geo's absolute K × installs.yr.
-    const problemAccounts: ProblemAccount[] = [];
-    const byGeoAccount = new Map<string, Map<string, Fact[]>>();
-    for (const fact of facts) {
-        // Campaign-lost facts carry Revenue against zero Spend, so folding them in here would make a
-        // wasteful account look thriftier than it is and could silently clear a genuine flag. The
-        // detector is a Spend-waste test — it sees attributed facts only (ADR-0012).
-        if (fact.attribution !== 'full') {
-            continue;
-        }
-        const accounts = byGeoAccount.get(fact.geo) ?? new Map<string, Fact[]>();
-        const list = accounts.get(fact.account) ?? [];
-        list.push(fact);
-        accounts.set(fact.account, list);
-        byGeoAccount.set(fact.geo, accounts);
-    }
-    for (const [geo, accounts] of byGeoAccount) {
-        const thresholds = ruleset.thresholds[geo];
-        if (!thresholds) {
-            continue;
-        }
-        for (const [account, accountFacts] of accounts) {
-            const problem = problemAccount(account, sumTotals(accountFacts), thresholds, ruleset.reviewMultiplier);
-            if (problem) {
-                problemAccounts.push(problem);
-            }
-        }
-    }
+    // Roll up per Geo, through the half both entry points share. The Geo Total is Attributed plus the
+    // Geo's untagged bucket (ADR-0003) — always knowable here, since the untagged rows are right in
+    // front of us. Waste is left unset: Analyze measures it per open tab against the live mute set.
+    const { geos, problemAccounts, unclaimedAccounts } = rollUp(
+        {
+            facts,
+            geoTotalFor(geo, attributed) {
+                const untagged = geoUntagged.get(geo);
+                return untagged ? sumTotals([attributed, untaggedTotals(untagged)]) : attributed;
+            },
+            geoWaste: new Map(),
+            campaignModels,
+        },
+        ruleset
+    );
 
     return {
         facts,
@@ -156,12 +107,7 @@ export function analyzeParsed(parsed: ParsedFiles, ruleset: Ruleset): AnalyzeRes
         campaignCreatives,
         campaignModels,
         problemAccounts,
-        unclaimedAccounts: unclaimedAccounts(
-            facts.map((f) => {
-                return f.account;
-            }),
-            ruleset.commission
-        ),
+        unclaimedAccounts,
         warnings,
         parseWarnings: parsed.warnings,
     };

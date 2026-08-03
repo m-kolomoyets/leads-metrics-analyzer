@@ -206,6 +206,13 @@ export function planSnapshot(params: PlanParams): SnapshotPlan {
             spendPlus: metrics.spendPlus,
             geoTotal: metrics.revenue,
             attributedRevenue: attributed.revenue,
+            // The Geo Total's funnel — untagged installs and clicks are as underivable from Facts as
+            // untagged revenue is (ADR-0003), so they are frozen beside it rather than left to be
+            // guessed back out of the cost-per line.
+            linkClicks: metrics.linkClicks,
+            installs: metrics.installs,
+            regs: metrics.regs,
+            sales: metrics.sales,
             profit: metrics.profit,
             roi: metrics.roi,
             cpc: metrics.cpc,

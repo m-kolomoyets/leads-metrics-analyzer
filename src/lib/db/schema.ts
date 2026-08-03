@@ -374,6 +374,14 @@ export const snapshotGeo = pgTable(
         geoTotal: doublePrecision('geo_total').notNull(),
         // Revenue from matched campaigns only; its gap to `geo_total` is the tracking-health signal.
         attributedRevenue: doublePrecision('attributed_revenue').notNull(),
+        // The Geo Total's funnel, untagged rows INCLUDED (S2b, #54). Frozen for the same reason
+        // `geo_total` is: an untagged row's installs and clicks never become a Fact either (ADR-0003),
+        // so a rebuilt report could otherwise only report the Attributed funnel under a Geo-Total
+        // revenue. Defaulted at the column so the rows written between #53 and #54 still read.
+        linkClicks: integer('link_clicks').notNull().default(0),
+        installs: integer('installs').notNull().default(0),
+        regs: integer('regs').notNull().default(0),
+        sales: integer('sales').notNull().default(0),
         profit: doublePrecision('profit').notNull(),
         roi: doublePrecision('roi'),
         cpc: doublePrecision('cpc'),

@@ -1,3 +1,5 @@
+import type { CommissionConfig } from './commission';
+
 // Shared types for the pure compute layer (ADR-0010). No React, no DB, no transport.
 // The domain grades in its own vocabulary; the UI maps zones to locale strings (ADR-0004).
 
@@ -18,6 +20,16 @@ export type GeoThresholds = {
     regs: ThresholdPair;
     sales: ThresholdPair;
     clicks: ThresholdPair;
+};
+
+// Everything the compute layer needs to grade a batch: the per-Geo thresholds, the commission map
+// behind Spend⁺, and the Problem-Account review multiplier. Lives here rather than beside an entry
+// point because both entry points (`analyzeParsed`, `analyzeSnapshot`) take one.
+export type Ruleset = {
+    // Active Verdict thresholds per Geo (ISO-2). A geo with no entry grades neutral.
+    thresholds: Record<string, GeoThresholds>;
+    commission: CommissionConfig;
+    reviewMultiplier: number;
 };
 
 // How completely a fact is attributed (ADR-0012). `full` joined FB↔Keitaro on Campaign ID and is the

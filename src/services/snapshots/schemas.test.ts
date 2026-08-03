@@ -103,6 +103,10 @@ describe('createSnapshotInputSchema', () => {
                         spendPlus: 110,
                         geoTotal: 260,
                         attributedRevenue: 200,
+                        linkClicks: 50,
+                        installs: 20,
+                        regs: 10,
+                        sales: 5,
                         profit: 150,
                         roi: 136.36,
                         cpc: 2.2,
@@ -117,6 +121,9 @@ describe('createSnapshotInputSchema', () => {
             expect(parsed.geoRollups[0].geo).toBe('KR');
             expect(parsed.geoRollups[0].geoTotal).toBe(260);
             expect(parsed.geoRollups[0].attributedRevenue).toBe(200);
+            // The Geo Total's funnel, untagged rows included — as underivable from Facts as the
+            // revenue is, so it is frozen beside it (#54).
+            expect(parsed.geoRollups[0].installs).toBe(20);
         });
 
         it('defaults an unmeasurable cost metric to null rather than zero', () => {
@@ -127,6 +134,8 @@ describe('createSnapshotInputSchema', () => {
 
             expect(parsed.geoRollups[0].roi).toBeNull();
             expect(parsed.geoRollups[0].cpi).toBeNull();
+            // A rollup written between #53 and #54 froze the money but not the counts; it still parses.
+            expect(parsed.geoRollups[0].installs).toBe(0);
         });
 
         it('carries creative splits and campaign models', () => {

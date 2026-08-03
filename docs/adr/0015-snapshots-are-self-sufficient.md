@@ -5,7 +5,8 @@ A Snapshot stops being "the Facts plus a pointer to a Ruleset Version". It carri
 - **Facts** at Fact Grain (`Campaign × Date`), each keeping its **attribution**;
 - **Creative Splits** — real per-creative Spend and Impressions, below the Fact Grain;
 - **Campaign Models** — the per-campaign Offer and OS funnel breakdown, below the Fact Grain;
-- a **Frozen Geo Rollup** per Geo — Spend⁺, Geo Total, Profit, ROI, the cost-per line and Waste;
+- a **Frozen Geo Rollup** per Geo — Spend⁺, Geo Total, Profit, ROI, the cost-per line, the Geo Total's
+  funnel counts and Waste;
 - the **resolved thresholds** of every Ruleset Version it pinned, copied in, with the version ids kept
   as provenance.
 
@@ -26,7 +27,9 @@ have invented numbers.
 
 Geo Total is worse than missing: it is *unreconstructable in principle*. It counts Untagged Revenue,
 which by definition never becomes a Fact (ADR-0003, ADR-0012). No amount of care with the Facts brings
-it back. That is the one figure that had to be frozen — and freezing it is what draws the line for
+it back — and neither does the cost-per line, which reads back as the counts only while Spend⁺ is
+non-zero, so the Geo Total's installs, clicks, registrations and sales are frozen outright beside its
+revenue rather than inverted out of it. That is the one figure that had to be frozen — and freezing it is what draws the line for
 everything else. Freeze what cannot be derived; derive everything that can.
 
 The alternative — freezing every table as stored rows — was rejected because it creates a second

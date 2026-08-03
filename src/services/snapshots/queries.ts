@@ -3,6 +3,7 @@ import { mutationOptions, queryOptions } from '@tanstack/react-query';
 import {
     createSnapshotFn,
     getDimensionRollupFn,
+    getSnapshotBundleFn,
     getSnapshotFactsFn,
     getSnapshotFn,
     listSnapshotsFn,
@@ -32,6 +33,17 @@ export const snapshotFactsQueryOptions = (id: string) => {
         queryKey: snapshotKeys.factsQueryKey(id),
         queryFn() {
             return getSnapshotFactsFn({ data: { id } });
+        },
+    });
+};
+
+// Everything the detailed report rebuilds from, in one read (#54). Loaded by the report route; the
+// facts query stays separate for callers that only need the rows.
+export const snapshotBundleQueryOptions = (id: string) => {
+    return queryOptions({
+        queryKey: snapshotKeys.bundleQueryKey(id),
+        queryFn() {
+            return getSnapshotBundleFn({ data: { id } });
         },
     });
 };

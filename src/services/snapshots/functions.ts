@@ -2,7 +2,17 @@ import type { SQL } from 'drizzle-orm';
 import type { Viewer, VisibilityScope } from '@/lib/auth/scope';
 import type { SnapshotSubject } from '@/lib/auth/snapshotAccess';
 import type { MeData } from '@/services/auth/types';
-import type { AppliedGeo, DimensionRollupView, SnapshotFactView, SnapshotView } from './types';
+import type {
+    AppliedGeo,
+    AppliedGeoRuleView,
+    DimensionRollupView,
+    SnapshotBundleView,
+    SnapshotCampaignModelView,
+    SnapshotCreativeView,
+    SnapshotFactView,
+    SnapshotGeoView,
+    SnapshotView,
+} from './types';
 import { createServerFn } from '@tanstack/react-start';
 import { asc, eq, inArray, sum } from 'drizzle-orm';
 import { rollupDimensionFor } from '@/lib/auth/dimensionRollup';
@@ -21,7 +31,12 @@ import {
     snapshotFact,
     snapshotGeo,
 } from '@/lib/db/schema';
-import { createSnapshotInputSchema, snapshotIdInputSchema } from './schemas';
+import {
+    appliedSettingsSchema,
+    createSnapshotInputSchema,
+    geoThresholdsSchema,
+    snapshotIdInputSchema,
+} from './schemas';
 
 // Snapshots API (T6, #8). Every read runs through `scopeFor(viewer)` (ADR-0007) — no hand-rolled role
 // check — and Snapshots are immutable once saved (rows are only ever INSERTed, ADR-0002). Row-scope
@@ -192,6 +207,39 @@ export const getSnapshotFn = createServerFn({ method: 'GET' })
         return toSnapshotView(viewer, row, geosByRuleset.get(row.appliedRulesetId) ?? []);
     });
 
+// One Snapshot's facts, in a stable order. The visibility check is the CALLER's job — both callers
+// below run it first, so this is only ever reached for a Snapshot the viewer may read.
+const loadFacts = async (id: string): Promise<SnapshotFactView[]> => {
+    const facts = await db
+        .select()
+        .from(snapshotFact)
+        .where(eq(snapshotFact.snapshotId, id))
+        .orderBy(snapshotFact.campaign, snapshotFact.creative, snapshotFact.reportDate);
+
+    return facts.map((fact): SnapshotFactView => {
+        return {
+            id: fact.id,
+            attribution: fact.attribution,
+            campaign: fact.campaign,
+            creative: fact.creative,
+            reportDate: fact.reportDate,
+            geo: fact.geo,
+            account: fact.account,
+            offer: fact.offer,
+            os: fact.os,
+            spend: fact.spend,
+            spendPlus: fact.spendPlus,
+            revenue: fact.revenue,
+            linkClicks: fact.linkClicks,
+            installs: fact.installs,
+            regs: fact.regs,
+            sales: fact.sales,
+            verdict: fact.verdict,
+            zone: fact.zone,
+        };
+    });
+};
+
 export const getSnapshotFactsFn = createServerFn({ method: 'GET' })
     .inputValidator(snapshotIdInputSchema)
     .handler(async ({ data }): Promise<SnapshotFactView[]> => {
@@ -205,34 +253,121 @@ export const getSnapshotFactsFn = createServerFn({ method: 'GET' })
             throw new Error(NOT_FOUND_MESSAGE);
         }
 
-        const facts = await db
-            .select()
-            .from(snapshotFact)
-            .where(eq(snapshotFact.snapshotId, data.id))
-            .orderBy(snapshotFact.campaign, snapshotFact.creative, snapshotFact.reportDate);
+        return loadFacts(data.id);
+    });
 
-        return facts.map((fact): SnapshotFactView => {
+// The read behind the detailed report (S2b, #54): one Snapshot's Facts, its three completeness tables
+// and the ruleset it copied — everything `analyzeSnapshot` needs to rebuild the report, in one round
+// trip. Gated by the same row-scope as its Snapshot, so an out-of-scope id is not-found rather than
+// forbidden and another team's activity is never disclosed by its absence (spec story 42).
+export const getSnapshotBundleFn = createServerFn({ method: 'GET' })
+    .inputValidator(snapshotIdInputSchema)
+    .handler(async ({ data }): Promise<SnapshotBundleView> => {
+        const me = await requireUser();
+        const viewer = viewerFrom(me);
+
+        const row = await loadVisibleSnapshot(viewer, data.id);
+
+        if (!row) {
+            throw new Error(NOT_FOUND_MESSAGE);
+        }
+
+        const [geoRules, settingsRow, facts, geoRollups, creatives, campaignModels] = await Promise.all([
+            db
+                .select({
+                    geo: appliedRulesetGeo.geo,
+                    presetVersionId: appliedRulesetGeo.presetVersionId,
+                    thresholds: appliedRulesetGeo.thresholds,
+                })
+                .from(appliedRulesetGeo)
+                .where(eq(appliedRulesetGeo.appliedRulesetId, row.appliedRulesetId))
+                .orderBy(appliedRulesetGeo.geo),
+            db
+                .select({ settings: appliedRuleset.settings })
+                .from(appliedRuleset)
+                .where(eq(appliedRuleset.id, row.appliedRulesetId))
+                .limit(1),
+            loadFacts(data.id),
+            db.select().from(snapshotGeo).where(eq(snapshotGeo.snapshotId, data.id)).orderBy(snapshotGeo.geo),
+            db
+                .select()
+                .from(snapshotCreative)
+                .where(eq(snapshotCreative.snapshotId, data.id))
+                .orderBy(snapshotCreative.campaign, snapshotCreative.adName),
+            db
+                .select()
+                .from(snapshotCampaignModel)
+                .where(eq(snapshotCampaignModel.snapshotId, data.id))
+                .orderBy(snapshotCampaignModel.campaign, snapshotCampaignModel.dimension, snapshotCampaignModel.key),
+        ]);
+
+        // The copied ruleset comes back out of jsonb, so it is parsed rather than trusted: a column
+        // written by an older client legitimately holds null, and anything unparseable must read as
+        // "no ruleset" (grade neutral) rather than crash a report.
+        const settings = appliedSettingsSchema.safeParse(settingsRow[0]?.settings);
+
+        const geosByRule = geoRules.map((rule): AppliedGeoRuleView => {
+            const thresholds = geoThresholdsSchema.safeParse(rule.thresholds);
             return {
-                id: fact.id,
-                attribution: fact.attribution,
-                campaign: fact.campaign,
-                creative: fact.creative,
-                reportDate: fact.reportDate,
-                geo: fact.geo,
-                account: fact.account,
-                offer: fact.offer,
-                os: fact.os,
-                spend: fact.spend,
-                spendPlus: fact.spendPlus,
-                revenue: fact.revenue,
-                linkClicks: fact.linkClicks,
-                installs: fact.installs,
-                regs: fact.regs,
-                sales: fact.sales,
-                verdict: fact.verdict,
-                zone: fact.zone,
+                geo: rule.geo,
+                presetVersionId: rule.presetVersionId,
+                thresholds: thresholds.success ? thresholds.data : null,
             };
         });
+
+        // The Snapshot view's pinned-version list is the same rows, minus the ones whose Preset was
+        // deleted — derived here rather than re-queried through `loadGeosByRuleset`.
+        const pinned = geosByRule.flatMap((rule): AppliedGeo[] => {
+            return rule.presetVersionId === null ? [] : [{ geo: rule.geo, presetVersionId: rule.presetVersionId }];
+        });
+
+        return {
+            snapshot: toSnapshotView(viewer, row, pinned),
+            geos: geosByRule,
+            settings: settings.success ? settings.data : null,
+            facts,
+            geoRollups: geoRollups.map((rollup): SnapshotGeoView => {
+                return {
+                    geo: rollup.geo,
+                    spendPlus: rollup.spendPlus,
+                    geoTotal: rollup.geoTotal,
+                    attributedRevenue: rollup.attributedRevenue,
+                    linkClicks: rollup.linkClicks,
+                    installs: rollup.installs,
+                    regs: rollup.regs,
+                    sales: rollup.sales,
+                    profit: rollup.profit,
+                    roi: rollup.roi,
+                    cpc: rollup.cpc,
+                    cpi: rollup.cpi,
+                    cpr: rollup.cpr,
+                    cps: rollup.cps,
+                    waste: rollup.waste,
+                };
+            }),
+            creatives: creatives.map((creative): SnapshotCreativeView => {
+                return {
+                    geo: creative.geo,
+                    campaign: creative.campaign,
+                    adName: creative.adName,
+                    spend: creative.spend,
+                    impressions: creative.impressions,
+                };
+            }),
+            campaignModels: campaignModels.map((model): SnapshotCampaignModelView => {
+                return {
+                    campaign: model.campaign,
+                    dimension: model.dimension,
+                    key: model.key,
+                    label: model.label,
+                    revenue: model.revenue,
+                    linkClicks: model.linkClicks,
+                    installs: model.installs,
+                    regs: model.regs,
+                    sales: model.sales,
+                };
+            }),
+        };
     });
 
 // The company-wide dimension roll-up (T7, #9). A dollar-barred viewer (Designer/BDM) reads no dollar
