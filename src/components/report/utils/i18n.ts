@@ -139,6 +139,8 @@ const UI: Record<Locale, Record<string, string>> = {
         allUsers: 'Показати всіх',
         rangeFrom: 'з',
         rangeTo: 'по',
+        rangePick: 'Обрати дати',
+        rangeClear: 'Скинути',
     },
     en: {
         sales: 'WITH SALES',
@@ -252,6 +254,8 @@ const UI: Record<Locale, Record<string, string>> = {
         allUsers: 'Show everyone',
         rangeFrom: 'from',
         rangeTo: 'to',
+        rangePick: 'Pick dates',
+        rangeClear: 'Clear',
     },
 };
 

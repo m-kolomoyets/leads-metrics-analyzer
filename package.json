@@ -50,6 +50,7 @@
         "papaparse": "5.5.4",
         "postgres": "3.4.9",
         "react": "19.2.7",
+        "react-day-picker": "10.0.1",
         "react-dom": "19.2.7",
         "react-error-boundary": "6.1.2",
         "sonner": "2.0.7",
