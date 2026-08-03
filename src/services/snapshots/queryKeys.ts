@@ -9,6 +9,9 @@ export const snapshotKeys = {
     factsQueryKey(id: string) {
         return [...snapshotKeys.all, 'facts', id] as const;
     },
+    bundleQueryKey(id: string) {
+        return [...snapshotKeys.all, 'bundle', id] as const;
+    },
     dimensionRollupQueryKey() {
         return [...snapshotKeys.all, 'dimension-rollup'] as const;
     },

@@ -21,7 +21,7 @@ const reportDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { error: 'Repor
 
 // A Green→Yellow / Yellow→Red boundary pair, and a Geo's four of them (domain doc 05).
 const thresholdPairSchema = z.object({ gy: z.number(), yr: z.number() });
-const geoThresholdsSchema = z.object({
+export const geoThresholdsSchema = z.object({
     installs: thresholdPairSchema,
     regs: thresholdPairSchema,
     sales: thresholdPairSchema,
@@ -39,8 +39,9 @@ const appliedGeoSchema = z.object({
 });
 
 // The resolved shared settings, copied for the same reason: Review Multiplier, Waste Zones and the
-// default Commission. Null when the creator's team has no saved shared-settings version.
-const appliedSettingsSchema = z.object({
+// default Commission. Null when the creator's team has no saved shared-settings version. Exported
+// because the read path parses the same jsonb back out of the column it was written to.
+export const appliedSettingsSchema = z.object({
     reviewMultiplier: z.number(),
     defaultCommission: z.number(),
     wasteZones: thresholdPairSchema,
@@ -54,6 +55,12 @@ const snapshotGeoSchema = z.object({
     spendPlus: z.number(),
     geoTotal: z.number(),
     attributedRevenue: z.number(),
+    // The Geo Total's funnel, untagged rows included. Defaulted to 0 rather than required so the
+    // rollups written between #53 and #54 still parse — they carry the money but not the counts.
+    linkClicks: z.number().int().default(0),
+    installs: z.number().int().default(0),
+    regs: z.number().int().default(0),
+    sales: z.number().int().default(0),
     profit: z.number(),
     roi: z.number().nullable().default(null),
     cpc: z.number().nullable().default(null),
@@ -75,6 +82,7 @@ const snapshotCreativeSchema = z.object({
 // A Campaign Model row: one Offer or OS value's funnel within a campaign. No Spend — Facebook never
 // measures it, so the Offers/OS tables impute it at the Geo unit cost on read (ADR-0013).
 export const MODEL_DIMENSIONS = ['offer', 'os'] as const;
+export type ModelDimension = (typeof MODEL_DIMENSIONS)[number];
 const snapshotCampaignModelSchema = z.object({
     campaign: z.string().trim().min(1),
     dimension: z.enum(MODEL_DIMENSIONS),

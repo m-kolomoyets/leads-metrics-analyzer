@@ -75,11 +75,13 @@ function rollup(geo = 'BR', untaggedRevenue = 0, over: Partial<Totals> = {}): Ge
         sales: 1,
         ...over,
     };
+    const metrics = metricsFor({ ...attributed, revenue: attributed.revenue + untaggedRevenue });
     return {
         geo,
-        metrics: metricsFor({ ...attributed, revenue: attributed.revenue + untaggedRevenue }),
+        metrics,
         attributed: metricsFor(attributed),
         allocation: { offers: [], os: [], unallocated: ZERO },
+        total: { revenue: metrics.revenue, profit: metrics.profit, roi: metrics.roi, waste: null },
     };
 }
 
