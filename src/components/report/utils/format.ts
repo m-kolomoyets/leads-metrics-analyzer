@@ -7,7 +7,8 @@
 // dot decimal separator, comma grouping — independent of the UI locale and the browser's.
 const NUMBER_LOCALE = 'en-US';
 
-const DASH = '—';
+// The em dash every unmeasurable figure renders as — a metric that is "not shown", never zero.
+export const DASH = '—';
 
 const integerFormat = new Intl.NumberFormat(NUMBER_LOCALE, { maximumFractionDigits: 0 });
 

@@ -7,7 +7,10 @@ import { problemReason, ui } from '@/components/report/utils/i18n';
 type ProblemAccountsProps = {
     accounts: AccountRollup[];
     locale: Locale;
-    isReviewed: (account: string) => boolean;
+    // The analyst's triage marks. Omitted on a read-only report: Reviewed is an analyst's private
+    // progress note and never leaves Analyze (spec story 34), so nothing here is struck through and
+    // the header counts every flagged account as outstanding.
+    isReviewed?: (account: string) => boolean;
 };
 
 // Top-of-geo alarm strip: the accounts flagged Problem (doc 04), so a buyer sees broken tracking /
@@ -22,7 +25,7 @@ function ProblemAccounts({ accounts, locale, isReviewed }: ProblemAccountsProps)
         return null;
     }
     const outstanding = flagged.filter((account) => {
-        return !isReviewed(account.account);
+        return !isReviewed?.(account.account);
     }).length;
 
     return (
@@ -32,7 +35,7 @@ function ProblemAccounts({ accounts, locale, isReviewed }: ProblemAccountsProps)
             </p>
             <ul className="flex flex-col gap-1 text-xs">
                 {flagged.map((account) => {
-                    const reviewed = isReviewed(account.account);
+                    const reviewed = isReviewed?.(account.account) ?? false;
                     return (
                         <li
                             key={account.account}

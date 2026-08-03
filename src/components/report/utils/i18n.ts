@@ -112,6 +112,10 @@ const UI: Record<Locale, Record<string, string>> = {
         rowsCount: 'рядків',
         geoCount: 'гео',
         snapshotHint: 'Зріз фіксує активні версії пресетів і спільних налаштувань — числа відтворяться назавжди.',
+        report: 'Звіт',
+        reportMuted: 'Баєр заглушив кампаній',
+        reportMutedNote: 'Ці кампанії відсутні в цифрах нижче.',
+        reportNoRollup: 'Зріз збережено до появи гео тоталу — гео тотал, профіт, ROI та злите недоступні.',
     },
     en: {
         sales: 'WITH SALES',
@@ -197,6 +201,11 @@ const UI: Record<Locale, Record<string, string>> = {
         rowsCount: 'rows',
         geoCount: 'geo',
         snapshotHint: 'A snapshot pins the active preset and shared-settings versions — the numbers reproduce forever.',
+        report: 'Report',
+        reportMuted: 'Campaigns muted by the buyer',
+        reportMutedNote: 'Those campaigns are absent from every figure below.',
+        reportNoRollup:
+            'Saved before geo totals were frozen — Geo total, Profit, ROI and Waste are unavailable for this report.',
     },
 };
 

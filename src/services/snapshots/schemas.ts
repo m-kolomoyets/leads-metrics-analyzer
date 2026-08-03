@@ -141,6 +141,21 @@ export const createSnapshotInputSchema = z.object({
     meta: z.unknown().optional(),
 });
 
+// The report-level `meta` jsonb. Only the muted campaigns matter to a reader: the excluded rows are
+// already absent from the Facts, so their ids are the sole trace that the figures were filtered
+// (spec story 33). Everything else in the column is ignored rather than rejected — `meta` is a
+// free-form bag by design, and a report must not fail to open because it grew a field.
+const snapshotMetaSchema = z.object({
+    excludedCampaigns: z.array(z.string()).default([]),
+});
+
+// How many campaigns the buyer muted, out of a Snapshot's stored `meta`. Null on every Snapshot saved
+// with nothing muted, and `unknown` on the wire, so this parses rather than casts.
+export function mutedCampaignCount(meta: unknown): number {
+    const parsed = snapshotMetaSchema.safeParse(meta);
+    return parsed.success ? parsed.data.excludedCampaigns.length : 0;
+}
+
 export type SnapshotIdInput = z.infer<typeof snapshotIdInputSchema>;
 export const snapshotIdInputSchema = z.object({
     id: z.uuid(),

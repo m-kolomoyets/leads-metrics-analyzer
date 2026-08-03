@@ -117,6 +117,7 @@ function stored(input: CreateSnapshotInput, over: Partial<SnapshotBundleView> = 
         geoRollups: input.geoRollups,
         creatives: input.creatives,
         campaignModels: input.campaignModels,
+        mutedCampaigns: 0,
         ...over,
     };
 }

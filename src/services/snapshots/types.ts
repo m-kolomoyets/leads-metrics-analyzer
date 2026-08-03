@@ -129,6 +129,10 @@ export type SnapshotBundleView = {
     geoRollups: SnapshotGeoView[];
     creatives: SnapshotCreativeView[];
     campaignModels: SnapshotCampaignModelView[];
+    // How many campaigns the buyer muted before pushing. The muted rows are already absent from the
+    // Facts, so the count is all an overseer can be told — and must be, or a filtered report reads as
+    // a complete one (spec story 33).
+    mutedCampaigns: number;
 };
 
 // A company-wide roll-up row for a dimension-scoped viewer (T7, #9). Designer/BDM never see dollar

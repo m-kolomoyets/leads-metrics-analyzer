@@ -1,4 +1,4 @@
-import { createSnapshotInputSchema } from './schemas';
+import { createSnapshotInputSchema, mutedCampaignCount } from './schemas';
 
 // The create-snapshot validator carries the non-trivial input rules: Geo normalizes to upper-case
 // ISO-2, and a snapshot must pin at least one geo and carry at least one fact (empty is meaningless).
@@ -202,5 +202,26 @@ describe('createSnapshotInputSchema', () => {
                 }).success
             ).toBe(false);
         });
+    });
+});
+
+// The detailed report tells an overseer how many campaigns the buyer muted, so nobody compares a
+// filtered report to an unfiltered one (spec story 33). The count comes back out of the `meta` jsonb
+// column, which is `unknown` on the wire and legitimately null on every Snapshot saved with nothing
+// muted — so the reader is a parse, never a cast.
+describe('mutedCampaignCount', () => {
+    it('counts the campaigns the buyer muted', () => {
+        expect(mutedCampaignCount({ excludedCampaigns: ['C-1', 'C-2'] })).toBe(2);
+    });
+
+    it('reads a snapshot with nothing muted as zero', () => {
+        expect(mutedCampaignCount(null)).toBe(0);
+        expect(mutedCampaignCount(undefined)).toBe(0);
+        expect(mutedCampaignCount({})).toBe(0);
+    });
+
+    it('reads an unparseable meta as zero rather than throwing', () => {
+        expect(mutedCampaignCount({ excludedCampaigns: 'C-1' })).toBe(0);
+        expect(mutedCampaignCount('muted')).toBe(0);
     });
 });

@@ -4,7 +4,7 @@ import type { GeoThresholds, ThresholdPair, Zone } from '@/lib/domain/types';
 import { zoneFor } from '@/lib/domain/verdict';
 import { cn } from '@/lib/utils/cn';
 import { ZONE_TEXT_CLASS } from '@/components/report/constants';
-import { flagEmoji, pct, percent, usd, usdSigned } from '@/components/report/utils/format';
+import { DASH, flagEmoji, pct, percent, usd, usdSigned } from '@/components/report/utils/format';
 import { ui } from '@/components/report/utils/i18n';
 
 type GeoStatProps = {
@@ -13,8 +13,9 @@ type GeoStatProps = {
     // Grades the header CPC/CPI/CPR/CPS line by band; undefined (no preset) → plain neutral.
     thresholds: GeoThresholds | undefined;
     // Σ each account's waste. Mixed-grain by design: a Problem Account contributes its Account Waste,
-    // everyone else the sum of their red campaigns' Waste (ADR-0014).
-    waste: number;
+    // everyone else the sum of their red campaigns' Waste (ADR-0014). Null for a Snapshot that froze
+    // no Geo Rollup — its waste was never recorded and is not re-derivable (ADR-0015).
+    waste: number | null;
     // The active preset's Waste Zones band (% of Spend⁺), or undefined when the geo has no preset.
     wasteZone: ThresholdPair | undefined;
     locale: Locale;
@@ -29,6 +30,15 @@ function roiTone(roi: number | null): Zone {
         return 'red';
     }
     return roi <= 30 ? 'yellow' : 'green';
+}
+
+// Waste as a share of Spend⁺. Null only when the waste itself is unknowable (no Frozen Geo Rollup);
+// a zero denominator still reads 0 %, as it did before a Snapshot could arrive without one.
+function wasteShare(waste: number | null, spendPlus: number): number | null {
+    if (waste === null) {
+        return null;
+    }
+    return spendPlus > 0 ? (waste / spendPlus) * 100 : 0;
 }
 
 // The glass-tint classes for a zone (index.css). Neutral keeps the plain blue tint.
@@ -76,9 +86,14 @@ function Stat({
 // (glow tinted by its Waste-Zone band). Attributed / untagged gap (ADR-0003) rides under the first pill.
 function GeoStat({ geo, rollup, thresholds, waste, wasteZone, locale }: GeoStatProps) {
     const { metrics, attributed } = rollup;
-    const wastePct = metrics.spendPlus > 0 ? (waste / metrics.spendPlus) * 100 : 0;
-    const wasteTone: Zone = wasteZone ? zoneFor(wastePct, wasteZone) : 'neutral';
-    const roi = roiTone(metrics.roi);
+    // A Snapshot pushed before ADR-0015 froze no Geo Rollup, so its Untagged Revenue is gone: `metrics`
+    // has fallen back to the Attributed roll-up and only Spend⁺ and the cost-per line are still Geo
+    // figures. The Geo Total, Profit and ROI read `—` rather than an Attributed sum wearing their name.
+    const hasTotal = rollup.total !== null;
+    const wastePct = wasteShare(waste, metrics.spendPlus);
+    const wasteTone: Zone = wasteZone && wastePct !== null ? zoneFor(wastePct, wasteZone) : 'neutral';
+    const roi = hasTotal ? roiTone(metrics.roi) : 'neutral';
+    const profitClass = metrics.profit >= 0 ? 'text-success' : 'text-danger';
     // The Geo-Total gap (ADR-0003/0012): revenue on rows with no usable Sub ID. A growing share is a
     // tracking-health signal, so it is shown rather than folded in silently — but only when it is
     // non-zero, since most reports have none and an always-on 0 would be noise.
@@ -111,20 +126,25 @@ function GeoStat({ geo, rollup, thresholds, waste, wasteZone, locale }: GeoStatP
                         <Stat label="Spend" value={usd(metrics.spendPlus)} size="md" />
                         <Stat
                             label={ui('geoTotal', locale)}
-                            value={usd(metrics.revenue)}
+                            value={hasTotal ? usd(metrics.revenue) : DASH}
                             size="md"
-                            className={metrics.revenue > 0 ? 'text-success' : 'text-muted-foreground'}
+                            className={hasTotal && metrics.revenue > 0 ? 'text-success' : 'text-muted-foreground'}
                         />
                         <Stat
                             label="Profit"
-                            value={usdSigned(metrics.profit)}
+                            value={hasTotal ? usdSigned(metrics.profit) : DASH}
                             size="lg"
-                            className={metrics.profit >= 0 ? 'text-success' : 'text-danger'}
+                            className={hasTotal ? profitClass : 'text-muted-foreground'}
                         />
-                        <Stat label="ROI" value={pct(metrics.roi)} size="lg" className={ZONE_TEXT_CLASS[roi]} />
+                        <Stat
+                            label="ROI"
+                            value={hasTotal ? pct(metrics.roi) : DASH}
+                            size="lg"
+                            className={ZONE_TEXT_CLASS[roi]}
+                        />
                     </div>
 
-                    {untaggedRevenue > 0.005 && (
+                    {hasTotal && untaggedRevenue > 0.005 && (
                         <p
                             className="text-muted-foreground text-[10px] leading-relaxed"
                             title={ui('divergenceNote', locale)}
@@ -145,7 +165,7 @@ function GeoStat({ geo, rollup, thresholds, waste, wasteZone, locale }: GeoStatP
                 >
                     <Stat
                         label={ui('wasteTitle', locale)}
-                        value={usd(waste)}
+                        value={waste === null ? DASH : usd(waste)}
                         size="lg"
                         className={ZONE_TEXT_CLASS[wasteTone]}
                     />
