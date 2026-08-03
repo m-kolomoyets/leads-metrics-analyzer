@@ -15,3 +15,12 @@ export const reportSearchSchema = z.object({
     from: calendarDateSchema.optional().catch(undefined),
     to: calendarDateSchema.optional().catch(undefined),
 });
+
+// The archive asks a lookup question — "what happened last week" — so it opens on a window wide
+// enough to have something in it. Same token vocabulary and same param names as the feed, which is
+// what lets a link between the two pages carry the current range verbatim (spec story 21).
+export const archiveSearchSchema = z.object({
+    range: z.enum(RANGE_TOKENS).catch('7d').default('7d'),
+    from: calendarDateSchema.optional().catch(undefined),
+    to: calendarDateSchema.optional().catch(undefined),
+});
