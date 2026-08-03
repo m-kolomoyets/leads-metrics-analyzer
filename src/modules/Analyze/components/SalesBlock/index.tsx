@@ -1,12 +1,12 @@
+import type { Locale } from '@/components/report/utils/i18n';
 import type { CampaignRollup } from '@/lib/domain/accounts';
-import type { Locale } from '../../utils/i18n';
 import { sumTotals } from '@/lib/domain/aggregate';
 import { cn } from '@/lib/utils/cn';
+import { SALES_BUTTON_CLASS } from '@/components/report/constants';
+import { int, usd } from '@/components/report/utils/format';
+import { ui } from '@/components/report/utils/i18n';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { SALES_BUTTON_CLASS } from '../../constants';
-import { int, usd } from '../../utils/format';
-import { ui } from '../../utils/i18n';
 import { Pill } from '../Pill';
 
 type SalesBlockProps = {

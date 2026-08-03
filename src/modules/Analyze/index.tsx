@@ -1,7 +1,7 @@
+import type { Locale } from '@/components/report/utils/i18n';
 import type { GeoThresholds } from '@/lib/domain/types';
 import type { PresetView } from '@/services/presets/types';
 import type { UploadedFile } from './types';
-import type { Locale } from './utils/i18n';
 import type { ImportedShared } from './utils/importPresets';
 import { useState } from 'react';
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
@@ -12,6 +12,15 @@ import { creativesFor } from '@/lib/domain/creatives';
 import { mergeParsed } from '@/lib/domain/parse';
 import { presetsQueryOptions, sharedSettingsQueryOptions } from '@/services/presets/queries';
 import { MainLayoutHeader } from '@/components/layouts/MainLayoutHeader';
+import { AccountSummary } from '@/components/report/AccountSummary';
+import { CreativeTable } from '@/components/report/CreativeTable';
+import { GeoStat } from '@/components/report/GeoStat';
+import { GeoTabs } from '@/components/report/GeoTabs';
+import { OffersTable } from '@/components/report/OffersTable';
+import { OsTable } from '@/components/report/OsTable';
+import { ProblemAccounts } from '@/components/report/ProblemAccounts';
+import { SectionCard } from '@/components/report/SectionCard';
+import { LOCALES, ui } from '@/components/report/utils/i18n';
 import { Accordion, AccordionHeader, AccordionItem, AccordionPanel, AccordionTrigger } from '@/components/ui/Accordion';
 import { Button } from '@/components/ui/Button';
 import {
@@ -24,22 +33,13 @@ import {
     ComboboxList,
     ComboboxTrigger,
 } from '@/components/ui/Combobox';
-import { LOCALES, ui } from './utils/i18n';
 import { presetForGeo, presetsForGeo } from './utils/presetForGeo';
 import { toRuleset } from './utils/toRuleset';
 import { useClipboard } from './hooks/useClipboard';
 import { AccountBlock } from './components/AccountBlock';
-import { AccountSummary } from './components/AccountSummary';
-import { CreativeTable } from './components/CreativeTable';
 import { FileDropzones } from './components/FileDropzones';
-import { GeoStat } from './components/GeoStat';
-import { GeoTabs } from './components/GeoTabs';
-import { OffersTable } from './components/OffersTable';
-import { OsTable } from './components/OsTable';
 import { PresetCreator } from './components/PresetCreator';
-import { ProblemAccounts } from './components/ProblemAccounts';
 import { SaveSnapshot } from './components/SaveSnapshot';
-import { SectionCard } from './components/SectionCard';
 import { SharedSettingsEditor } from './components/SharedSettingsEditor';
 import { ThresholdEditor } from './components/ThresholdEditor';
 

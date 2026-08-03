@@ -1,11 +1,11 @@
+import type { Locale } from '@/components/report/utils/i18n';
 import type { CampaignRollup } from '@/lib/domain/accounts';
 import type { GeoThresholds, ThresholdPair } from '@/lib/domain/types';
-import type { Locale } from '../../utils/i18n';
 import { zoneFor } from '@/lib/domain/verdict';
 import { cn } from '@/lib/utils/cn';
-import { ZONE_ACCENT_CLASS, ZONE_TEXT_CLASS } from '../../constants';
-import { int, usd } from '../../utils/format';
-import { ui, verdictWhy } from '../../utils/i18n';
+import { ZONE_ACCENT_CLASS, ZONE_TEXT_CLASS } from '@/components/report/constants';
+import { int, usd } from '@/components/report/utils/format';
+import { ui, verdictWhy } from '@/components/report/utils/i18n';
 
 type AccountCampaignsProps = {
     campaigns: CampaignRollup[];

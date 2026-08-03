@@ -1,23 +1,26 @@
+import type { Locale } from '@/components/report/utils/i18n';
 import type { AccountCounts, AccountRollup } from '@/lib/domain/accounts';
 import type { Metrics } from '@/lib/domain/aggregate';
 import type { GeoThresholds, ThresholdPair, Zone } from '@/lib/domain/types';
-import type { Locale } from '../../utils/i18n';
 import { metricsFor, sumTotals } from '@/lib/domain/aggregate';
 import { zoneFor } from '@/lib/domain/verdict';
 import { cn } from '@/lib/utils/cn';
-import { SALES_TEXT_CLASS, ZONE_TEXT_CLASS } from '../../constants';
-import { cost, int, pct, usd, usdRound, usdSigned } from '../../utils/format';
-import { ui } from '../../utils/i18n';
+import { SALES_TEXT_CLASS, ZONE_TEXT_CLASS } from '@/components/report/constants';
+import { cost, int, pct, usd, usdRound, usdSigned } from '@/components/report/utils/format';
+import { ui } from '@/components/report/utils/i18n';
 
 type AccountSummaryProps = {
     accounts: AccountRollup[];
     // Grades the cost cells by band; undefined (no preset) → plain cost, no tint.
     thresholds: GeoThresholds | undefined;
     locale: Locale;
-    // Triage state, owned by the parent — drives the ✓ marker and drops the alarm styling.
-    isReviewed: (account: string) => boolean;
-    // Uncollapse the target block + scroll it into view (anchor `id="acc-<account>"`).
-    onJump: (account: string) => void;
+    // Triage state, owned by the parent — drives the ✓ marker and drops the alarm styling. Omitted on
+    // a read-only report, which renders no Reviewed column at all: the marks are an analyst's private
+    // progress notes and never leave Analyze (spec story 34).
+    isReviewed?: (account: string) => boolean;
+    // Uncollapse the target block + scroll it into view (anchor `id="acc-<account>"`). Omitted on a
+    // read-only report, where there are no AccountBlocks to jump to — so the rows are not clickable.
+    onJump?: (account: string) => void;
 };
 
 // Column groups, mirroring CreativeTable: a `border-l` on the first column of each block draws the
@@ -134,6 +137,8 @@ function AccountSummary({ accounts, thresholds, locale, isReviewed, onJump }: Ac
     }
 
     const showFooter = accounts.length > 1;
+    // The whole triage column disappears rather than rendering an always-empty one.
+    const showReviewed = isReviewed !== undefined;
     const totals = metricsFor(
         sumTotals(
             accounts.map((account) => {
@@ -165,9 +170,11 @@ function AccountSummary({ accounts, thresholds, locale, isReviewed, onJump }: Ac
                 <table className="w-full border-collapse text-right text-xs">
                     <thead>
                         <tr className="text-muted-foreground border-b">
-                            <th className="w-6 p-2 text-left font-normal">
-                                <span className="sr-only">{ui('reviewed', locale)}</span>
-                            </th>
+                            {showReviewed && (
+                                <th className="w-6 p-2 text-left font-normal">
+                                    <span className="sr-only">{ui('reviewed', locale)}</span>
+                                </th>
+                            )}
                             <th className="p-2 text-left font-normal whitespace-nowrap">Account ID</th>
                             {HEAD_COLS.map((col) => {
                                 return (
@@ -202,7 +209,7 @@ function AccountSummary({ accounts, thresholds, locale, isReviewed, onJump }: Ac
                     <tbody>
                         {accounts.map((account) => {
                             const { metrics, counts, problem, waste, wasteGrain } = account;
-                            const reviewed = isReviewed(account.account);
+                            const reviewed = isReviewed?.(account.account) ?? false;
                             // Reviewed rows keep full contrast — the figures stay readable so a call can
                             // be revisited; only the alarm styling (tint, rule, 🚨) is retired.
                             const alarm = problem !== null && !reviewed;
@@ -210,14 +217,20 @@ function AccountSummary({ accounts, thresholds, locale, isReviewed, onJump }: Ac
                                 <tr
                                     key={account.account}
                                     className={cn(
-                                        'hover:bg-muted/30 cursor-pointer border-b',
+                                        'border-b',
+                                        onJump && 'hover:bg-muted/30 cursor-pointer',
                                         alarm && 'bg-danger/15 border-l-2 border-l-danger'
                                     )}
-                                    onClick={() => {
-                                        onJump(account.account);
-                                    }}
+                                    onClick={
+                                        onJump &&
+                                        (() => {
+                                            onJump(account.account);
+                                        })
+                                    }
                                 >
-                                    <td className="text-success w-6 p-2 text-left">{reviewed && '✓'}</td>
+                                    {showReviewed && (
+                                        <td className="text-success w-6 p-2 text-left">{reviewed && '✓'}</td>
+                                    )}
                                     <td className={cn('p-2 text-left font-mono', alarm && 'font-bold text-danger')}>
                                         {account.account} {alarm && '🚨'}
                                     </td>
@@ -250,7 +263,7 @@ function AccountSummary({ accounts, thresholds, locale, isReviewed, onJump }: Ac
                     {showFooter && (
                         <tfoot>
                             <tr className="border-t-2 font-semibold">
-                                <td className="w-6 p-2" />
+                                {showReviewed && <td className="w-6 p-2" />}
                                 <td className="text-muted-foreground p-2 text-left whitespace-nowrap">
                                     {ui('totalAvg', locale)}
                                 </td>

@@ -1,16 +1,16 @@
+import type { Locale } from '@/components/report/utils/i18n';
 import type { SharedSettingsPayload, SharedSettingsView } from '@/services/presets/types';
-import type { Locale } from '../../utils/i18n';
 import type { ImportedShared } from '../../utils/importPresets';
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { InfoIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { saveSharedSettingsMutationOptions } from '@/services/presets/queries';
+import { ui } from '@/components/report/utils/i18n';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/Tooltip';
-import { ui } from '../../utils/i18n';
 
 type SharedSettingsEditorProps = {
     shared: SharedSettingsView | null;

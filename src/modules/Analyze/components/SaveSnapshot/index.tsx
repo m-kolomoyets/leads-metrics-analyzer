@@ -1,16 +1,16 @@
+import type { Locale } from '@/components/report/utils/i18n';
 import type { GeoRollup, Ruleset } from '@/lib/domain';
 import type { CampaignCreatives, CampaignModel } from '@/lib/domain/join';
 import type { Fact } from '@/lib/domain/types';
 import type { PresetView, SharedSettingsView } from '@/services/presets/types';
-import type { Locale } from '../../utils/i18n';
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { createSnapshotMutationOptions } from '@/services/snapshots/queries';
+import { ui } from '@/components/report/utils/i18n';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
-import { ui } from '../../utils/i18n';
 import { defaultReportDate, planSnapshot } from '../../utils/toSnapshot';
 
 type SaveSnapshotProps = {

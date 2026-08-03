@@ -25,6 +25,12 @@ export const ROLES_PERMISSIONS = {
     analyze: {
         view: [ROLES_IDS.head, ROLES_IDS.teamLead, ROLES_IDS.buyer, ROLES_IDS.designer, ROLES_IDS.bdm],
     },
+    // The Report surfaces (spec 0003) — the detailed report and, later, the feed and archive. Dollar
+    // roles only: Designer and BDM hold no campaign dimension, so a whole Snapshot is never theirs
+    // (story 40). Server-side, `scopeFor` still decides which Snapshots each one can read.
+    report: {
+        view: [ROLES_IDS.head, ROLES_IDS.teamLead, ROLES_IDS.buyer],
+    },
     // Presets manager (#30 follow-up). Dollar roles only; server row-scope still narrows the rows
     // each one actually sees (Head all / Team Lead team / Buyer own).
     presets: {

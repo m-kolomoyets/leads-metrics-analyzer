@@ -31,10 +31,12 @@ import {
     snapshotFact,
     snapshotGeo,
 } from '@/lib/db/schema';
+import { SNAPSHOT_NOT_FOUND } from './constants';
 import {
     appliedSettingsSchema,
     createSnapshotInputSchema,
     geoThresholdsSchema,
+    mutedCampaignCount,
     snapshotIdInputSchema,
 } from './schemas';
 
@@ -44,7 +46,6 @@ import {
 // Snapshots. A Snapshot pins ALREADY-SAVED ruleset versions (spec story 35): the handler asserts each
 // referenced version exists before freezing the bundle.
 
-const NOT_FOUND_MESSAGE = 'Snapshot not found';
 const UNSAVED_RULESET_MESSAGE = 'A snapshot can only be built from saved ruleset versions';
 
 const viewerFrom = (me: MeData): Viewer => {
@@ -250,7 +251,7 @@ export const getSnapshotFactsFn = createServerFn({ method: 'GET' })
         const row = await loadVisibleSnapshot(viewer, data.id);
 
         if (!row) {
-            throw new Error(NOT_FOUND_MESSAGE);
+            throw new Error(SNAPSHOT_NOT_FOUND);
         }
 
         return loadFacts(data.id);
@@ -269,10 +270,10 @@ export const getSnapshotBundleFn = createServerFn({ method: 'GET' })
         const row = await loadVisibleSnapshot(viewer, data.id);
 
         if (!row) {
-            throw new Error(NOT_FOUND_MESSAGE);
+            throw new Error(SNAPSHOT_NOT_FOUND);
         }
 
-        const [geoRules, settingsRow, facts, geoRollups, creatives, campaignModels] = await Promise.all([
+        const [geoRules, settingsRow, metaRow, facts, geoRollups, creatives, campaignModels] = await Promise.all([
             db
                 .select({
                     geo: appliedRulesetGeo.geo,
@@ -287,6 +288,9 @@ export const getSnapshotBundleFn = createServerFn({ method: 'GET' })
                 .from(appliedRuleset)
                 .where(eq(appliedRuleset.id, row.appliedRulesetId))
                 .limit(1),
+            // Read on its own rather than through SNAPSHOT_COLUMNS: only the report needs the meta
+            // bag, and the Snapshot list would otherwise carry every row's jsonb for nothing.
+            db.select({ meta: snapshot.meta }).from(snapshot).where(eq(snapshot.id, data.id)).limit(1),
             loadFacts(data.id),
             db.select().from(snapshotGeo).where(eq(snapshotGeo.snapshotId, data.id)).orderBy(snapshotGeo.geo),
             db
@@ -367,6 +371,7 @@ export const getSnapshotBundleFn = createServerFn({ method: 'GET' })
                     sales: model.sales,
                 };
             }),
+            mutedCampaigns: mutedCampaignCount(metaRow[0]?.meta),
         };
     });
 
@@ -538,7 +543,7 @@ export const createSnapshotFn = createServerFn({ method: 'POST' })
         const row = await loadVisibleSnapshot(viewer, snapshotId);
 
         if (!row) {
-            throw new Error(NOT_FOUND_MESSAGE);
+            throw new Error(SNAPSHOT_NOT_FOUND);
         }
 
         const geosByRuleset = await loadGeosByRuleset([row.appliedRulesetId]);

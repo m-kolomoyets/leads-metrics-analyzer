@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils/cn';
-import { usdRound } from '../../utils/format';
+import { usdRound } from '@/components/report/utils/format';
 
 // ISO-2 → flag emoji via Unicode regional-indicator offset. Returns null for anything that is not two
 // A–Z letters (unknown/aggregate geo), so the label falls back to the raw code.

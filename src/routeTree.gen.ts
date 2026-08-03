@@ -20,6 +20,7 @@ import { Route as AuthenticatedPresetsIndexRouteImport } from './routes/_authent
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard/index'
 import { Route as AuthenticatedAnalyzeIndexRouteImport } from './routes/_authenticated/analyze/index'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
+import { Route as AuthenticatedDashboardReportSnapshotIdRouteImport } from './routes/_authenticated/dashboard/report/$snapshotId'
 
 const UnauthenticatedRouteRoute = UnauthenticatedRouteRouteImport.update({
   id: '/_unauthenticated',
@@ -79,6 +80,12 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   path: '/admin/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedDashboardReportSnapshotIdRoute =
+  AuthenticatedDashboardReportSnapshotIdRouteImport.update({
+    id: '/dashboard/report/$snapshotId',
+    path: '/dashboard/report/$snapshotId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof PublicIndexRoute
@@ -89,6 +96,7 @@ export interface FileRoutesByFullPath {
   '/activate/': typeof UnauthenticatedActivateIndexRoute
   '/login/': typeof UnauthenticatedLoginIndexRoute
   '/reset-password/': typeof UnauthenticatedResetPasswordIndexRoute
+  '/dashboard/report/$snapshotId': typeof AuthenticatedDashboardReportSnapshotIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof PublicIndexRoute
@@ -99,6 +107,7 @@ export interface FileRoutesByTo {
   '/activate': typeof UnauthenticatedActivateIndexRoute
   '/login': typeof UnauthenticatedLoginIndexRoute
   '/reset-password': typeof UnauthenticatedResetPasswordIndexRoute
+  '/dashboard/report/$snapshotId': typeof AuthenticatedDashboardReportSnapshotIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -113,6 +122,7 @@ export interface FileRoutesById {
   '/_unauthenticated/activate/': typeof UnauthenticatedActivateIndexRoute
   '/_unauthenticated/login/': typeof UnauthenticatedLoginIndexRoute
   '/_unauthenticated/reset-password/': typeof UnauthenticatedResetPasswordIndexRoute
+  '/_authenticated/dashboard/report/$snapshotId': typeof AuthenticatedDashboardReportSnapshotIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -125,6 +135,7 @@ export interface FileRouteTypes {
     | '/activate/'
     | '/login/'
     | '/reset-password/'
+    | '/dashboard/report/$snapshotId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -135,6 +146,7 @@ export interface FileRouteTypes {
     | '/activate'
     | '/login'
     | '/reset-password'
+    | '/dashboard/report/$snapshotId'
   id:
     | '__root__'
     | '/_authenticated'
@@ -148,6 +160,7 @@ export interface FileRouteTypes {
     | '/_unauthenticated/activate/'
     | '/_unauthenticated/login/'
     | '/_unauthenticated/reset-password/'
+    | '/_authenticated/dashboard/report/$snapshotId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -235,6 +248,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/dashboard/report/$snapshotId': {
+      id: '/_authenticated/dashboard/report/$snapshotId'
+      path: '/dashboard/report/$snapshotId'
+      fullPath: '/dashboard/report/$snapshotId'
+      preLoaderRoute: typeof AuthenticatedDashboardReportSnapshotIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -243,6 +263,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAnalyzeIndexRoute: typeof AuthenticatedAnalyzeIndexRoute
   AuthenticatedDashboardIndexRoute: typeof AuthenticatedDashboardIndexRoute
   AuthenticatedPresetsIndexRoute: typeof AuthenticatedPresetsIndexRoute
+  AuthenticatedDashboardReportSnapshotIdRoute: typeof AuthenticatedDashboardReportSnapshotIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -250,6 +271,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAnalyzeIndexRoute: AuthenticatedAnalyzeIndexRoute,
   AuthenticatedDashboardIndexRoute: AuthenticatedDashboardIndexRoute,
   AuthenticatedPresetsIndexRoute: AuthenticatedPresetsIndexRoute,
+  AuthenticatedDashboardReportSnapshotIdRoute:
+    AuthenticatedDashboardReportSnapshotIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

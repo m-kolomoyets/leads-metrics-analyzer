@@ -1,13 +1,13 @@
+import type { Locale } from '@/components/report/utils/i18n';
 import type { Metrics } from '@/lib/domain/aggregate';
 import type { ModelRow } from '@/lib/domain/allocate';
 import type { GeoThresholds, ThresholdPair, Totals } from '@/lib/domain/types';
-import type { Locale } from '../../utils/i18n';
 import { metricsFor, sumTotals } from '@/lib/domain/aggregate';
 import { zoneFor } from '@/lib/domain/verdict';
 import { cn } from '@/lib/utils/cn';
-import { ZONE_TEXT_CLASS } from '../../constants';
-import { cost, int, pct, ratioPct, usd, usdSigned } from '../../utils/format';
-import { ui } from '../../utils/i18n';
+import { ZONE_TEXT_CLASS } from '@/components/report/constants';
+import { cost, int, pct, ratioPct, usd, usdSigned } from '@/components/report/utils/format';
+import { ui } from '@/components/report/utils/i18n';
 
 type OffersTableProps = {
     title: string;

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
+import type { Locale, ThresholdMetric } from '@/components/report/utils/i18n';
 import type { PresetView } from '@/services/presets/types';
-import type { Locale, ThresholdMetric } from '../../utils/i18n';
 import type { ThresholdDraft } from '../ThresholdFields';
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
@@ -10,11 +10,11 @@ import {
     renamePresetMutationOptions,
     savePresetVersionMutationOptions,
 } from '@/services/presets/queries';
+import { THRESHOLD_METRICS, ui } from '@/components/report/utils/i18n';
 import { AccordionPanel } from '@/components/ui/Accordion';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
-import { THRESHOLD_METRICS, ui } from '../../utils/i18n';
 import { EMPTY_THRESHOLD_DRAFT, parseThresholdDraft, ThresholdFields, toThresholdDraft } from '../ThresholdFields';
 
 type ThresholdEditorProps = {
