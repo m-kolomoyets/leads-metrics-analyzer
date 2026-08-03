@@ -18,13 +18,17 @@ export const Route = createFileRoute('/_authenticated/dashboard/')({
     },
     async loader({ context: { queryClient }, deps }) {
         // Tokens are viewer-local, so the window is resolved here and the server is only ever asked
-        // for two concrete dates. Preloaded so the module's useSuspenseQuery resolves from cache.
+        // for two concrete dates.
         const resolved = resolveRange(deps, todayISO());
 
-        await Promise.all([
-            queryClient.ensureQueryData(visibleUsersQueryOptions()),
-            queryClient.ensureQueryData(reportQueryOptions(resolved)),
-        ]);
+        // Started, deliberately NOT awaited: awaiting it would make every range change block the whole
+        // navigation, and the page would freeze as a unit instead of showing a loader over the list
+        // that is actually changing. The list's own Suspense boundary picks it up from here.
+        void queryClient.prefetchQuery(reportQueryOptions(resolved));
+
+        // The roster is awaited — it is range-independent, so it resolves once and the page renders
+        // with its header and controls already in place.
+        await queryClient.ensureQueryData(visibleUsersQueryOptions());
     },
     component: Dashboard,
 });

@@ -1,16 +1,16 @@
 import type { Locale } from '@/components/report/utils/i18n';
 import type { ReportRange } from '@/modules/Dashboard/types';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi, Link } from '@tanstack/react-router';
-import { reportQueryOptions, visibleUsersQueryOptions } from '@/services/reports/queries';
+import { visibleUsersQueryOptions } from '@/services/reports/queries';
+import { ListLoader } from '@/modules/Dashboard/components/ListLoader';
 import { RangePicker } from '@/modules/Dashboard/components/RangePicker';
-import { buildReport } from '@/modules/Dashboard/utils/buildReport';
 import { resolveRange, todayISO } from '@/modules/Dashboard/utils/range';
 import { MainLayoutHeader } from '@/components/layouts/MainLayoutHeader';
 import { LOCALES, ui } from '@/components/report/utils/i18n';
 import { Button } from '@/components/ui/Button';
-import { DateGroup } from './components/DateGroup';
+import { ArchiveList } from './components/ArchiveList';
 
 const routeApi = getRouteApi('/_authenticated/dashboard/archive');
 
@@ -29,10 +29,9 @@ function Archive() {
     const today = todayISO();
     const resolved = resolveRange(range, today);
 
+    // The roster does not move with the range, so it stays here: only the day list below suspends when
+    // the window changes.
     const { data: users } = useSuspenseQuery(visibleUsersQueryOptions());
-    const { data: snapshots } = useSuspenseQuery(reportQueryOptions(resolved));
-
-    const report = buildReport({ users, snapshots, range, today, mode: 'archive', userId: search.user });
     // Named from the roster rather than the URL, so a stale id in a shared link shows the empty state
     // instead of a chip labelled with someone's raw id.
     const filteredUser = users.find((user) => {
@@ -84,7 +83,7 @@ function Archive() {
                 <div className="flex flex-wrap items-center gap-3">
                     <RangePicker range={range} onChange={changeRange} locale={locale} />
                     <span className="text-muted-foreground font-mono text-xs">
-                        {report.from} → {report.to}
+                        {resolved.from} → {resolved.to}
                     </span>
 
                     {/* The filter has to be visible and reversible: arriving from a buyer's feed row,
@@ -107,15 +106,19 @@ function Archive() {
                     )}
                 </div>
 
-                {/* No roster of quiet users here: the archive lists days that happened, and a day
-                    nobody reported is not a row (the feed is where absence is the point). */}
-                {report.dates.length === 0 ? (
-                    <p className="text-muted-foreground text-sm">{ui('archiveEmpty', locale)}</p>
-                ) : (
-                    report.dates.map((group) => {
-                        return <DateGroup key={group.reportDate} group={group} locale={locale} />;
-                    })
-                )}
+                {/* Keyed on the window and the person, so changing either shows the loader HERE rather
+                    than holding the previous days on screen — a navigation is a transition, and React
+                    would otherwise keep the stale list and skip the fallback entirely. */}
+                <Suspense key={`${resolved.from}:${resolved.to}:${search.user ?? ''}`} fallback={<ListLoader />}>
+                    <ArchiveList
+                        users={users}
+                        range={range}
+                        resolved={resolved}
+                        today={today}
+                        userId={search.user}
+                        locale={locale}
+                    />
+                </Suspense>
             </div>
         </>
     );

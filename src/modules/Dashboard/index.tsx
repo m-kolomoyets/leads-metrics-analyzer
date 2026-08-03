@@ -1,17 +1,16 @@
 import type { Locale } from '@/components/report/utils/i18n';
 import type { ReportRange } from './types';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi, Link } from '@tanstack/react-router';
-import { reportQueryOptions, visibleUsersQueryOptions } from '@/services/reports/queries';
+import { visibleUsersQueryOptions } from '@/services/reports/queries';
 import { MainLayoutHeader } from '@/components/layouts/MainLayoutHeader';
 import { LOCALES, ui } from '@/components/report/utils/i18n';
-import { Accordion } from '@/components/ui/Accordion';
 import { Button } from '@/components/ui/Button';
-import { buildReport } from './utils/buildReport';
 import { resolveRange, todayISO } from './utils/range';
+import { FeedList } from './components/FeedList';
+import { ListLoader } from './components/ListLoader';
 import { RangePicker } from './components/RangePicker';
-import { UserGroup } from './components/UserGroup';
 
 const routeApi = getRouteApi('/_authenticated/dashboard/');
 
@@ -32,10 +31,9 @@ function Dashboard() {
     const today = todayISO();
     const resolved = resolveRange(range, today);
 
+    // The roster does not move with the range, so it stays here: only the Snapshot list below suspends
+    // when the window changes.
     const { data: users } = useSuspenseQuery(visibleUsersQueryOptions());
-    const { data: snapshots } = useSuspenseQuery(reportQueryOptions(resolved));
-
-    const report = buildReport({ users, snapshots, range, today, mode: 'feed' });
 
     function changeRange(next: ReportRange) {
         // Replaced rather than pushed: the custom date inputs fire on every keystroke, and a history
@@ -78,21 +76,16 @@ function Dashboard() {
                 <div className="flex flex-wrap items-center gap-3">
                     <RangePicker range={range} onChange={changeRange} locale={locale} />
                     <span className="text-muted-foreground font-mono text-xs">
-                        {report.from} → {report.to}
+                        {resolved.from} → {resolved.to}
                     </span>
                 </div>
 
-                {report.users.length === 0 ? (
-                    <p className="text-muted-foreground text-sm">{ui('noUsersVisible', locale)}</p>
-                ) : (
-                    // Multiple panels open at once: an overseer compares people, and a single-open
-                    // accordion would make that a click-per-comparison.
-                    <Accordion className="gap-3" multiple>
-                        {report.users.map((group) => {
-                            return <UserGroup key={group.user.id} group={group} locale={locale} />;
-                        })}
-                    </Accordion>
-                )}
+                {/* Keyed on the window, so picking a new range shows the loader HERE rather than
+                    keeping the previous list on screen: a navigation is a transition, and React would
+                    otherwise hold the stale content and skip the fallback entirely. */}
+                <Suspense key={`${resolved.from}:${resolved.to}`} fallback={<ListLoader />}>
+                    <FeedList users={users} range={range} resolved={resolved} today={today} locale={locale} />
+                </Suspense>
             </div>
         </>
     );

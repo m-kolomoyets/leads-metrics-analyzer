@@ -23,10 +23,12 @@ export const Route = createFileRoute('/_authenticated/dashboard/archive')({
         // cache entry when they share a range.
         const resolved = resolveRange(deps, todayISO());
 
-        await Promise.all([
-            queryClient.ensureQueryData(visibleUsersQueryOptions()),
-            queryClient.ensureQueryData(reportQueryOptions(resolved)),
-        ]);
+        // Started, deliberately NOT awaited: awaiting it would make every range change block the whole
+        // navigation, and the page would freeze as a unit instead of showing a loader over the day
+        // list that is actually changing. The list's own Suspense boundary picks it up from here.
+        void queryClient.prefetchQuery(reportQueryOptions(resolved));
+
+        await queryClient.ensureQueryData(visibleUsersQueryOptions());
     },
     component: Archive,
 });
