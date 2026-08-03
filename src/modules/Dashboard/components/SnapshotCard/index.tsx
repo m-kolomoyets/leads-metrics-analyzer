@@ -48,11 +48,9 @@ function SnapshotCard({ card, locale }: SnapshotCardProps) {
 
                 <span className="flex-1" />
 
-                <Button
-                    size="xs"
-                    variant="ghost"
-                    render={<Link to="/dashboard/report/$snapshotId" params={{ snapshotId: card.snapshotId }} />}
-                >
+                {/* Accented, not ghost: opening the detailed report is the one thing a reader does
+                    from this card, and everything around it is a number rather than a control. */}
+                <Button render={<Link to="/dashboard/report/$snapshotId" params={{ snapshotId: card.snapshotId }} />}>
                     {ui('openReport', locale)}
                     <ArrowUpRightIcon />
                 </Button>
@@ -60,24 +58,33 @@ function SnapshotCard({ card, locale }: SnapshotCardProps) {
 
             {card.geos.map((geo) => {
                 return (
-                    <div key={geo.geo} className="flex flex-col gap-2">
-                        <GeoStat
-                            geo={geo.geo}
-                            rollup={toGeoRollup(geo)}
-                            thresholds={geo.thresholds ?? undefined}
-                            waste={geo.waste}
-                            wasteZone={card.wasteZones ?? undefined}
-                            locale={locale}
-                        />
-                        <Link
-                            to="/dashboard/report/$snapshotId"
-                            params={{ snapshotId: card.snapshotId }}
-                            search={{ geo: geo.geo }}
-                            className="text-muted-foreground hover:text-foreground self-end text-xs underline underline-offset-4"
-                        >
-                            {ui('openGeo', locale)} {geo.geo} →
-                        </Link>
-                    </div>
+                    <GeoStat
+                        key={geo.geo}
+                        geo={geo.geo}
+                        rollup={toGeoRollup(geo)}
+                        thresholds={geo.thresholds ?? undefined}
+                        waste={geo.waste}
+                        wasteZone={card.wasteZones ?? undefined}
+                        // The per-Geo entry point lives in the panel's own header, beside the market it
+                        // belongs to — a link floating under the panel had to name its Geo again to say
+                        // which market it opened.
+                        action={
+                            <Button
+                                size="sm"
+                                render={
+                                    <Link
+                                        to="/dashboard/report/$snapshotId"
+                                        params={{ snapshotId: card.snapshotId }}
+                                        search={{ geo: geo.geo }}
+                                    />
+                                }
+                            >
+                                {ui('openGeo', locale)}
+                                <ArrowUpRightIcon />
+                            </Button>
+                        }
+                        locale={locale}
+                    />
                 );
             })}
         </article>

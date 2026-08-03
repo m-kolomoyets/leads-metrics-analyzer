@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { Locale } from '@/components/report/utils/i18n';
 import type { GeoRollup } from '@/lib/domain';
 import type { GeoThresholds, ThresholdPair, Zone } from '@/lib/domain/types';
@@ -19,6 +20,10 @@ type GeoStatProps = {
     waste: number | null;
     // The active preset's Waste Zones band (% of Spend⁺), or undefined when the geo has no preset.
     wasteZone: ThresholdPair | undefined;
+    // An optional control for this market, rendered at the end of the header row — the feed and the
+    // archive put their "open this geo" link here. A slot rather than a `to` prop: the panel knows
+    // where its own header ends, and nothing else about where a caller wants to send the reader.
+    action?: ReactNode;
     locale: Locale;
 };
 
@@ -66,7 +71,7 @@ function Stat({
 // The market-level hero (S4): a blue-tinted glass panel with the geo label + graded cost line, then two
 // glowing stat pills — Spend/Revenue/Profit/ROI (glow tinted by the ROI band) and the waste readout
 // (glow tinted by its Waste-Zone band). Attributed / untagged gap (ADR-0003) rides under the first pill.
-function GeoStat({ geo, rollup, thresholds, waste, wasteZone, locale }: GeoStatProps) {
+function GeoStat({ geo, rollup, thresholds, waste, wasteZone, action, locale }: GeoStatProps) {
     const { metrics, attributed } = rollup;
     // A Snapshot pushed before ADR-0015 froze no Geo Rollup, so its Untagged Revenue is gone: `metrics`
     // has fallen back to the Attributed roll-up and only Spend⁺ and the cost-per line are still Geo
@@ -95,6 +100,12 @@ function GeoStat({ geo, rollup, thresholds, waste, wasteZone, locale }: GeoStatP
                     <Metric value={metrics.cpr} pair={thresholds?.regs} /> · CPS{' '}
                     <Metric value={metrics.cps} pair={thresholds?.sales} />
                 </span>
+                {action && (
+                    <>
+                        <span className="flex-1" />
+                        {action}
+                    </>
+                )}
             </div>
 
             <div className="flex flex-wrap gap-4">
