@@ -1,8 +1,8 @@
+import type { Locale, ThresholdMetric } from '@/components/report/utils/i18n';
 import type { PresetThresholds } from '@/services/presets/types';
-import type { Locale, ThresholdMetric } from '../../utils/i18n';
+import { metricLabel, THRESHOLD_METRICS, ui } from '@/components/report/utils/i18n';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
-import { metricLabel, THRESHOLD_METRICS, ui } from '../../utils/i18n';
 
 // One draft threshold pair, held as strings so a half-typed / empty field survives without collapsing
 // to NaN. Shared by the inline editor (edit a version) and the creator (mint v1).

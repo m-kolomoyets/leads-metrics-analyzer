@@ -1,8 +1,8 @@
+import type { Locale } from '@/components/report/utils/i18n';
 import type { AccountRollup } from '@/lib/domain/accounts';
-import type { Locale } from '../../utils/i18n';
 import { cn } from '@/lib/utils/cn';
-import { usd } from '../../utils/format';
-import { problemReason, ui } from '../../utils/i18n';
+import { usd } from '@/components/report/utils/format';
+import { problemReason, ui } from '@/components/report/utils/i18n';
 
 type ProblemAccountsProps = {
     accounts: AccountRollup[];

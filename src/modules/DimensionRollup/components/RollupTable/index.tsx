@@ -1,7 +1,7 @@
 import type { RollupDimension } from '@/lib/auth/dimensionRollup';
 import type { RollupRow } from '../../utils/rollupRows';
 import { cn } from '@/lib/utils/cn';
-import { int, ratioPct } from '@/modules/Analyze/utils/format';
+import { int, ratioPct } from '@/components/report/utils/format';
 import { DIMENSION_LABEL, RATE_COLUMNS, STAGE_COLUMNS } from '../../constants';
 
 type RollupTableProps = {

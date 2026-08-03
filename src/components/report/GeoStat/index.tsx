@@ -1,11 +1,11 @@
+import type { Locale } from '@/components/report/utils/i18n';
 import type { GeoRollup } from '@/lib/domain';
 import type { GeoThresholds, ThresholdPair, Zone } from '@/lib/domain/types';
-import type { Locale } from '../../utils/i18n';
 import { zoneFor } from '@/lib/domain/verdict';
 import { cn } from '@/lib/utils/cn';
-import { ZONE_TEXT_CLASS } from '../../constants';
-import { flagEmoji, pct, percent, usd, usdSigned } from '../../utils/format';
-import { ui } from '../../utils/i18n';
+import { ZONE_TEXT_CLASS } from '@/components/report/constants';
+import { flagEmoji, pct, percent, usd, usdSigned } from '@/components/report/utils/format';
+import { ui } from '@/components/report/utils/i18n';
 
 type GeoStatProps = {
     geo: string;

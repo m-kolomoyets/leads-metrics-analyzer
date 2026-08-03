@@ -1,13 +1,13 @@
+import type { Locale } from '@/components/report/utils/i18n';
 import type { Metrics } from '@/lib/domain/aggregate';
 import type { CreativeRow } from '@/lib/domain/creatives';
 import type { GeoThresholds, ThresholdPair } from '@/lib/domain/types';
-import type { Locale } from '../../utils/i18n';
 import { metricsFor, sumTotals } from '@/lib/domain/aggregate';
 import { zoneFor } from '@/lib/domain/verdict';
 import { cn } from '@/lib/utils/cn';
-import { ZONE_ACCENT_CLASS, ZONE_TEXT_CLASS } from '../../constants';
-import { cost, ctrPct, flagEmoji, int, pct, usd, usdSigned } from '../../utils/format';
-import { ui, verdictWhy } from '../../utils/i18n';
+import { ZONE_ACCENT_CLASS, ZONE_TEXT_CLASS } from '@/components/report/constants';
+import { cost, ctrPct, flagEmoji, int, pct, usd, usdSigned } from '@/components/report/utils/format';
+import { ui, verdictWhy } from '@/components/report/utils/i18n';
 
 type CreativeTableProps = {
     rows: CreativeRow[];

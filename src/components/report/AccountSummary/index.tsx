@@ -1,13 +1,13 @@
+import type { Locale } from '@/components/report/utils/i18n';
 import type { AccountCounts, AccountRollup } from '@/lib/domain/accounts';
 import type { Metrics } from '@/lib/domain/aggregate';
 import type { GeoThresholds, ThresholdPair, Zone } from '@/lib/domain/types';
-import type { Locale } from '../../utils/i18n';
 import { metricsFor, sumTotals } from '@/lib/domain/aggregate';
 import { zoneFor } from '@/lib/domain/verdict';
 import { cn } from '@/lib/utils/cn';
-import { SALES_TEXT_CLASS, ZONE_TEXT_CLASS } from '../../constants';
-import { cost, int, pct, usd, usdRound, usdSigned } from '../../utils/format';
-import { ui } from '../../utils/i18n';
+import { SALES_TEXT_CLASS, ZONE_TEXT_CLASS } from '@/components/report/constants';
+import { cost, int, pct, usd, usdRound, usdSigned } from '@/components/report/utils/format';
+import { ui } from '@/components/report/utils/i18n';
 
 type AccountSummaryProps = {
     accounts: AccountRollup[];

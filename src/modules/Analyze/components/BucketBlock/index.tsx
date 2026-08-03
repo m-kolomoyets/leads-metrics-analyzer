@@ -1,10 +1,10 @@
+import type { BucketZone } from '@/components/report/constants';
+import type { Locale } from '@/components/report/utils/i18n';
 import type { CampaignRollup } from '@/lib/domain/accounts';
-import type { BucketZone } from '../../constants';
-import type { Locale } from '../../utils/i18n';
 import { cn } from '@/lib/utils/cn';
+import { ZONE_BUTTON_CLASS, ZONE_CARD_CLASS, ZONE_GLYPH } from '@/components/report/constants';
+import { actionLabel, ui } from '@/components/report/utils/i18n';
 import { Button } from '@/components/ui/Button';
-import { ZONE_BUTTON_CLASS, ZONE_CARD_CLASS, ZONE_GLYPH } from '../../constants';
-import { actionLabel, ui } from '../../utils/i18n';
 import { Pill } from '../Pill';
 
 type BucketBlockProps = {

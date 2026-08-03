@@ -1,13 +1,13 @@
+import type { Locale } from '@/components/report/utils/i18n';
 import type { AccountRollup } from '@/lib/domain/accounts';
 import type { GeoThresholds, ThresholdPair } from '@/lib/domain/types';
-import type { Locale } from '../../utils/i18n';
 import { useState } from 'react';
 import { zoneFor } from '@/lib/domain/verdict';
 import { cn } from '@/lib/utils/cn';
+import { BUCKET_ZONES, SALES_TEXT_CLASS, ZONE_TEXT_CLASS } from '@/components/report/constants';
+import { cost, pct, usd, usdRound, usdSigned } from '@/components/report/utils/format';
+import { problemReason, ui } from '@/components/report/utils/i18n';
 import { Button } from '@/components/ui/Button';
-import { BUCKET_ZONES, SALES_TEXT_CLASS, ZONE_TEXT_CLASS } from '../../constants';
-import { cost, pct, usd, usdRound, usdSigned } from '../../utils/format';
-import { problemReason, ui } from '../../utils/i18n';
 import { AccountCampaigns } from '../AccountCampaigns';
 import { BucketBlock } from '../BucketBlock';
 import { Pill } from '../Pill';

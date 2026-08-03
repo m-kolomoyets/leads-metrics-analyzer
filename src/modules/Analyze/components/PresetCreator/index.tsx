@@ -1,15 +1,15 @@
 import type { ChangeEvent } from 'react';
-import type { Locale, ThresholdMetric } from '../../utils/i18n';
+import type { Locale, ThresholdMetric } from '@/components/report/utils/i18n';
 import type { ImportedPreset, ImportedShared, ImportPresetsFile } from '../../utils/importPresets';
 import type { ThresholdDraft } from '../ThresholdFields';
 import { useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { createPresetMutationOptions } from '@/services/presets/queries';
+import { ui } from '@/components/report/utils/i18n';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
-import { ui } from '../../utils/i18n';
 import {
     importedPresetsForGeo,
     importedSharedFor,
