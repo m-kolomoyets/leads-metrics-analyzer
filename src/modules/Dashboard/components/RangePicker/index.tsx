@@ -19,6 +19,7 @@ const TOKEN_LABEL: Record<RangeToken, string> = {
     '3d': 'range3d',
     '7d': 'range7d',
     '30d': 'range30d',
+    all: 'rangeAll',
     custom: 'rangeCustom',
 };
 

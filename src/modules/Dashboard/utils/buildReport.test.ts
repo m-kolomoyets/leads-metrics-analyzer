@@ -284,6 +284,50 @@ describe('buildReport · archive grouping', () => {
     });
 });
 
+describe('buildReport · one person asked for', () => {
+    const forUser = (userId: string) => {
+        const view = buildReport({
+            users: [user('u1', 'ann'), user('u2', 'bob')],
+            snapshots: [
+                snapshot({ id: 's1', createdByUserId: 'u1', reportDate: '2026-06-12' }),
+                snapshot({ id: 's2', createdByUserId: 'u2', reportDate: '2026-06-12' }),
+                snapshot({ id: 's3', createdByUserId: 'u1', reportDate: '2026-06-11' }),
+            ],
+            range: { range: '7d' },
+            today: '2026-06-12',
+            mode: 'archive',
+            userId,
+        });
+        if (view.mode !== 'archive') {
+            throw new Error('expected an archive view');
+        }
+        return view;
+    };
+
+    it('keeps every day that person reported, and nobody else on those days', () => {
+        const view = forUser('u1');
+
+        expect(
+            view.dates.map((date) => {
+                return date.reportDate;
+            })
+        ).toEqual(['2026-06-12', '2026-06-11']);
+        expect(
+            view.dates.flatMap((date) => {
+                return date.users.map((group) => {
+                    return group.user.nickname;
+                });
+            })
+        ).toEqual(['ann', 'ann']);
+    });
+
+    it('comes back empty for an id outside the viewer roster, rather than showing everyone', () => {
+        // Not an access decision — the roster is already scoped on the server — but a stale link must
+        // not silently widen back out to the whole team.
+        expect(forUser('u9').dates).toEqual([]);
+    });
+});
+
 describe('buildReport · the card headline', () => {
     it('sums money across Geos and re-derives ROI and waste share from those sums', () => {
         const view = feed(

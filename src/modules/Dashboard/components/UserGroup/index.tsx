@@ -1,8 +1,11 @@
 import type { Locale } from '@/components/report/utils/i18n';
 import type { ReportUserGroup } from '../../types';
+import { Link } from '@tanstack/react-router';
+import { ArrowUpRightIcon } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { ui } from '@/components/report/utils/i18n';
 import { AccordionHeader, AccordionItem, AccordionPanel, AccordionTrigger } from '@/components/ui/Accordion';
+import { Button } from '@/components/ui/Button';
 import { SnapshotCard } from '../SnapshotCard';
 
 type UserGroupProps = {
@@ -47,6 +50,22 @@ function UserGroup({ group, locale }: UserGroupProps) {
                     {cards.map((card) => {
                         return <SnapshotCard key={card.snapshotId} card={card} locale={locale} />;
                     })}
+
+                    {/* The way out of the range: this person's whole history, in the archive, where
+                        every re-push survives. `all` rather than the current window on purpose — the
+                        question this answers is "what has this buyer ever reported", and carrying the
+                        feed's range would just reproduce the cards directly above it. */}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="self-end"
+                        render={
+                            <Link to="/dashboard/archive" search={{ range: 'all', user: user.id }}>
+                                {ui('userArchive', locale)}
+                                <ArrowUpRightIcon />
+                            </Link>
+                        }
+                    />
                 </div>
             </AccordionPanel>
         </AccordionItem>

@@ -23,4 +23,8 @@ export const archiveSearchSchema = z.object({
     range: z.enum(RANGE_TOKENS).catch('7d').default('7d'),
     from: calendarDateSchema.optional().catch(undefined),
     to: calendarDateSchema.optional().catch(undefined),
+    // Narrows the archive to one person — the feed's "all reports by this buyer" entry. Absent means
+    // everybody. Not a permission: the roster it filters is already scoped on the server, so an id
+    // from outside it matches nobody rather than revealing one.
+    user: z.string().optional().catch(undefined),
 });

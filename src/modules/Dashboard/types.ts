@@ -5,8 +5,9 @@ import type { ReportGeoView, ReportRosterUser } from '@/services/reports/types';
 // Snapshots a viewer can see. `buildReport` is the only producer of these shapes.
 
 // The quick tokens plus the explicit window. A token means the last N calendar days ENDING TODAY,
-// inclusive, resolved against the viewer's local calendar day.
-export const RANGE_TOKENS = ['1d', '3d', '7d', '30d', 'custom'] as const;
+// inclusive, resolved against the viewer's local calendar day. `all` is the archive's "everything
+// this person ever pushed" — a window with no lower edge rather than a mode of its own.
+export const RANGE_TOKENS = ['1d', '3d', '7d', '30d', 'all', 'custom'] as const;
 
 export type RangeToken = (typeof RANGE_TOKENS)[number];
 

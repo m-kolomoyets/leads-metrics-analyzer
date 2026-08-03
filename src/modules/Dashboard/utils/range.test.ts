@@ -12,6 +12,15 @@ describe('resolveRange', () => {
         expect(resolveRange({ range: '30d' }, '2026-06-12')).toEqual({ from: '2026-05-14', to: '2026-06-12' });
     });
 
+    it('resolves `all` to a window ending today with no meaningful lower edge', () => {
+        const resolved = resolveRange({ range: 'all' }, '2026-06-12');
+
+        expect(resolved.to).toBe('2026-06-12');
+        // Earlier than any Snapshot this system can hold, so "all time" genuinely catches the first
+        // report ever pushed rather than a rolling window that happens to be long.
+        expect(resolved.from < '2020-01-01').toBe(true);
+    });
+
     it('crosses month and year boundaries', () => {
         expect(resolveRange({ range: '3d' }, '2026-03-01')).toEqual({ from: '2026-02-27', to: '2026-03-01' });
         expect(resolveRange({ range: '7d' }, '2026-01-02')).toEqual({ from: '2025-12-27', to: '2026-01-02' });

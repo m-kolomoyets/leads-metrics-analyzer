@@ -32,11 +32,21 @@ function Archive() {
     const { data: users } = useSuspenseQuery(visibleUsersQueryOptions());
     const { data: snapshots } = useSuspenseQuery(reportQueryOptions(resolved));
 
-    const report = buildReport({ users, snapshots, range, today, mode: 'archive' });
+    const report = buildReport({ users, snapshots, range, today, mode: 'archive', userId: search.user });
+    // Named from the roster rather than the URL, so a stale id in a shared link shows the empty state
+    // instead of a chip labelled with someone's raw id.
+    const filteredUser = users.find((user) => {
+        return user.id === search.user;
+    });
 
     function changeRange(next: ReportRange) {
-        // Replaced rather than pushed, as on the feed: the custom date inputs fire per keystroke.
-        navigate({ search: { range: next.range, from: next.from, to: next.to }, replace: true });
+        // Replaced rather than pushed, as on the feed: the custom date inputs fire per keystroke. The
+        // person filter rides along — changing the window should not silently widen the question back
+        // out to the whole team.
+        navigate({
+            search: { range: next.range, from: next.from, to: next.to, user: search.user },
+            replace: true,
+        });
     }
 
     return (
@@ -76,6 +86,25 @@ function Archive() {
                     <span className="text-muted-foreground font-mono text-xs">
                         {report.from} → {report.to}
                     </span>
+
+                    {/* The filter has to be visible and reversible: arriving from a buyer's feed row,
+                        an archive showing one name and no explanation reads as an outage. */}
+                    {filteredUser && (
+                        <div className="flex items-center gap-2">
+                            <span className="border-border rounded-lg border px-2 py-0.5 text-xs font-semibold">
+                                {filteredUser.nickname}
+                            </span>
+                            <Button
+                                size="xs"
+                                variant="ghost"
+                                render={
+                                    <Link to="/dashboard/archive" search={{ ...search, user: undefined }}>
+                                        {ui('allUsers', locale)}
+                                    </Link>
+                                }
+                            />
+                        </div>
+                    )}
                 </div>
 
                 {/* No roster of quiet users here: the archive lists days that happened, and a day

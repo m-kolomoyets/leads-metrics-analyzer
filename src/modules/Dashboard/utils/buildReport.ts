@@ -20,6 +20,11 @@ export type BuildReportInput = {
     // The viewer's local calendar day, YYYY-MM-DD. The only date this function does not derive.
     today: string;
     mode: ReportMode;
+    // Narrows the whole view to one person — the archive's "everything this buyer pushed" entry from
+    // the feed. Not an access-control decision: the roster it filters has already been scoped by
+    // `scopeFor` on the server, so an id outside it simply matches nobody and the view comes back
+    // empty rather than leaking a name.
+    userId?: string;
 };
 
 // The card headline: money SUMMED across the Snapshot's Geos, with ROI and the waste share
@@ -105,8 +110,24 @@ function latestPerDate(snapshots: ReportSnapshotView[]): ReportSnapshotView[] {
 export function buildReport(input: BuildReportInput & { mode: 'feed' }): Extract<ReportView, { mode: 'feed' }>;
 export function buildReport(input: BuildReportInput & { mode: 'archive' }): Extract<ReportView, { mode: 'archive' }>;
 export function buildReport(input: BuildReportInput): ReportView;
-export function buildReport({ users, snapshots, range, today, mode }: BuildReportInput): ReportView {
+export function buildReport({
+    users: visibleUsers,
+    snapshots,
+    range,
+    today,
+    mode,
+    userId,
+}: BuildReportInput): ReportView {
     const { from, to } = resolveRange(range, today);
+
+    // One person asked for: everything downstream — roster, grouping, the empty state — then follows
+    // from a shorter roster, so no rule below has to know a filter exists. A Snapshot whose author
+    // left the roster is already dropped, which is exactly the behaviour this wants.
+    const users = userId
+        ? visibleUsers.filter((user) => {
+              return user.id === userId;
+          })
+        : visibleUsers;
 
     // Filtering runs on the day the data DESCRIBES, never on the day it was pushed: a correction
     // pushed late belongs to the day it is about (ADR-0016).
