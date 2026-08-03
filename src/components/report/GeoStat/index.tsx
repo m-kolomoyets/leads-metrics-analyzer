@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils/cn';
 import { ZONE_TEXT_CLASS } from '@/components/report/constants';
 import { DASH, flagEmoji, pct, percent, usd, usdSigned } from '@/components/report/utils/format';
 import { ui } from '@/components/report/utils/i18n';
+import { roiZone, ZONE_TINT_CLASS } from '@/components/report/utils/zones';
 
 type GeoStatProps = {
     geo: string;
@@ -21,17 +22,6 @@ type GeoStatProps = {
     locale: Locale;
 };
 
-// Reference ROI bands (fixed, unlike the tunable cost zones): loss → red, thin → yellow, healthy → green.
-function roiTone(roi: number | null): Zone {
-    if (roi === null) {
-        return 'neutral';
-    }
-    if (roi < -20) {
-        return 'red';
-    }
-    return roi <= 30 ? 'yellow' : 'green';
-}
-
 // Waste as a share of Spend⁺. Null only when the waste itself is unknowable (no Frozen Geo Rollup);
 // a zero denominator still reads 0 %, as it did before a Snapshot could arrive without one.
 function wasteShare(waste: number | null, spendPlus: number): number | null {
@@ -40,14 +30,6 @@ function wasteShare(waste: number | null, spendPlus: number): number | null {
     }
     return spendPlus > 0 ? (waste / spendPlus) * 100 : 0;
 }
-
-// The glass-tint classes for a zone (index.css). Neutral keeps the plain blue tint.
-const TONE_TINT: Record<Zone, string> = {
-    green: 'glass-tint tint-green',
-    yellow: 'glass-tint tint-yellow',
-    red: 'glass-tint tint-red',
-    neutral: 'glass-tint tint-blue tint-s5',
-};
 
 // A band-tinted CPC/CPI/CPR/CPS value, mirroring the reference `<Metric>`.
 function Metric({ value, pair }: { value: number | null; pair: ThresholdPair | undefined }) {
@@ -92,7 +74,7 @@ function GeoStat({ geo, rollup, thresholds, waste, wasteZone, locale }: GeoStatP
     const hasTotal = rollup.total !== null;
     const wastePct = wasteShare(waste, metrics.spendPlus);
     const wasteTone: Zone = wasteZone && wastePct !== null ? zoneFor(wastePct, wasteZone) : 'neutral';
-    const roi = hasTotal ? roiTone(metrics.roi) : 'neutral';
+    const roi = hasTotal ? roiZone(metrics.roi) : 'neutral';
     const profitClass = metrics.profit >= 0 ? 'text-success' : 'text-danger';
     // The Geo-Total gap (ADR-0003/0012): revenue on rows with no usable Sub ID. A growing share is a
     // tracking-health signal, so it is shown rather than folded in silently — but only when it is
@@ -119,7 +101,7 @@ function GeoStat({ geo, rollup, thresholds, waste, wasteZone, locale }: GeoStatP
                 <div
                     className={cn(
                         'glow-soft flex min-w-64 flex-1 flex-col gap-3 rounded-2xl px-5 py-4',
-                        TONE_TINT[roi]
+                        ZONE_TINT_CLASS[roi]
                     )}
                 >
                     <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
@@ -160,7 +142,7 @@ function GeoStat({ geo, rollup, thresholds, waste, wasteZone, locale }: GeoStatP
                 <div
                     className={cn(
                         'glow-soft flex min-w-64 flex-1 items-center gap-6 rounded-2xl px-5 py-4',
-                        TONE_TINT[wasteTone]
+                        ZONE_TINT_CLASS[wasteTone]
                     )}
                 >
                     <Stat
