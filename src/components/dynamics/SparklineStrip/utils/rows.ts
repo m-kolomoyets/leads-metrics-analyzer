@@ -1,5 +1,6 @@
 import type { DynamicsMetric, MetricTone, SeriesPoint } from '@/lib/domain/dynamics';
-import { compareFigures, hasZone, toneOf } from '@/lib/domain/dynamics';
+import type { Zone } from '@/lib/domain/types';
+import { compareFigures, hasZone, toneOf, zoneOfPoint } from '@/lib/domain/dynamics';
 import { metricValue } from '../../utils/metrics';
 
 // The strip's arithmetic (SPEC §6.6): four series, their trailing figures, and the colour each one
@@ -27,6 +28,9 @@ export type SparklineRow = {
     current: number | null;
     // What it moved by since the previous push, or null when either side was unmeasurable.
     change: number | null;
+    // The zone each push earned, parallel to `values`. Only the graded metrics carry one — for the
+    // rest every entry is `neutral`, for the same reason `sparklineTone` withholds a tone from them.
+    zones: Zone[];
     tone: MetricTone;
 };
 
@@ -47,6 +51,9 @@ export function sparklineRows(points: SeriesPoint[]): SparklineRow[] {
             metric,
             values: points.map((point) => {
                 return metricValue(point.figures, metric);
+            }),
+            zones: points.map((point) => {
+                return hasZone(metric) ? zoneOfPoint(point, metric) : 'neutral';
             }),
             current: current === null ? null : metricValue(current.figures, metric),
             change,

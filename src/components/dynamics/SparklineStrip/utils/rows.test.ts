@@ -56,6 +56,21 @@ describe('sparklineRows', () => {
         ).toEqual(SPARKLINE_METRICS);
     });
 
+    it('grades every push of a cost and leaves an ungraded metric flat neutral', () => {
+        const rows = sparklineRows(series);
+        const cpi = rows.find((row) => {
+            return row.metric === 'cpi';
+        });
+        const spend = rows.find((row) => {
+            return row.metric === 'spend';
+        });
+
+        // $100 over 4 installs is $25 — past the red line at 20; $200 over 20 is $10, which sits ON
+        // the green→yellow line and so grades yellow, not green.
+        expect(cpi?.zones).toEqual(['red', 'yellow']);
+        expect(spend?.zones).toEqual(['neutral', 'neutral']);
+    });
+
     it('carries the whole day per metric and prints the trailing figure', () => {
         const [roi, spend] = sparklineRows(series);
 

@@ -29,6 +29,7 @@ function SparklineStrip({ points, selected, onSelect }: SparklineStripProps) {
                         key={row.metric}
                         label={METRIC_LABEL[row.metric]}
                         values={row.values}
+                        zones={row.zones}
                         trailing={METRIC_FORMAT[row.metric].value(row.current)}
                         tone={row.tone}
                         selected={selected.includes(row.metric)}
