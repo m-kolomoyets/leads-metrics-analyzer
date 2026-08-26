@@ -1,5 +1,8 @@
-import type { CostMetric } from '@/lib/domain/dynamics';
+import type { CostMetric, DeltaFlags } from '@/lib/domain/dynamics';
 import type { Zone } from '@/lib/domain/types';
+
+// Which of the three edge cases a point carries.
+export type DeltaFlag = keyof DeltaFlags;
 
 // The chart's fixed drawing space. The SVG scales to its container through the viewBox, so every
 // coordinate in the component is in these units and the container's aspect ratio matches them —
@@ -27,13 +30,6 @@ export const COST_DASH: Record<CostMetric, string | undefined> = {
     cpc: '12 4 2 4',
 };
 
-export const COST_LABEL: Record<CostMetric, string> = {
-    cpi: 'CPI',
-    cpr: 'CPR',
-    cps: 'CPS',
-    cpc: 'CPC',
-};
-
 // The zone palette, straight off the theme tokens so the chart follows a theme switch. `var()` is
 // unusable in an SVG presentation attribute, so every one of these is set through `style`.
 export const ZONE_STROKE: Record<Zone, string> = {
@@ -50,14 +46,36 @@ export const ZONE_LABEL: Record<Zone, string> = {
     neutral: 'ungraded',
 };
 
-export const INCOME_LABEL = {
-    revenue: 'Revenue',
-    profit: 'Profit',
-};
-
 // A restated interval measures nothing, so it is painted as data rather than as a verdict.
 export const CORRECTED_STROKE = 'var(--muted-foreground)';
 
-// Revenue and Profit take no zone — there are no thresholds for income — and draw in the neutral
-// accent so their plainness reads as deliberate rather than as a missing grade.
-export const INCOME_STROKE = 'var(--accent-solid)';
+// The right axis takes no zone — there are no thresholds for money and none for ROI — and its line
+// draws in the neutral accent so its plainness reads as deliberate rather than as a missing grade.
+export const FIGURE_STROKE = 'var(--accent-solid)';
+
+// The three delta-mode edge cases (SPEC §4.3), each with its own treatment rather than a shrug. They
+// are drawn in a lane of their own beneath the plot: the flags describe the INTERVAL, and hanging
+// them off the line would make them look like properties of the figure instead.
+export const FLAG_GLYPH: Record<DeltaFlag, string> = {
+    firstOfDay: '\u25B8',
+    corrected: '\u25C6',
+    spendWithoutConversions: '\u25B2',
+};
+
+export const FLAG_STROKE: Record<DeltaFlag, string> = {
+    firstOfDay: 'var(--accent-solid)',
+    corrected: CORRECTED_STROKE,
+    spendWithoutConversions: 'var(--warning)',
+};
+
+export const FLAG_LABEL: Record<DeltaFlag, string> = {
+    firstOfDay: 'First report today',
+    corrected: 'Restated by Facebook',
+    spendWithoutConversions: 'Spend without installs',
+};
+
+export const FLAG_HINT: Record<DeltaFlag, string> = {
+    firstOfDay: 'Nothing came before it, so this interval is the whole day so far rather than a step.',
+    corrected: 'A figure went backwards, so the interval is a clamped remainder and measures nothing.',
+    spendWithoutConversions: 'Money moved and nothing installed, so every cost-per here is unmeasurable.',
+};

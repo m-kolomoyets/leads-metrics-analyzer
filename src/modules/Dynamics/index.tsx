@@ -1,4 +1,5 @@
-import { Suspense } from 'react';
+import type { DynamicsMode } from '@/components/dynamics/types';
+import { Suspense, useState } from 'react';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 import { kyivDay } from '@/lib/utils/kyivDay';
@@ -6,6 +7,7 @@ import { useMinuteClock } from '@/hooks/useMinuteClock';
 import { dynamicsRosterQueryOptions } from '@/services/dynamics/queries';
 import { BuyerTabs } from '@/components/dynamics/BuyerTabs';
 import { DataAge } from '@/components/dynamics/DataAge';
+import { ModeToggle } from '@/components/dynamics/ModeToggle';
 import { TeamTabs } from '@/components/dynamics/TeamTabs';
 import { MainLayoutHeader } from '@/components/layouts/MainLayoutHeader';
 import { buyerTabs } from './utils/buyerTabs';
@@ -25,6 +27,9 @@ function Dynamics() {
     // One clock for the whole page: the tabs' missing/stale states and the header's data age age
     // together, off a client timer, with no polling (SPEC §6.4).
     const now = useMinuteClock();
+    // Chart-only, and deliberately not in the URL: it is a way of looking at the day rather than part
+    // of what is being looked at, so a shared link opens on the honest cumulative picture (SPEC §6.4).
+    const [mode, setMode] = useState<DynamicsMode>('cumulative');
 
     // Which day "today" is, is a Kyiv question, and it is resolved viewer-side: the server is only
     // ever asked for a concrete date (ADR-0017). Only today has a UI; the param carries the rest.
@@ -65,6 +70,7 @@ function Dynamics() {
                 <h1 className="text-xl">Dynamics · {reportDate}</h1>
                 <DataAge takenAt={buyer?.lastTakenAt ?? null} now={now} />
                 <span className="flex-1" />
+                <ModeToggle mode={mode} onSelect={setMode} />
             </MainLayoutHeader>
 
             <div className="flex flex-col gap-4">
@@ -81,7 +87,13 @@ function Dynamics() {
                         key={buyer.id}
                         fallback={<p className="text-muted-foreground text-sm">Loading the day…</p>}
                     >
-                        <BuyerDay buyerId={buyer.id} reportDate={reportDate} geo={search.geo} onSelectGeo={selectGeo} />
+                        <BuyerDay
+                            buyerId={buyer.id}
+                            reportDate={reportDate}
+                            geo={search.geo}
+                            onSelectGeo={selectGeo}
+                            mode={mode}
+                        />
                     </Suspense>
                 ) : (
                     <p className="text-muted-foreground text-sm">There is nobody to show a day for yet.</p>

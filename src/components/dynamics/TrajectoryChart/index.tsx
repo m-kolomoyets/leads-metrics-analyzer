@@ -1,19 +1,23 @@
 import type { CostMetric, SeriesPoint } from '@/lib/domain/dynamics';
 import type { Zone } from '@/lib/domain/types';
-import type { ActivePoint, ChartMetric, IncomeMetric } from './types';
+import type { DynamicsMode } from '../types';
+import type { DeltaFlag } from './constants';
+import type { ActivePoint, ChartMetric, FigureMetric } from './types';
 import type { PlotPoint, PlotSegment } from './utils/segments';
 import { useId, useState } from 'react';
 import { Link } from '@tanstack/react-router';
-import { COST_METRICS, deltasFor, zoneOfPoint } from '@/lib/domain/dynamics';
+import { COST_METRICS, deltaPointsFor, deltasFor, hasZone, zoneOfPoint } from '@/lib/domain/dynamics';
 import { cn } from '@/lib/utils/cn';
 import { kyivClock } from '@/lib/utils/kyivDay';
-import { cost, DASH, usd, usdRound, usdSigned } from '@/components/report/utils/format';
+import { cost, DASH } from '@/components/report/utils/format';
 import {
     CORRECTED_STROKE,
     COST_DASH,
-    COST_LABEL,
-    INCOME_LABEL,
-    INCOME_STROKE,
+    FIGURE_STROKE,
+    FLAG_GLYPH,
+    FLAG_HINT,
+    FLAG_LABEL,
+    FLAG_STROKE,
     PLOT,
     PLOT_BOTTOM,
     PLOT_LEFT,
@@ -22,9 +26,11 @@ import {
     ZONE_LABEL,
     ZONE_STROKE,
 } from './constants';
-import { boundsOf, scaleOf, ticksOf, xPositions } from './utils/geometry';
+import { boundsOf, scaleOf, ticksOf, xPositions } from '../utils/geometry';
+import { METRIC_FORMAT, METRIC_LABEL, metricValue } from '../utils/metrics';
 import { segmentsOf } from './utils/segments';
 import { PointTooltip } from './components/PointTooltip';
+import { SparklineStrip } from '../SparklineStrip';
 
 // The trajectory chart (SPEC §6.6), hand-rolled in SVG: the repo carries no charting dependency, and
 // the one visual that matters here — a per-segment gradient between two zone colours — is custom
@@ -36,14 +42,25 @@ import { PointTooltip } from './components/PointTooltip';
 // segment across zones is a real gradient, so a line cooling red → amber → green says "this buyer is
 // fixing it" with no numbers read at all.
 //
-// Colour is spoken for, so several cost lines are told apart by DASH. Income takes no zone — there
-// are no thresholds for income — and a restated interval is grey, because it measures nothing.
+// Colour is spoken for, so several cost lines are told apart by DASH. The right axis takes no zone —
+// there are no thresholds for money or ROI — and a restated interval is grey, because it measures
+// nothing.
 //
-// All the arithmetic lives in `utils/`; this file places and paints.
+// The mode toggle changes what the points ARE, not how they are drawn: `deltaPointsFor` hands back
+// the same shape holding intervals instead of totals, so everything below is written once. Delta mode
+// adds one thing of its own — a lane of edge-case flags, because a gap in the line with no
+// explanation is the failure this chart exists to avoid.
+//
+// All the arithmetic lives in `utils/` and in the domain; this file places and paints.
 
-const INCOME_METRICS: IncomeMetric[] = ['revenue', 'profit'];
+const FIGURE_METRICS: FigureMetric[] = ['revenue', 'profit', 'spend', 'roi'];
+
+const FLAGS: DeltaFlag[] = ['firstOfDay', 'corrected', 'spendWithoutConversions'];
 
 const TICKS = 4;
+
+// The flag lane sits between the plot floor and the time ladder.
+const FLAG_Y = PLOT_BOTTOM + 13;
 
 type SeriesLine = {
     metric: ChartMetric;
@@ -74,32 +91,19 @@ function lineOf(
 
     return {
         metric,
-        dash: metric === 'revenue' || metric === 'profit' ? undefined : COST_DASH[metric],
-        // Income draws in the neutral accent at every point; a cost line takes its colour per segment
-        // from the zones at its ends.
-        stroke: metric === 'revenue' || metric === 'profit' ? INCOME_STROKE : null,
+        dash: hasZone(metric) ? COST_DASH[metric] : undefined,
+        // The right axis draws in the neutral accent at every point; a cost line takes its colour per
+        // segment from the zones at its ends.
+        stroke: hasZone(metric) ? null : FIGURE_STROKE,
         plot,
         segments: segmentsOf(plot, corrected),
     };
 }
 
 // A marker's screen-reader label reads the figure the way the surface around it does: a cost is a
-// bare two-decimal number, income carries its currency, and a Profit carries its sign.
+// bare two-decimal number, money carries its currency, ROI its percent sign.
 function spokenValue(metric: ChartMetric, value: number | null): string {
-    if (value === null) {
-        return 'not measured';
-    }
-    if (metric === 'revenue') {
-        return usd(value);
-    }
-    if (metric === 'profit') {
-        return usdSigned(value);
-    }
-    return cost(value);
-}
-
-function labelOf(metric: ChartMetric): string {
-    return metric === 'revenue' || metric === 'profit' ? INCOME_LABEL[metric] : COST_LABEL[metric];
+    return value === null ? 'not measured' : METRIC_FORMAT[metric].value(value);
 }
 
 function clockOf(takenAt: string): string {
@@ -109,21 +113,25 @@ function clockOf(takenAt: string): string {
 }
 
 type TrajectoryChartProps = {
-    // One Geo's trajectory, oldest first — `buildSeries` output.
+    // One Geo's trajectory, oldest first — `buildSeries` output. Always the cumulative Series: the
+    // mode toggle is applied here, so the sparklines beside it keep reading the day as it happened.
     points: SeriesPoint[];
+    mode: DynamicsMode;
 };
 
-function TrajectoryChart({ points }: TrajectoryChartProps) {
+function TrajectoryChart({ points, mode }: TrajectoryChartProps) {
     // Gradients are referenced by id, and two charts on one page must not share them. `useId` returns
     // colon-wrapped ids, which are legal in an id attribute but awkward everywhere else — stripped
     // here so `url(#…)` never has to carry them.
     const uid = useId().replaceAll(/[^a-zA-Z0-9]/g, '');
     const [costMetrics, setCostMetrics] = useState<CostMetric[]>(['cpi']);
-    const [income, setIncome] = useState<IncomeMetric>('revenue');
+    const [figure, setFigure] = useState<FigureMetric>('revenue');
     const [active, setActive] = useState<ActivePoint | null>(null);
 
+    // The caller decides what an empty day looks like (`BuyerDay` shows tiles or a note); this is the
+    // chart refusing to index into a series it was handed by mistake, not a second empty state.
     if (points.length === 0) {
-        return <p className="text-muted-foreground text-sm">No reports for this period.</p>;
+        return null;
     }
 
     function toggleCost(metric: CostMetric) {
@@ -138,13 +146,31 @@ function TrajectoryChart({ points }: TrajectoryChartProps) {
         });
     }
 
+    // A sparkline is a jump, not an addition: it answers "show me THAT one", so a cost click replaces
+    // the cost selection rather than piling a second dashed line onto it.
+    function selectFromStrip(metric: ChartMetric) {
+        setActive(null);
+
+        if (hasZone(metric)) {
+            setCostMetrics([metric]);
+            return;
+        }
+
+        setFigure(metric);
+    }
+
     // `deltasFor` is indexed by point: entry i describes the interval ENDING at point i, which is the
-    // segment drawn into it. A restated interval is the grey one.
-    const corrected = deltasFor(points).map((delta) => {
+    // segment drawn into it. A restated interval is the grey one, in either mode.
+    const deltas = deltasFor(points);
+    const corrected = deltas.map((delta) => {
         return delta.flags.corrected;
     });
+    // The only difference the toggle makes. Everything below reads `plotted` and does not care which
+    // question it is answering.
+    const plotted = mode === 'delta' ? deltaPointsFor(points) : points;
+
     const xs = xPositions(
-        points.map((point) => {
+        plotted.map((point) => {
             return point.takenAt;
         }),
         PLOT_LEFT,
@@ -155,20 +181,20 @@ function TrajectoryChart({ points }: TrajectoryChartProps) {
     // rather than each rescaled to look identical.
     const costBounds = boundsOf(
         costMetrics.flatMap((metric) => {
-            return points.map((point) => {
+            return plotted.map((point) => {
                 return point.figures[metric];
             });
         })
     );
-    const incomeValues = points.map((point) => {
-        return income === 'revenue' ? point.figures.revenue : point.figures.profit;
+    const figureValues = plotted.map((point) => {
+        return metricValue(point.figures, figure);
     });
-    const incomeBounds = boundsOf(incomeValues);
+    const figureBounds = boundsOf(figureValues);
 
     const costScale = costBounds === null ? null : scaleOf(costBounds, PLOT_BOTTOM, PLOT_TOP);
-    const incomeScale = incomeBounds === null ? null : scaleOf(incomeBounds, PLOT_BOTTOM, PLOT_TOP);
+    const figureScale = figureBounds === null ? null : scaleOf(figureBounds, PLOT_BOTTOM, PLOT_TOP);
 
-    const neutralZones = points.map((): Zone => {
+    const neutralZones = plotted.map((): Zone => {
         return 'neutral';
     });
 
@@ -176,10 +202,10 @@ function TrajectoryChart({ points }: TrajectoryChartProps) {
         ...costMetrics.map((metric) => {
             return lineOf(
                 metric,
-                points.map((point) => {
+                plotted.map((point) => {
                     return point.figures[metric];
                 }),
-                points.map((point) => {
+                plotted.map((point) => {
                     return zoneOfPoint(point, metric);
                 }),
                 xs,
@@ -187,12 +213,12 @@ function TrajectoryChart({ points }: TrajectoryChartProps) {
                 corrected
             );
         }),
-        lineOf(income, incomeValues, neutralZones, xs, incomeScale, corrected),
+        lineOf(figure, figureValues, neutralZones, xs, figureScale, corrected),
     ];
 
     // Every push gets a label when there is room; past that the ladder thins out rather than
     // overprinting itself.
-    const labelStep = Math.ceil(points.length / 8);
+    const labelStep = Math.ceil(plotted.length / 8);
 
     const activeLine =
         active === null
@@ -201,6 +227,17 @@ function TrajectoryChart({ points }: TrajectoryChartProps) {
                   return line.metric === active.metric;
               }) ?? null);
     const activePlot = active === null ? null : (activeLine?.plot[active.index] ?? null);
+
+    // Only the flags that actually happened get a legend entry: a permanent key for three edge cases
+    // that occur on maybe one day in ten would train the reader to ignore the lane.
+    const presentFlags =
+        mode === 'delta'
+            ? FLAGS.filter((flag) => {
+                  return deltas.some((delta) => {
+                      return delta.flags[flag];
+                  });
+              })
+            : [];
 
     return (
         <section className="border-border flex flex-col gap-3 rounded-lg border p-4" aria-label="Trajectory">
@@ -229,26 +266,26 @@ function TrajectoryChart({ points }: TrajectoryChartProps) {
                                     style={{ stroke: 'currentcolor' }}
                                 />
                             </svg>
-                            {COST_LABEL[metric]}
+                            {METRIC_LABEL[metric]}
                         </label>
                     );
                 })}
 
                 <fieldset className="ml-auto flex items-center gap-3">
                     <legend className="sr-only">Right axis</legend>
-                    {INCOME_METRICS.map((metric) => {
+                    {FIGURE_METRICS.map((metric) => {
                         return (
                             <label key={metric} className="flex cursor-pointer items-center gap-1.5">
                                 <input
                                     type="radio"
-                                    name={`${uid}-income`}
-                                    checked={income === metric}
+                                    name={`${uid}-figure`}
+                                    checked={figure === metric}
                                     className="accent-primary"
                                     onChange={() => {
-                                        setIncome(metric);
+                                        setFigure(metric);
                                     }}
                                 />
-                                {INCOME_LABEL[metric]}
+                                {METRIC_LABEL[metric]}
                             </label>
                         );
                     })}
@@ -270,7 +307,7 @@ function TrajectoryChart({ points }: TrajectoryChartProps) {
                     // `group`, never `img`: an `img` role hides its subtree, and the subtree is the
                     // point-by-point drill-in a screen-reader user navigates.
                     role="group"
-                    aria-label={`Trajectory of ${points[0].geo} across ${points.length} pushes`}
+                    aria-label={`${mode === 'delta' ? 'Between-report' : 'Cumulative'} trajectory of ${plotted[0].geo} across ${plotted.length} pushes`}
                 >
                     <defs>
                         {lines.flatMap((line) => {
@@ -300,7 +337,7 @@ function TrajectoryChart({ points }: TrajectoryChartProps) {
                     </defs>
 
                     {/* Gridlines and the two axes' ladders. The left one reads costs, the right one
-                        whichever income figure is on. */}
+                        whichever figure the toggle put on it. */}
                     {Array.from({ length: TICKS }, (_unused, index) => {
                         const y = PLOT_TOP + ((PLOT_BOTTOM - PLOT_TOP) / (TICKS - 1)) * index;
 
@@ -334,8 +371,8 @@ function TrajectoryChart({ points }: TrajectoryChartProps) {
                             );
                         })}
 
-                    {incomeBounds !== null &&
-                        ticksOf(incomeBounds, TICKS).map((value, index) => {
+                    {figureBounds !== null &&
+                        ticksOf(figureBounds, TICKS).map((value, index) => {
                             const y = PLOT_BOTTOM - ((PLOT_BOTTOM - PLOT_TOP) / (TICKS - 1)) * index;
 
                             return (
@@ -345,12 +382,12 @@ function TrajectoryChart({ points }: TrajectoryChartProps) {
                                     y={y + 4}
                                     className="fill-muted-foreground font-mono text-[10px]"
                                 >
-                                    {usdRound(value)}
+                                    {METRIC_FORMAT[figure].axis(value)}
                                 </text>
                             );
                         })}
 
-                    {points.map((point, index) => {
+                    {plotted.map((point, index) => {
                         if (index % labelStep !== 0) {
                             return null;
                         }
@@ -367,6 +404,42 @@ function TrajectoryChart({ points }: TrajectoryChartProps) {
                             </text>
                         );
                     })}
+
+                    {/* The edge-case lane. Each of the three reads differently on purpose: a first
+                        report is not a defect, a restatement is not the buyer's doing, and spend that
+                        bought nothing is the one worth walking over for. */}
+                    {mode === 'delta' &&
+                        deltas.flatMap((delta, index) => {
+                            // Every flag a push carries, not just the first: a first report that spent
+                            // without installing is both, and dropping one of the two would hide the
+                            // half worth walking over for.
+                            const flags = FLAGS.filter((candidate) => {
+                                return delta.flags[candidate];
+                            });
+
+                            return flags.map((flag, position) => {
+                                return (
+                                    <g
+                                        key={`${delta.to.snapshotId}-${flag}`}
+                                        role="img"
+                                        aria-label={`${FLAG_LABEL[flag]}. ${FLAG_HINT[flag]}`}
+                                    >
+                                        <title>{`${FLAG_LABEL[flag]} — ${FLAG_HINT[flag]}`}</title>
+                                        <text
+                                            // Side by side, centred on the push as a group, so two
+                                            // flags never print on top of each other.
+                                            x={xs[index] + (position - (flags.length - 1) / 2) * 9}
+                                            y={FLAG_Y}
+                                            textAnchor="middle"
+                                            className="text-[9px]"
+                                            style={{ fill: FLAG_STROKE[flag] }}
+                                        >
+                                            {FLAG_GLYPH[flag]}
+                                        </text>
+                                    </g>
+                                );
+                            });
+                        })}
 
                     {lines.map((line) => {
                         return (
@@ -403,15 +476,14 @@ function TrajectoryChart({ points }: TrajectoryChartProps) {
                                     );
                                 })}
 
-                                {line.plot.map((plotted) => {
-                                    if (plotted.y === null) {
+                                {line.plot.map((one) => {
+                                    if (one.y === null) {
                                         return null;
                                     }
 
-                                    const point = points[plotted.index];
-                                    const fill = line.stroke ?? ZONE_STROKE[plotted.zone];
-                                    const value =
-                                        line.metric === 'revenue' ? point.figures.revenue : point.figures[line.metric];
+                                    const point = plotted[one.index];
+                                    const fill = line.stroke ?? ZONE_STROKE[one.zone];
+                                    const value = metricValue(point.figures, line.metric);
 
                                     return (
                                         // The drill-in, and the most important interaction on the
@@ -422,12 +494,12 @@ function TrajectoryChart({ points }: TrajectoryChartProps) {
                                             to="/dashboard/report/$snapshotId"
                                             params={{ snapshotId: point.snapshotId }}
                                             search={{ geo: point.geo }}
-                                            aria-label={`${labelOf(line.metric)} ${spokenValue(line.metric, value)} at ${clockOf(point.takenAt)}${line.stroke === null ? `, ${ZONE_LABEL[plotted.zone]}` : ''} — open this report`}
+                                            aria-label={`${METRIC_LABEL[line.metric]} ${spokenValue(line.metric, value)} at ${clockOf(point.takenAt)}${line.stroke === null ? `, ${ZONE_LABEL[one.zone]}` : ''} — open this report`}
                                             onMouseEnter={() => {
-                                                setActive({ index: plotted.index, metric: line.metric });
+                                                setActive({ index: one.index, metric: line.metric });
                                             }}
                                             onFocus={() => {
-                                                setActive({ index: plotted.index, metric: line.metric });
+                                                setActive({ index: one.index, metric: line.metric });
                                             }}
                                             onBlur={() => {
                                                 setActive(null);
@@ -435,10 +507,10 @@ function TrajectoryChart({ points }: TrajectoryChartProps) {
                                         >
                                             {/* A hit target a pointer can actually find, and a
                                                 marker small enough not to hide the line. */}
-                                            <circle cx={plotted.x} cy={plotted.y} r="10" fill="transparent" />
+                                            <circle cx={one.x} cy={one.y} r="10" fill="transparent" />
                                             <circle
-                                                cx={plotted.x}
-                                                cy={plotted.y}
+                                                cx={one.x}
+                                                cy={one.y}
                                                 r="4.5"
                                                 strokeWidth="1.5"
                                                 style={{ fill, stroke: 'var(--background)' }}
@@ -447,8 +519,8 @@ function TrajectoryChart({ points }: TrajectoryChartProps) {
                                                 the badge does not cascade forward (ADR-0018). */}
                                             {point.replacedAt !== null && (
                                                 <circle
-                                                    cx={plotted.x + 7}
-                                                    cy={plotted.y - 7}
+                                                    cx={one.x + 7}
+                                                    cy={one.y - 7}
                                                     r="3"
                                                     strokeWidth="1"
                                                     style={{ fill: 'var(--background)', stroke: CORRECTED_STROKE }}
@@ -477,15 +549,35 @@ function TrajectoryChart({ points }: TrajectoryChartProps) {
                         }}
                     >
                         <PointTooltip
-                            point={points[active.index]}
-                            previous={points[active.index - 1] ?? null}
+                            point={plotted[active.index]}
+                            previous={plotted[active.index - 1] ?? null}
                             metric={active.metric}
+                            mode={mode}
                             position={active.index + 1}
-                            total={points.length}
+                            total={plotted.length}
                         />
                     </div>
                 )}
             </div>
+
+            {presentFlags.length > 0 && (
+                <ul className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
+                    {presentFlags.map((flag) => {
+                        return (
+                            <li key={flag} className="flex items-center gap-1.5" title={FLAG_HINT[flag]}>
+                                <span aria-hidden={true} style={{ color: FLAG_STROKE[flag] }}>
+                                    {FLAG_GLYPH[flag]}
+                                </span>
+                                {FLAG_LABEL[flag]}
+                            </li>
+                        );
+                    })}
+                </ul>
+            )}
+
+            {/* The strip reads the day as it happened whatever the toggle says — it is the map, and
+                the chart above it is the territory. */}
+            <SparklineStrip points={points} selected={[...costMetrics, figure]} onSelect={selectFromStrip} />
         </section>
     );
 }

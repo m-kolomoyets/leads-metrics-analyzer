@@ -50,6 +50,14 @@ export type CostMetric = 'cpi' | 'cpr' | 'cps' | 'cpc';
 
 export const COST_METRICS: CostMetric[] = ['cpi', 'cpr', 'cps', 'cpc'];
 
+// Whether a metric is graded at all. Only the cost-per metrics have a threshold line to fall either
+// side of: money and ROI have none, so a coloured Revenue would be a verdict nobody wrote (SPEC
+// §6.6). The sparklines and the metric tiles both ask this before reaching for a colour, which is
+// what makes their plainness read as deliberate rather than as a grade that failed to arrive.
+export function hasZone(metric: DynamicsMetric): metric is CostMetric {
+    return (COST_METRICS as DynamicsMetric[]).includes(metric);
+}
+
 // Which threshold pair grades which cost: a CPI is judged against the installs line, never a shared
 // one. The Verdict Engine's waterfall picks a stage; the chart is asked about a stage outright.
 const COST_PAIR: Record<CostMetric, keyof GeoThresholds> = {
@@ -311,6 +319,36 @@ export function deltaBetween(previous: SeriesPoint | null, current: SeriesPoint)
 export function deltasFor(points: SeriesPoint[]): DynamicsDelta[] {
     return points.map((point, index) => {
         return deltaBetween(index === 0 ? null : points[index - 1], point);
+    });
+}
+
+// One delta, wearing a point's clothes: what the chart's "between reports" mode plots.
+export type DeltaPoint = SeriesPoint & { flags: DeltaFlags };
+
+// The same trajectory read as intervals rather than as totals. Still one point per push, because a
+// delta ENDS on a push and that push's stamp is where it belongs on the axis; what changes is the
+// figures, which become what moved rather than the day so far.
+//
+// Cumulative is the honest picture of the day — a Snapshot covers 00:00 to its own push time, so a
+// bad morning keeps dragging on it. Between-reports answers a different and equally true question:
+// what is this buyer buying right now. Both are correct; the toggle is what lets someone ask the
+// second one.
+//
+// The frozen thresholds ride along untouched, so an interval's CPI is graded against the ruleset the
+// buyer was working to at the time, exactly as the cumulative point beside it is (ADR-0002). The
+// flags travel with the point so the chart can name which edge case it is looking at instead of
+// drawing a gap and shrugging.
+export function deltaPointsFor(points: SeriesPoint[]): DeltaPoint[] {
+    return deltasFor(points).map((delta): DeltaPoint => {
+        return {
+            snapshotId: delta.to.snapshotId,
+            takenAt: delta.to.takenAt,
+            geo: delta.to.geo,
+            figures: { ...delta.bases, ...delta.derived },
+            thresholds: delta.to.thresholds,
+            replacedAt: delta.to.replacedAt,
+            flags: delta.flags,
+        };
     });
 }
 

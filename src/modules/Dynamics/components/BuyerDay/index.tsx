@@ -1,8 +1,11 @@
+import type { DynamicsMode } from '@/components/dynamics/types';
+import type { SeriesPoint } from '@/lib/domain/dynamics';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { buildSeries } from '@/lib/domain/dynamics';
 import { dynamicsDayQueryOptions } from '@/services/dynamics/queries';
 import { activeGeo } from '@/modules/Report/utils/activeGeo';
 import { ComparisonPanel } from '@/components/dynamics/ComparisonPanel';
+import { MetricTiles } from '@/components/dynamics/MetricTiles';
 import { TrajectoryChart } from '@/components/dynamics/TrajectoryChart';
 import { GeoTabs } from '@/components/report/GeoTabs';
 import { geoTabs } from '../../utils/frame';
@@ -11,6 +14,10 @@ import { geoTabs } from '../../utils/frame';
 // switching buyers suspends this alone — the team and buyer rows above are read from the roster and
 // must not blink while a trajectory loads.
 //
+// This is also where the chart area's empty states are decided, because only here is the length of
+// the series known. None of them is a spinner or a blank box: the screen must never look broken to
+// someone whose buyer simply has not pushed twice yet (SPEC §6.6).
+//
 // The tables that hang under the chart arrive with their own issue.
 
 type BuyerDayProps = {
@@ -18,9 +25,41 @@ type BuyerDayProps = {
     reportDate: string;
     geo: string | undefined;
     onSelectGeo: (geo: string) => void;
+    // Set in the page header and spent here, on the chart and nothing else.
+    mode: DynamicsMode;
 };
 
-function BuyerDay({ buyerId, reportDate, geo, onSelectGeo }: BuyerDayProps) {
+// Everything below the geo row, which is a chart only once there is a trajectory to draw.
+//
+// The three states are exclusive on purpose. A screen that stacks "no reports for this period" under
+// a comparison panel already saying the same thing, or that prints the day's eight figures twice at
+// two sizes, reads as broken — which is the one thing these states exist to prevent.
+function ChartArea({ points, mode }: { points: SeriesPoint[]; mode: DynamicsMode }) {
+    const only = points.length === 1 ? points[0] : null;
+
+    // Nobody pushed this market today. Said once, plainly: an empty frame reads as a page that failed
+    // rather than as a day that has not started.
+    if (points.length === 0) {
+        return <p className="text-muted-foreground text-sm">No reports for this period.</p>;
+    }
+
+    // One push is a dot, not a trajectory: the chart hides entirely and the day so far is shown at
+    // the size it deserves, graded, so a bad first report is still visibly bad. The tiles carry the
+    // comparison panel's one-push job too — same figures, larger, with the zone colouring the panel
+    // has no room for — so the panel stands down rather than repeating them above.
+    if (only !== null) {
+        return <MetricTiles point={only} />;
+    }
+
+    return (
+        <>
+            <ComparisonPanel points={points} />
+            <TrajectoryChart points={points} mode={mode} />
+        </>
+    );
+}
+
+function BuyerDay({ buyerId, reportDate, geo, onSelectGeo, mode }: BuyerDayProps) {
     const { data: snapshots } = useSuspenseQuery(dynamicsDayQueryOptions({ buyerId, reportDate }));
 
     const tabs = geoTabs(snapshots);
@@ -37,6 +76,13 @@ function BuyerDay({ buyerId, reportDate, geo, onSelectGeo }: BuyerDayProps) {
         spendByGeo[tab.geo] = tab.spendPlus;
     }
 
+    // Two different silences, and they must not be told apart wrongly. Nothing was pushed at all is
+    // the period being empty; something was pushed but no market carried spend is a buyer who has not
+    // started spending yet, which is a fact about them rather than about the day.
+    if (snapshots.length === 0) {
+        return <p className="text-muted-foreground text-sm">No reports for this period.</p>;
+    }
+
     if (!selected) {
         return <p className="text-muted-foreground text-sm">No market with spend was reported for this day.</p>;
     }
@@ -48,8 +94,7 @@ function BuyerDay({ buyerId, reportDate, geo, onSelectGeo }: BuyerDayProps) {
     return (
         <div className="flex flex-col gap-4">
             <GeoTabs geos={geos} active={selected} spendByGeo={spendByGeo} onSelect={onSelectGeo} />
-            <ComparisonPanel points={series} />
-            <TrajectoryChart points={series} />
+            <ChartArea points={series} mode={mode} />
         </div>
     );
 }

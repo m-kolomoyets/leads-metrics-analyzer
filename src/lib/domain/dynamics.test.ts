@@ -5,10 +5,13 @@ import { describe, expect, it } from 'vitest';
 import {
     buildSeries,
     compareFigures,
+    COST_METRICS,
     deltaBetween,
+    deltaPointsFor,
     deltasFor,
     deriveFrom,
     figuresFrom,
+    hasZone,
     meaningOf,
     METRIC_MEANING,
     summarize,
@@ -521,5 +524,76 @@ describe('zoneOfPoint', () => {
         const unreadable = point({ spendPlus: 90, installs: 10, regs: 0, sales: 0, linkClicks: 0, thresholds: null });
 
         expect(zoneOfPoint(unreadable, 'cpi')).toBe('neutral');
+    });
+});
+
+describe('hasZone', () => {
+    it('grades the cost-per metrics and nothing else — money and ROI have no threshold line', () => {
+        expect(COST_METRICS.every(hasZone)).toBe(true);
+        expect(hasZone('spend')).toBe(false);
+        expect(hasZone('revenue')).toBe(false);
+        expect(hasZone('profit')).toBe(false);
+        expect(hasZone('roi')).toBe(false);
+    });
+});
+
+describe('deltaPointsFor', () => {
+    const series = [
+        point({ id: 'a', takenAt: '2026-08-26T09:00:00Z', spendPlus: 100, revenue: 120, installs: 10 }),
+        point({ id: 'b', takenAt: '2026-08-26T12:00:00Z', spendPlus: 300, revenue: 500, installs: 30 }),
+    ];
+
+    it('keeps one point per push, stamped and identified by the push the interval ended on', () => {
+        const deltas = deltaPointsFor(series);
+
+        expect(deltas).toHaveLength(2);
+        expect(deltas[1]).toMatchObject({ snapshotId: 'b', takenAt: '2026-08-26T12:00:00Z', geo: 'KR' });
+    });
+
+    it('plots what moved rather than the day so far, with every derived figure rebuilt from it', () => {
+        const [, second] = deltaPointsFor(series);
+
+        expect(second.figures.spendPlus).toBe(200);
+        expect(second.figures.installs).toBe(20);
+        // 200 / 20, not (300/30) and not (300/30 - 100/10).
+        expect(second.figures.cpi).toBe(10);
+    });
+
+    it('makes the first push of the day the whole day so far, and says so', () => {
+        const [first] = deltaPointsFor(series);
+
+        expect(first.figures.spendPlus).toBe(100);
+        expect(first.flags.firstOfDay).toBe(true);
+    });
+
+    it('carries the frozen thresholds through, so an interval grades against the buyer own ruleset', () => {
+        expect(deltaPointsFor(series)[1].thresholds).toBe(THRESHOLDS);
+    });
+
+    it('leaves a restated interval unmeasurable rather than plotting a clamped remainder as a cost', () => {
+        const restated = [
+            series[0],
+            point({ id: 'c', takenAt: '2026-08-26T12:00:00Z', spendPlus: 40, revenue: 60, installs: 4 }),
+        ];
+        const [, second] = deltaPointsFor(restated);
+
+        expect(second.flags.corrected).toBe(true);
+        expect(second.figures.cpi).toBeNull();
+        expect(second.figures.roi).toBeNull();
+    });
+
+    it('flags spend that bought no installs and leaves its CPI null, never Infinity', () => {
+        const dry = [
+            series[0],
+            point({ id: 'd', takenAt: '2026-08-26T12:00:00Z', spendPlus: 250, revenue: 120, installs: 10 }),
+        ];
+        const [, second] = deltaPointsFor(dry);
+
+        expect(second.flags.spendWithoutConversions).toBe(true);
+        expect(second.figures.cpi).toBeNull();
+    });
+
+    it('draws nothing from an empty series', () => {
+        expect(deltaPointsFor([])).toEqual([]);
     });
 });
