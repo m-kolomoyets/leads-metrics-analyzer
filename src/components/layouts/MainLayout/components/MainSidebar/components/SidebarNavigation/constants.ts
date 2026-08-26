@@ -1,7 +1,13 @@
 import type { LinkProps } from '@tanstack/react-router';
 import type { LucideIcon } from 'lucide-react';
 import type { RolePermissionsKeys } from '@/lib/utils/auth/permissions';
-import { ChartColumnBigIcon, LayoutDashboardIcon, ShieldUserIcon, SlidersHorizontalIcon } from 'lucide-react';
+import {
+    ChartColumnBigIcon,
+    LayoutDashboardIcon,
+    ShieldUserIcon,
+    SlidersHorizontalIcon,
+    TrendingUpIcon,
+} from 'lucide-react';
 
 type SidebarNavigationLinkItem = {
     label: string;
@@ -17,6 +23,14 @@ export const SIDEBAR_NAVIGATION_LINK_LIST: SidebarNavigationLinkItem[] = [
         linkProps: {
             to: '/dashboard',
         },
+    },
+    {
+        label: 'Dynamics',
+        Icon: TrendingUpIcon,
+        linkProps: {
+            to: '/dashboard/dynamics',
+        },
+        rolePermissionKey: 'report.view',
     },
     {
         label: 'Analyze',

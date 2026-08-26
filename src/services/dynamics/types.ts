@@ -11,5 +11,14 @@ export type DynamicsRosterUser = {
     id: string;
     nickname: string;
     role: UserRole;
+    // The team the person sits on now — the frame's first level (SPEC §6.1). Null for the Head, who
+    // belongs to no team and still needs a tab of their own.
+    teamId: string | null;
+    teamName: string | null;
     lastTakenAt: string | null;
+    // Σ of that buyer's Frozen Geo Rollup profits from their latest active push of the day — the
+    // figure the tab colours from (SPEC §4.4). Already commission-inclusive and already carrying
+    // untagged revenue (ADR-0003), so §4.4's "excluded traffic" caveat does not apply here. Null when
+    // there is no push today, or when the push froze no rollup: no total to colour, not a zero.
+    totalProfit: number | null;
 };

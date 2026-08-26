@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { hoursSince, kyivDay, kyivHour } from './kyivDay';
+import { hoursSince, kyivClock, kyivDay, kyivHour } from './kyivDay';
 
 // The zone is hardcoded, so every one of these must hold with the process pretending to sit
 // anywhere else on the planet (SPEC I4). `TZ` moves Node's *local* zone; the helpers must not care.
@@ -78,5 +78,22 @@ describe('hoursSince', () => {
 
     it('is negative for an instant in the future', () => {
         expect(hoursSince(new Date('2026-08-26T13:00:00Z'), new Date('2026-08-26T12:00:00Z'))).toBe(-1);
+    });
+});
+
+describe('kyivClock', () => {
+    it('reads the Kyiv wall clock, not the process one', () => {
+        // 09:04 UTC is 12:04 in Kyiv in August (UTC+3) — the header's own example.
+        const instant = new Date('2026-08-26T09:04:00Z');
+
+        for (const tz of ['UTC', 'America/Los_Angeles', 'Asia/Kolkata']) {
+            inZone(tz, () => {
+                expect(kyivClock(instant)).toBe('12:04');
+            });
+        }
+    });
+
+    it('pads to a fixed HH:mm so the header does not jitter in width', () => {
+        expect(kyivClock(new Date('2026-08-26T04:07:00Z'))).toBe('07:07');
     });
 });

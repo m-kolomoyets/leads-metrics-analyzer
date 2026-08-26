@@ -22,5 +22,12 @@ export const visibleBuyerFilter = (scope: VisibilityScope, buyerId: string): SQL
 // trajectory. Filters on `report_date`, never `taken_at` (ADR-0016) — a Monday day pushed after
 // midnight still belongs to Monday.
 export const dynamicsDayFilter = (scope: VisibilityScope, buyerId: string, reportDate: string): SQL | undefined => {
-    return and(listSnapshotsFilter(scope), eq(snapshot.createdByUserId, buyerId), eq(snapshot.reportDate, reportDate));
+    return and(dynamicsDayTotalsFilter(scope, reportDate), eq(snapshot.createdByUserId, buyerId));
+};
+
+// Every visible buyer's active Snapshots for one report date — the tab row's half of the same read.
+// The tabs need each buyer's latest push and its total, and one day-wide query answers for all of
+// them at once; narrowing per buyer would cost a round trip per tab.
+export const dynamicsDayTotalsFilter = (scope: VisibilityScope, reportDate: string): SQL | undefined => {
+    return and(listSnapshotsFilter(scope), eq(snapshot.reportDate, reportDate));
 };

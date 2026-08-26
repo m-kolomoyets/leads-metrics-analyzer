@@ -20,6 +20,7 @@ import { Route as AuthenticatedPresetsIndexRouteImport } from './routes/_authent
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard/index'
 import { Route as AuthenticatedAnalyzeIndexRouteImport } from './routes/_authenticated/analyze/index'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
+import { Route as AuthenticatedDashboardDynamicsRouteImport } from './routes/_authenticated/dashboard/dynamics'
 import { Route as AuthenticatedDashboardArchiveRouteImport } from './routes/_authenticated/dashboard/archive'
 import { Route as AuthenticatedDashboardReportSnapshotIdRouteImport } from './routes/_authenticated/dashboard/report/$snapshotId'
 
@@ -81,6 +82,12 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   path: '/admin/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedDashboardDynamicsRoute =
+  AuthenticatedDashboardDynamicsRouteImport.update({
+    id: '/dashboard/dynamics',
+    path: '/dashboard/dynamics',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDashboardArchiveRoute =
   AuthenticatedDashboardArchiveRouteImport.update({
     id: '/dashboard/archive',
@@ -97,6 +104,7 @@ const AuthenticatedDashboardReportSnapshotIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof PublicIndexRoute
   '/dashboard/archive': typeof AuthenticatedDashboardArchiveRoute
+  '/dashboard/dynamics': typeof AuthenticatedDashboardDynamicsRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/analyze/': typeof AuthenticatedAnalyzeIndexRoute
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
@@ -109,6 +117,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof PublicIndexRoute
   '/dashboard/archive': typeof AuthenticatedDashboardArchiveRoute
+  '/dashboard/dynamics': typeof AuthenticatedDashboardDynamicsRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/analyze': typeof AuthenticatedAnalyzeIndexRoute
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
@@ -125,6 +134,7 @@ export interface FileRoutesById {
   '/_unauthenticated': typeof UnauthenticatedRouteRouteWithChildren
   '/_public/': typeof PublicIndexRoute
   '/_authenticated/dashboard/archive': typeof AuthenticatedDashboardArchiveRoute
+  '/_authenticated/dashboard/dynamics': typeof AuthenticatedDashboardDynamicsRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/analyze/': typeof AuthenticatedAnalyzeIndexRoute
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
@@ -139,6 +149,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/dashboard/archive'
+    | '/dashboard/dynamics'
     | '/admin/'
     | '/analyze/'
     | '/dashboard/'
@@ -151,6 +162,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/dashboard/archive'
+    | '/dashboard/dynamics'
     | '/admin'
     | '/analyze'
     | '/dashboard'
@@ -166,6 +178,7 @@ export interface FileRouteTypes {
     | '/_unauthenticated'
     | '/_public/'
     | '/_authenticated/dashboard/archive'
+    | '/_authenticated/dashboard/dynamics'
     | '/_authenticated/admin/'
     | '/_authenticated/analyze/'
     | '/_authenticated/dashboard/'
@@ -261,6 +274,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/dashboard/dynamics': {
+      id: '/_authenticated/dashboard/dynamics'
+      path: '/dashboard/dynamics'
+      fullPath: '/dashboard/dynamics'
+      preLoaderRoute: typeof AuthenticatedDashboardDynamicsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard/archive': {
       id: '/_authenticated/dashboard/archive'
       path: '/dashboard/archive'
@@ -280,6 +300,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardArchiveRoute: typeof AuthenticatedDashboardArchiveRoute
+  AuthenticatedDashboardDynamicsRoute: typeof AuthenticatedDashboardDynamicsRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
   AuthenticatedAnalyzeIndexRoute: typeof AuthenticatedAnalyzeIndexRoute
   AuthenticatedDashboardIndexRoute: typeof AuthenticatedDashboardIndexRoute
@@ -289,6 +310,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardArchiveRoute: AuthenticatedDashboardArchiveRoute,
+  AuthenticatedDashboardDynamicsRoute: AuthenticatedDashboardDynamicsRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   AuthenticatedAnalyzeIndexRoute: AuthenticatedAnalyzeIndexRoute,
   AuthenticatedDashboardIndexRoute: AuthenticatedDashboardIndexRoute,

@@ -4,18 +4,19 @@ import type { DynamicsSnapshot } from '@/lib/domain/dynamics';
 import type { MeData } from '@/services/auth/types';
 import type { DynamicsRosterUser } from './types';
 import { createServerFn } from '@tanstack/react-start';
-import { and, eq, inArray, max } from 'drizzle-orm';
+import { and, eq, inArray, sum } from 'drizzle-orm';
 import { assertDimension } from '@/lib/auth/denial';
 import { requireUser } from '@/lib/auth/guards';
 import { scopeFor } from '@/lib/auth/scope';
 import { USER_ROLES } from '@/lib/constants';
 import { db } from '@/lib/db';
-import { appliedRulesetGeo, snapshot, snapshotGeo, user } from '@/lib/db/schema';
+import { appliedRulesetGeo, snapshot, snapshotGeo, team, user } from '@/lib/db/schema';
 import { SNAPSHOT_NOT_FOUND } from '@/services/snapshots/constants';
-import { matchesNoRows, rosterSnapshotJoinOn, userRowFilter } from '@/services/snapshots/visibility';
+import { matchesNoRows, userRowFilter } from '@/services/snapshots/visibility';
 import { dynamicsDayInputSchema, dynamicsRosterInputSchema } from './schemas';
 import { toDynamicsSnapshots } from './toDay';
-import { dynamicsDayFilter, visibleBuyerFilter } from './visibility';
+import { toRoster } from './toRoster';
+import { dynamicsDayFilter, dynamicsDayTotalsFilter, visibleBuyerFilter } from './visibility';
 
 // The two reads behind the Dynamics page (ADR-0010, ADR-0017). Both go through `scopeFor(viewer)`
 // (ADR-0007) — no hand-rolled role check — and neither touches a `snapshot_fact` row: a whole day is
@@ -138,8 +139,8 @@ export const listDayFn = createServerFn({ method: 'GET' })
     });
 
 // The tab row's companion read: the buyers the viewer may see, each with their latest active push
-// FOR THAT DAY, so the tabs' missing/stale states are decidable without fetching every buyer's
-// trajectory. `lastTakenAt` null means "has not pushed today".
+// FOR THAT DAY and the total that push froze, so the tabs' missing/stale/loss/profit states are
+// decidable without fetching every buyer's trajectory (SPEC §6.2). Two queries, never one per tab.
 export const listDayRosterFn = createServerFn({ method: 'GET' })
     .inputValidator(dynamicsRosterInputSchema)
     .handler(async ({ data }): Promise<DynamicsRosterUser[]> => {
@@ -153,28 +154,42 @@ export const listDayRosterFn = createServerFn({ method: 'GET' })
         }
 
         // Disabled and still-invited users are excluded: an offboarded person must not sit
-        // permanently red in the tab row (spec story 41).
-        const rows = await db
-            .select({
-                id: user.id,
-                nickname: user.nickname,
-                role: user.role,
-                lastTakenAt: max(snapshot.takenAt),
-            })
-            .from(user)
-            // The day and lifecycle filters ride in the JOIN, not the WHERE: a buyer who has not
-            // pushed today must still appear as a tab reading "missing", not vanish from the row.
-            .leftJoin(snapshot, rosterSnapshotJoinOn(data.reportDate))
-            .where(and(eq(user.status, 'active'), inArray(user.role, CAMPAIGN_ROLES), userRowFilter(scope)))
-            .groupBy(user.id, user.nickname, user.role)
-            .orderBy(user.nickname);
+        // permanently red in the tab row (spec story 41). The team is joined for its name only — the
+        // frame's first level is a label, never a second access check (ADR-0007).
+        const [users, snapshots] = await Promise.all([
+            db
+                .select({
+                    id: user.id,
+                    nickname: user.nickname,
+                    role: user.role,
+                    teamId: user.teamId,
+                    teamName: team.name,
+                })
+                .from(user)
+                .leftJoin(team, eq(team.id, user.teamId))
+                .where(and(eq(user.status, 'active'), inArray(user.role, CAMPAIGN_ROLES), userRowFilter(scope)))
+                .orderBy(user.nickname),
+            // One row per active Snapshot of the day, its Frozen Geo Rollups already summed by the
+            // database. `leftJoin` so a push that froze no rollup still reports a `taken_at`: it is a
+            // push with no total, which the tabs render differently from no push at all.
+            db
+                .select({
+                    createdByUserId: snapshot.createdByUserId,
+                    takenAt: snapshot.takenAt,
+                    // `sum` returns text (or null when the push froze no rollup); the cast is done
+                    // here rather than with `mapWith`, which would turn that null into a zero.
+                    totalProfit: sum(snapshotGeo.profit),
+                })
+                .from(snapshot)
+                .leftJoin(snapshotGeo, eq(snapshotGeo.snapshotId, snapshot.id))
+                .where(dynamicsDayTotalsFilter(scope, data.reportDate))
+                .groupBy(snapshot.id, snapshot.createdByUserId, snapshot.takenAt),
+        ]);
 
-        return rows.map((row): DynamicsRosterUser => {
-            return {
-                id: row.id,
-                nickname: row.nickname,
-                role: row.role,
-                lastTakenAt: row.lastTakenAt?.toISOString() ?? null,
-            };
-        });
+        return toRoster(
+            users,
+            snapshots.map((row) => {
+                return { ...row, totalProfit: row.totalProfit === null ? null : Number(row.totalProfit) };
+            })
+        );
     });

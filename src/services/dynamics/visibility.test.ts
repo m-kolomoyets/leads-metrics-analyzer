@@ -3,7 +3,7 @@ import type { Viewer } from '@/lib/auth/scope';
 import { PgDialect } from 'drizzle-orm/pg-core';
 import { describe, expect, it } from 'vitest';
 import { scopeFor } from '@/lib/auth/scope';
-import { dynamicsDayFilter, visibleBuyerFilter } from './visibility';
+import { dynamicsDayFilter, dynamicsDayTotalsFilter, visibleBuyerFilter } from './visibility';
 
 // Renders a clause to SQL text with its parameters inlined, so a test can assert on the predicate
 // rather than on `$1`. No connection is opened — `PgDialect` is pure string building.
@@ -81,6 +81,30 @@ describe('dynamicsDayFilter', () => {
         );
         expect(render(dynamicsDayFilter(scopeFor(lead), 'buyer-2', '2026-08-26'))).toContain(
             '"snapshot"."team_id" = team-1'
+        );
+    });
+});
+
+// The tab row reads every visible buyer's day at once, so its filter must narrow on exactly the two
+// axes the single-buyer read does, minus the buyer.
+describe('dynamicsDayTotalsFilter', () => {
+    it('keeps the lifecycle and date filters and pins nobody in particular', () => {
+        const clause = render(dynamicsDayTotalsFilter(scopeFor(head), '2026-08-26'));
+
+        expect(clause).toContain('"snapshot"."status" = active');
+        expect(clause).toContain('"snapshot"."report_date" = 2026-08-26');
+        expect(clause).not.toContain('created_by_user_id');
+    });
+
+    it('still holds a lead to their own team', () => {
+        expect(render(dynamicsDayTotalsFilter(scopeFor(lead), '2026-08-26'))).toContain(
+            '"snapshot"."team_id" = team-1'
+        );
+    });
+
+    it('still holds a buyer to their own pushes', () => {
+        expect(render(dynamicsDayTotalsFilter(scopeFor(buyer), '2026-08-26'))).toContain(
+            '"snapshot"."created_by_user_id" = buyer-1'
         );
     });
 });

@@ -25,6 +25,13 @@ const hourFormatter = new Intl.DateTimeFormat('en-US', {
     hourCycle: 'h23',
 });
 
+const clockFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: KYIV_TIME_ZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+});
+
 function partOf(parts: Intl.DateTimeFormatPart[], type: Intl.DateTimeFormatPartTypes): string {
     const part = parts.find((candidate) => {
         return candidate.type === type;
@@ -50,4 +57,11 @@ export function kyivHour(now: Date = new Date()): number {
 // freshness question ("is the latest push older than three hours"). Negative for a future instant.
 export function hoursSince(instant: Date, now: Date = new Date()): number {
     return (now.getTime() - instant.getTime()) / HOUR_IN_MS;
+}
+
+// The wall-clock time in Europe/Kyiv as `HH:mm` — the header's "data as of 12:04". Same reason as
+// the day: a buyer reading from Warsaw and their lead reading from Kyiv must see one clock.
+export function kyivClock(instant: Date): string {
+    const parts = clockFormatter.formatToParts(instant);
+    return `${partOf(parts, 'hour')}:${partOf(parts, 'minute')}`;
 }
