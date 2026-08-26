@@ -12,7 +12,12 @@ function ToggleGroup({ className, ...props }: ToggleGroupProps) {
     return (
         <ToggleGroupPrimitive
             data-slot="toggle-group"
-            className={cn('border-border flex w-fit items-center gap-0.5 rounded-lg border p-0.5', className)}
+            // A tinted tray, not a bare outline: dropped on a glass panel an outline-only group read
+            // as four floating chips, and the point of the tray is that they are one control.
+            className={cn(
+                'border-border bg-background/40 flex w-fit items-center gap-0.5 rounded-lg border p-0.5',
+                className
+            )}
             {...props}
         />
     );
