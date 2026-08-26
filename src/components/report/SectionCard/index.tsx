@@ -14,6 +14,9 @@ const TONE_CLASS: Record<SectionTone, string> = {
 type SectionCardProps = {
     // Optional lead glyph + uppercase dim caption (reference `S.h`). Omit `title` for a bare tinted card.
     title?: ReactNode;
+    // Accessible name for a card that carries no visible heading — without it a title-less section is
+    // an unnamed landmark in the a11y tree.
+    label?: string;
     tone?: SectionTone;
     // Right-aligned header slot (copy buttons, preset controls).
     actions?: ReactNode;
@@ -23,9 +26,9 @@ type SectionCardProps = {
 
 // The reference card: a colour-tinted glass panel (glassTint) with the small uppercase letter-spaced
 // heading. Every analysis section is one of these, so the accent + glow read as one system.
-function SectionCard({ title, tone = 'blue', actions, className, children }: SectionCardProps) {
+function SectionCard({ title, label, tone = 'blue', actions, className, children }: SectionCardProps) {
     return (
-        <section className={cn('rounded-2xl p-4', TONE_CLASS[tone], className)}>
+        <section className={cn('rounded-2xl p-4', TONE_CLASS[tone], className)} aria-label={label}>
             {(title || actions) && (
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                     {title && (

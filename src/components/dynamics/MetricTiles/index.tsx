@@ -3,6 +3,7 @@ import type { Zone } from '@/lib/domain/types';
 import { hasZone, thresholdPairOf, zoneOfPoint } from '@/lib/domain/dynamics';
 import { cn } from '@/lib/utils/cn';
 import { ZONE_CARD_CLASS, ZONE_TEXT_CLASS } from '@/components/report/constants';
+import { SectionCard } from '@/components/report/SectionCard';
 import { cost } from '@/components/report/utils/format';
 import { roiZone } from '@/components/report/utils/zones';
 import { METRIC_FORMAT, METRIC_LABEL, metricValue } from '../utils/metrics';
@@ -39,7 +40,9 @@ type MetricTilesProps = {
 
 function MetricTiles({ point }: MetricTilesProps) {
     return (
-        <section className="border-border flex flex-col gap-3 rounded-lg border p-4" aria-label="The day so far">
+        // The same tinted glass panel every analysis section wears (SectionCard): a bare bordered box
+        // read as a hole in the page next to the tables under it.
+        <SectionCard label="The day so far" className="flex flex-col gap-3">
             <p className="text-muted-foreground text-xs">
                 first report today — one push is not yet a trajectory, so there is no chart to draw
             </p>
@@ -73,7 +76,7 @@ function MetricTiles({ point }: MetricTilesProps) {
                     );
                 })}
             </dl>
-        </section>
+        </SectionCard>
     );
 }
 
