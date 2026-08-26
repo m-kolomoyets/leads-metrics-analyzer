@@ -1,6 +1,7 @@
 import type { ChangeEvent } from 'react';
 import { cn } from '@/lib/utils/cn';
 import { Input } from '@/components/ui/Input';
+import { ZoneSign } from '@/components/ZoneSign';
 
 // The whole band as ONE control: ● < [8] ● ≤ [14] < ●. The two bounds are not two settings that
 // happen to sit near each other — they are the single line the reader draws through a metric, and
@@ -11,53 +12,8 @@ import { Input } from '@/components/ui/Input';
 // fifteen times, and the words were only ever standing in for a colour the app already speaks in
 // colour everywhere else. The dot says it in one glyph, the comparison sign beside it keeps the
 // direction, and the name survives as the dot's hover title and in each field's accessible name.
-
-const DOT_CLASS = {
-    green: 'bg-zone-green',
-    // The rail's own yellow, not the generic warning tone: the same band named twice in two colours
-    // reads as two different things.
-    yellow: 'bg-zone-yellow',
-    red: 'bg-zone-red',
-} as const;
-
-// The sign carries the same colour as the dot it belongs to: at this size a muted "<" beside a
-// coloured dot read as a stray piece of punctuation rather than part of the mark.
-const SIGN_CLASS = {
-    green: 'text-zone-green',
-    yellow: 'text-zone-yellow',
-    red: 'text-zone-red',
-} as const;
-
-type Zone = keyof typeof DOT_CLASS;
-
-type ZoneSignProps = {
-    zone: Zone;
-    // The zone's name in the reader's language. Not drawn — it is the hover title, for the reader who
-    // has to check which colour they are looking at.
-    label: string;
-    sign: string;
-    // Which side the comparison falls on, following how the bound is said: "green < 8" puts the sign
-    // after the zone, "8 < red" puts it before.
-    signFirst?: boolean;
-    className?: string;
-};
-
-// A dot and its comparison as one object, so the pair never wraps apart.
-function ZoneSign({ zone, label, sign, signFirst = false, className }: ZoneSignProps) {
-    const dot = <span aria-hidden={true} className={cn('size-3 shrink-0 rounded-full', DOT_CLASS[zone])} />;
-    const comparison = (
-        <span aria-hidden={true} className={cn('text-xs', SIGN_CLASS[zone])}>
-            {sign}
-        </span>
-    );
-
-    return (
-        <span className={cn('flex items-center gap-1 select-none', className)} title={label}>
-            {signFirst ? comparison : dot}
-            {signFirst ? dot : comparison}
-        </span>
-    );
-}
+// The dot+sign pair itself lives in `components/ZoneSign`, shared with the read-only band the
+// report prints.
 
 type ZoneRangeInputProps = {
     idPrefix: string;

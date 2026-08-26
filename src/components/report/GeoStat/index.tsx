@@ -7,9 +7,9 @@ import { cn } from '@/lib/utils/cn';
 import { Figure } from '@/components/Figure';
 import { ZONE_CARD_CLASS, ZONE_TEXT_CLASS } from '@/components/report/constants';
 import { DASH, flagEmoji, pct, percent, ratioPct, usd, usdSigned } from '@/components/report/utils/format';
-import { ui } from '@/components/report/utils/i18n';
+import { ui, zoneLabel } from '@/components/report/utils/i18n';
 import { roiZone } from '@/components/report/utils/zones';
-import { ZoneMeter } from '@/components/ZoneMeter';
+import { ZoneBands } from '@/components/ZoneBands';
 
 type GeoStatProps = {
     geo: string;
@@ -151,25 +151,29 @@ function GeoStat({ geo, rollup, thresholds, waste, wasteZone, action, locale }: 
                         className={ZONE_TEXT_CLASS[wasteTone]}
                     />
 
-                    {/* The share and its band are one reading, so they occupy one column: the label,
-                        then the same rail the trajectory tooltip draws. The rail's own chip carries the
-                        figure, so printing "0.3 %" above it as well would say it twice. Without a band
-                        (no preset) there is nothing to draw against and the number stands alone. */}
-                    <div className="flex min-w-56 flex-1 flex-col">
-                        <span className="text-muted-foreground text-xs tracking-widest uppercase">
-                            {ui('wastePctOfSpend', locale)}
-                        </span>
-                        {wasteZone ? (
-                            <ZoneMeter
-                                value={wastePct}
+                    {/* The share is a judgement, so it is written big and in its zone's colour —
+                        the panel's border says the same thing from the outside and the figure is
+                        what the reader actually lands on. The band beside it is the plan that figure
+                        was graded against, written in the same dots the zone editors use and sat on
+                        the same line, pushed to the panel's right edge so the figure and its plan
+                        bracket the row rather than crowding each other. */}
+                    <div className="flex min-w-56 flex-1 flex-wrap items-end gap-x-4 gap-y-1">
+                        <Figure
+                            label={ui('wastePctOfSpend', locale)}
+                            value={wastePct === null ? DASH : percent(wastePct)}
+                            size="lg"
+                            className={wastePct === null ? 'text-muted-foreground' : ZONE_TEXT_CLASS[wasteTone]}
+                        />
+                        {wasteZone && (
+                            <ZoneBands
                                 greenBelow={wasteZone.gy}
                                 redAbove={wasteZone.yr}
                                 format={ratioPct}
+                                greenLabel={zoneLabel('green', locale)}
+                                yellowLabel={zoneLabel('yellow', locale)}
+                                redLabel={zoneLabel('red', locale)}
+                                className="ml-auto pb-1"
                             />
-                        ) : (
-                            <span className={cn('text-xl font-semibold tabular-nums', ZONE_TEXT_CLASS[wasteTone])}>
-                                {percent(wastePct)}
-                            </span>
                         )}
                     </div>
                 </div>
