@@ -1,35 +1,31 @@
 import { Link } from '@tanstack/react-router';
-import { useTheme } from '@/context/ThemeContext';
 import { LoginForm } from '@/components/LoginForm';
 
-function Login() {
-    const { isDarkTheme } = useTheme();
+// The product's own name and its one-line reason for existing, rather than the studio's mark: this
+// is the first screen a buyer meets, and "Adjoin" is what they are signing in to. The line says the
+// join the app performs — Facebook knows what was spent, Keitaro what was earned, and neither side
+// answers the question alone (CONTEXT.md).
+const WORDMARK = 'Adjoin';
+const TAGLINE = 'Where ad spend meets what it earned';
 
+function Login() {
     return (
         <div className="grid h-full lg:grid-cols-2">
-            <div className="relative hidden bg-black dark:bg-white lg:flex flex-col justify-between p-10">
-                <Link className="outline-hidden focus-visible:outline-ring rounded-md w-fit" to="/login">
-                    <img
-                        className="h-7 w-fi"
-                        src={isDarkTheme ? '/images/logo-black.svg' : '/images/logo-white.svg'}
-                        alt="Phenomenon logo"
-                    />
+            <div className="relative hidden flex-col justify-between bg-black p-10 lg:flex dark:bg-white">
+                <Link className="focus-visible:outline-ring w-fit rounded-md outline-hidden" to="/login">
+                    <span className="text-background text-2xl font-semibold tracking-tight">{WORDMARK}</span>
                 </Link>
-                <h3 className="text-background text-lg">Where big ideas meet bold execution</h3>
+                <h3 className="text-background text-lg">{TAGLINE}</h3>
             </div>
             <div className="flex flex-col gap-4 p-6 md:p-10">
-                <div className="flex flex-col justify-center items-center gap-2 lg:hidden">
+                <div className="flex flex-col items-center justify-center gap-2 lg:hidden">
                     <Link
                         to="/login"
-                        className="outline-hidden focus-visible:outline-ring flex items-center gap-2 font-medium rounded-md w-fit"
+                        className="focus-visible:outline-ring w-fit rounded-md font-medium outline-hidden"
                     >
-                        <img
-                            className="h-7 w-fit"
-                            src={isDarkTheme ? '/images/logo-white.svg' : '/images/logo-black.svg'}
-                            alt="Phenomenon logo"
-                        />
+                        <span className="text-2xl font-semibold tracking-tight">{WORDMARK}</span>
                     </Link>
-                    <h3 className="text-md">Where big ideas meet bold execution</h3>
+                    <h3 className="text-md text-muted-foreground">{TAGLINE}</h3>
                 </div>
                 <div className="flex flex-1 items-center justify-center">
                     <LoginForm />
