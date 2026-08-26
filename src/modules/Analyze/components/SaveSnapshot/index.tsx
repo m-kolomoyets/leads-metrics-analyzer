@@ -7,9 +7,9 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { createSnapshotMutationOptions } from '@/services/snapshots/queries';
+import { DatePicker } from '@/components/DatePicker';
 import { ui } from '@/components/report/utils/i18n';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { defaultReportDate, planSnapshot } from '../../utils/toSnapshot';
 
@@ -108,15 +108,13 @@ function SaveSnapshot({
         <div className="flex flex-wrap items-end gap-3">
             <div className="flex flex-col gap-1">
                 <Label htmlFor="snap-date">{ui('reportDate', locale)}</Label>
-                <Input
+                <DatePicker
                     id="snap-date"
-                    type="date"
-                    className="w-44"
+                    className="w-52 justify-start font-normal"
+                    locale={locale}
                     disabled={isPending}
                     value={reportDate}
-                    onChange={(event) => {
-                        setPicked(event.target.value);
-                    }}
+                    onChange={setPicked}
                 />
             </div>
             <Button type="button" size="sm" disabled={!plan.ok || isPending} onClick={handleSave}>

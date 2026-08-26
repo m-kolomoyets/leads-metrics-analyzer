@@ -1,7 +1,7 @@
-// Bridge between the URL's plain calendar dates (YYYY-MM-DD, no zone) and the `Date` objects the day
-// grid selects. Both directions go through the LOCAL calendar — `new Date('2026-08-03')` parses as
-// UTC midnight and reads as the 2nd for anyone west of Greenwich, which would silently shift a
-// shared link by a day.
+// Bridge between plain calendar dates (YYYY-MM-DD, no zone) and the `Date` objects the day grid
+// selects. Both directions go through the LOCAL calendar — `new Date('2026-08-03')` parses as UTC
+// midnight and reads as the 2nd for anyone west of Greenwich, which would silently shift a shared
+// link, or a stamped report date, by a day.
 
 export function parseISODate(value: string | undefined): Date | undefined {
     if (!value) {

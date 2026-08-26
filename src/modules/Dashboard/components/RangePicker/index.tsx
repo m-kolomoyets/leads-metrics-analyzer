@@ -1,13 +1,13 @@
-import type { DateRange, DayPickerLocale } from 'react-day-picker';
+import type { DateRange } from 'react-day-picker';
 import type { Locale } from '@/components/report/utils/i18n';
 import type { RangeToken, ReportRange } from '../../types';
 import { CalendarIcon } from 'lucide-react';
-import { enGB, uk } from 'react-day-picker/locale';
+import { parseISODate, toISODate } from '@/lib/utils/isoDate';
+import { DAY_PICKER_LOCALE } from '@/components/report/utils/dayPickerLocale';
 import { ui } from '@/components/report/utils/i18n';
 import { Button } from '@/components/ui/Button';
 import { Calendar } from '@/components/ui/Calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover';
-import { parseISODate, toISODate } from './utils/dates';
 import { RANGE_TOKENS } from '../../types';
 
 type RangePickerProps = {
@@ -26,10 +26,6 @@ const TOKEN_LABEL: Record<RangeToken, string> = {
     all: 'rangeAll',
     custom: 'rangeCustom',
 };
-
-// The day grid speaks its own locale bag (month and weekday names). `en-GB` rather than `en-US`: the
-// team reads a Monday-first calendar in both languages.
-const DAY_PICKER_LOCALE: Record<Locale, Partial<DayPickerLocale>> = { uk, en: enGB };
 
 // The trigger reads as one window — "3 Aug — 9 Aug" — rather than two inputs, so a half-picked range
 // is visibly half-picked.

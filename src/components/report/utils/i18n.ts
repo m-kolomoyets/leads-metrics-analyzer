@@ -140,6 +140,7 @@ const UI: Record<Locale, Record<string, string>> = {
         rangeFrom: 'з',
         rangeTo: 'по',
         rangePick: 'Обрати дати',
+        datePick: 'Обрати дату',
         rangeClear: 'Скинути',
     },
     en: {
@@ -255,6 +256,7 @@ const UI: Record<Locale, Record<string, string>> = {
         rangeFrom: 'from',
         rangeTo: 'to',
         rangePick: 'Pick dates',
+        datePick: 'Pick a date',
         rangeClear: 'Clear',
     },
 };
