@@ -31,6 +31,15 @@ function SalesBlock({ campaigns, locale, copiedKey, onCopy, copyKey }: SalesBloc
             return campaign.totals;
         })
     );
+    // One line per metric, each label+value kept as an unbreakable unit — the line wraps between
+    // metrics instead of splitting "Sales 6" across two rows.
+    const stats = [
+        { label: 'Spend', value: usd(stat.spendPlus) },
+        { label: 'Clicks', value: int(stat.linkClicks) },
+        { label: 'Inst', value: int(stat.installs) },
+        { label: 'Reg', value: int(stat.regs) },
+        { label: 'Sales', value: int(stat.sales) },
+    ];
 
     return (
         <Card className={cn('min-w-48 flex-1 gap-3 p-3', SALES_CARD_CLASS)}>
@@ -42,10 +51,16 @@ function SalesBlock({ campaigns, locale, copiedKey, onCopy, copyKey }: SalesBloc
                 className={SALES_CHIP_CLASS}
             />
 
-            <p className="text-muted-foreground text-xs leading-relaxed tabular-nums">
-                Spend {usd(stat.spendPlus)} · Clicks {int(stat.linkClicks)} · Inst {int(stat.installs)} · Reg{' '}
-                {int(stat.regs)} · Sales {int(stat.sales)}
-            </p>
+            <ul className="text-muted-foreground flex flex-wrap gap-x-2 gap-y-0.5 text-xs leading-relaxed tabular-nums">
+                {stats.map((entry, index) => {
+                    return (
+                        <li key={entry.label} className="whitespace-nowrap">
+                            {entry.label} <span className="text-foreground/80">{entry.value}</span>
+                            {index < stats.length - 1 ? <span aria-hidden="true"> ·</span> : null}
+                        </li>
+                    );
+                })}
+            </ul>
 
             <textarea
                 readOnly
