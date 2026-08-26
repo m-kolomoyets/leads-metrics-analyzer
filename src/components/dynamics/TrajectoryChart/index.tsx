@@ -3,10 +3,10 @@ import type { DynamicsMode } from '../types';
 import type { ZoneSeriesApi } from '../ZoneSeries/types';
 import type { DeltaFlag } from './constants';
 import type { ActivePoint, ChartMetric, FigureMetric } from './types';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { ColorType, CrosshairMode, LineStyle } from 'lightweight-charts';
-import { COST_METRICS, deltaPointsFor, deltasFor, hasZone } from '@/lib/domain/dynamics';
+import { COST_METRICS, deltaPointsFor, deltasFor, hasZone, zoneOfPoint } from '@/lib/domain/dynamics';
 import { cn } from '@/lib/utils/cn';
 import { kyivClock } from '@/lib/utils/kyivDay';
 import { SectionCard } from '@/components/report/SectionCard';
@@ -17,6 +17,7 @@ import { METRIC_FORMAT, METRIC_LABEL, metricValue } from '../utils/metrics';
 import { flagsFor, seriesDataFor, timesOf } from './utils/series';
 import { useChartInstance } from '../hooks/useChartInstance';
 import { useChartPalette } from '../hooks/useChartPalette';
+import { MetricControls } from './components/MetricControls';
 import { PointTooltip } from './components/PointTooltip';
 import { SparklineStrip } from '../SparklineStrip';
 import { ZoneSeries } from '../ZoneSeries';
@@ -44,16 +45,15 @@ import { ZoneSeries } from '../ZoneSeries';
 // single focusable widget, arrow keys walk the pushes, Enter opens the report of the one in hand, and
 // a live region says what is in hand. Everything a pointer can do here, a keyboard can do.
 
-const FIGURE_METRICS: FigureMetric[] = ['revenue', 'profit', 'spend', 'roi'];
-
 const FLAGS: DeltaFlag[] = ['firstOfDay', 'corrected', 'spendWithoutConversions'];
 
 // How far the tooltip's anchor is kept from either edge — roughly half its own width, so the card
 // stays inside the plot instead of being clipped by the panel around it.
 const TOOLTIP_INSET = 180;
 
-// Where the tooltip is pinned, in the plot's own pixels.
-type ActiveAt = ActivePoint & { x: number; y: number };
+// Where the tooltip is pinned, in the plot's own pixels. `x` is the card's anchor, pulled back from
+// the edges so it cannot be clipped; `pointX` is the push itself, which is where the pulse belongs.
+type ActiveAt = ActivePoint & { x: number; pointX: number; y: number };
 
 function clockOf(takenAt: string): string {
     const instant = new Date(takenAt);
@@ -75,7 +75,6 @@ type TrajectoryChartProps = {
 };
 
 function TrajectoryChart({ points, mode }: TrajectoryChartProps) {
-    const uid = useId();
     const navigate = useNavigate();
     const palette = useChartPalette();
     const [costMetrics, setCostMetrics] = useState<CostMetric[]>(['cpi']);
@@ -105,10 +104,13 @@ function TrajectoryChart({ points, mode }: TrajectoryChartProps) {
                 attributionLogo: false,
                 fontSize: 12,
             },
+            // Vertical only, and largely dashed: the horizontal line marked a price nobody reads —
+            // the figure is in the card — while the vertical one answers "which push is this", which
+            // is the whole question. Its colour is a translucent wash, applied with the palette.
             crosshair: {
                 mode: CrosshairMode.Normal,
-                vertLine: { style: LineStyle.Dashed, labelVisible: false },
-                horzLine: { style: LineStyle.Dashed, labelVisible: false },
+                vertLine: { style: LineStyle.LargeDashed, labelVisible: false },
+                horzLine: { visible: false, labelVisible: false },
             },
             leftPriceScale: { visible: true, borderVisible: false },
             rightPriceScale: { visible: true, borderVisible: false },
@@ -179,12 +181,23 @@ function TrajectoryChart({ points, mode }: TrajectoryChartProps) {
             return null;
         }
 
-        // The panel that holds the plot clips what leaves it, so the anchor is pulled back inside:
-        // a tooltip on the first or last push would otherwise hang half off the edge and be cut.
-        const width = containerRef.current?.clientWidth ?? 0;
-        const inset = Math.min(TOOLTIP_INSET, width / 2);
+        // Both coordinates are the PANE's, and the overlay sits on the container — which also holds
+        // the price scale down its left edge. Without that offset every marker and card lands one
+        // axis-width to the left of the push it belongs to.
+        const paneLeft = chart.priceScale('left').width();
+        const pointX = x + paneLeft;
+        const paneRight = containerRef.current?.clientWidth ?? 0;
+        // The panel that holds the plot clips what leaves it, so the card's anchor is pulled back
+        // inside: on the first or last push it would otherwise hang half off the edge and be cut.
+        const inset = Math.min(TOOLTIP_INSET, paneRight / 2);
 
-        return { index, metric, x: Math.min(Math.max(x, inset), Math.max(width - inset, inset)), y };
+        return {
+            index,
+            metric,
+            x: Math.min(Math.max(pointX, inset), Math.max(paneRight - inset, inset)),
+            pointX,
+            y,
+        };
     }
 
     function openReport(index: number) {
@@ -244,6 +257,7 @@ function TrajectoryChart({ points, mode }: TrajectoryChartProps) {
                     vertLines: { visible: false },
                     horzLines: { color: palette.border, style: LineStyle.Dotted },
                 },
+                crosshair: { vertLine: { color: palette.guide, width: 1 } },
             });
         },
         [chart, palette]
@@ -287,9 +301,10 @@ function TrajectoryChart({ points, mode }: TrajectoryChartProps) {
                     pointRadius: 4.5,
                     pointRing: palette.background,
                     chromeColor: palette.muted,
-                    guideColor: palette.muted,
-                    // One guide, drawn by the first line: two would double its opacity at the same x.
-                    showGuide: position === 0,
+                    guideColor: palette.guide,
+                    // Off until the crosshair goes away — see `markActivePoint`. One line draws it in
+                    // any case: two would double its opacity at the same x and read as a solid rule.
+                    showGuide: false,
                     priceFormat: {
                         type: 'custom',
                         formatter(value: number) {
@@ -321,11 +336,19 @@ function TrajectoryChart({ points, mode }: TrajectoryChartProps) {
 
     useEffect(
         function markActivePoint() {
-            for (const series of seriesRef.current.values()) {
-                series.applyOptions({ activeIndex: active?.index ?? null });
+            for (const [metric, series] of seriesRef.current) {
+                series.applyOptions({
+                    activeIndex: active?.index ?? null,
+                    // The series' own guide stands in for the crosshair exactly when the crosshair is
+                    // gone: the pointer has left the canvas for the card, or the card was opened from
+                    // the keyboard. Drawing both at once would print two vertical lines a few pixels
+                    // apart.
+                    showGuide: metric === drawn[0] && pinned,
+                });
             }
         },
-        [active?.index, dataKey]
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- `dataKey` carries the drawn metrics.
+        [active?.index, dataKey, pinned]
     );
 
     // Hover: the crosshair already knows which push it is over, so the tooltip follows it rather than
@@ -403,6 +426,20 @@ function TrajectoryChart({ points, mode }: TrajectoryChartProps) {
               })
             : [];
 
+    // The ring takes the colour of the point it marks: a red push pulsing in the accent blue would
+    // say the opposite of what the marker under it says.
+    function colorOfActive(): string {
+        const point = active === null ? undefined : plotted[active.index];
+
+        if (active === null || point === undefined || !hasZone(active.metric)) {
+            return palette.accent;
+        }
+
+        return palette.zone[zoneOfPoint(point, active.metric)];
+    }
+
+    const activeColor = colorOfActive();
+
     const focusedPoint = plotted[focused] ?? plotted[0];
     const focusedValue = metricValue(focusedPoint.figures, drawn[0]);
 
@@ -427,56 +464,12 @@ function TrajectoryChart({ points, mode }: TrajectoryChartProps) {
 
                     <AccordionPanel>
                         <div className="flex flex-col gap-3 pt-3">
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-                                {COST_METRICS.map((metric) => {
-                                    return (
-                                        <label key={metric} className="flex cursor-pointer items-center gap-1.5">
-                                            <input
-                                                type="checkbox"
-                                                checked={costMetrics.includes(metric)}
-                                                className="accent-primary"
-                                                onChange={() => {
-                                                    toggleCost(metric);
-                                                }}
-                                            />
-                                            {/* The dash pattern, shown rather than described: it is the
-                                                only thing telling two cost lines apart once both are on. */}
-                                            <svg width="26" height="8" aria-hidden={true} className="shrink-0">
-                                                <line
-                                                    x1="1"
-                                                    y1="4"
-                                                    x2="25"
-                                                    y2="4"
-                                                    strokeWidth="2"
-                                                    strokeDasharray={COST_DASH[metric].join(' ')}
-                                                    style={{ stroke: 'currentcolor' }}
-                                                />
-                                            </svg>
-                                            {METRIC_LABEL[metric]}
-                                        </label>
-                                    );
-                                })}
-
-                                <fieldset className="ml-auto flex items-center gap-3">
-                                    <legend className="sr-only">Right axis</legend>
-                                    {FIGURE_METRICS.map((metric) => {
-                                        return (
-                                            <label key={metric} className="flex cursor-pointer items-center gap-1.5">
-                                                <input
-                                                    type="radio"
-                                                    name={`${uid}-figure`}
-                                                    checked={figure === metric}
-                                                    className="accent-primary"
-                                                    onChange={() => {
-                                                        setFigure(metric);
-                                                    }}
-                                                />
-                                                {METRIC_LABEL[metric]}
-                                            </label>
-                                        );
-                                    })}
-                                </fieldset>
-                            </div>
+                            <MetricControls
+                                costMetrics={costMetrics}
+                                figure={figure}
+                                onToggleCost={toggleCost}
+                                onSelectFigure={setFigure}
+                            />
 
                             {/* The plot is one focusable widget rather than a canvas nobody can reach:
                                 `application` tells a screen reader the arrow keys belong to it, and the
@@ -506,6 +499,23 @@ function TrajectoryChart({ points, mode }: TrajectoryChartProps) {
                                         setActive(null);
                                     }}
                                 />
+
+                                {/* The pulse rides the DOM rather than the canvas: animating it in the
+                                    renderer would mean repainting every series on every frame, while a
+                                    positioned ring costs one compositor layer and honours reduced
+                                    motion for free. The canvas halo underneath stays put, so the point
+                                    still reads as active when the animation is off. */}
+                                {active !== null && (
+                                    <span
+                                        aria-hidden={true}
+                                        className="motion-safe:animate-ping pointer-events-none absolute size-8 -translate-x-1/2 -translate-y-1/2 rounded-full opacity-40 [animation-duration:1.6s]"
+                                        style={{
+                                            left: active.pointX,
+                                            top: active.y,
+                                            background: activeColor,
+                                        }}
+                                    />
+                                )}
 
                                 {active !== null && (
                                     <div

@@ -108,10 +108,9 @@ class ZoneSeriesRenderer implements ICustomSeriesPaneRenderer {
 
         if (options.showGuide && activePoint !== null) {
             ctx.save();
-            ctx.globalAlpha = 0.45;
             ctx.strokeStyle = options.guideColor;
             ctx.lineWidth = 1;
-            ctx.setLineDash([6, 5]);
+            ctx.setLineDash([10, 8]);
             ctx.beginPath();
             ctx.moveTo(activePoint.x, 0);
             ctx.lineTo(activePoint.x, paneHeight);

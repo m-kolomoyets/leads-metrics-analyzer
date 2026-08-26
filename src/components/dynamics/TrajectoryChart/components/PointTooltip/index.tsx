@@ -5,10 +5,11 @@ import { Link } from '@tanstack/react-router';
 import { ArrowUpRightIcon } from 'lucide-react';
 import { compareFigures, hasZone, thresholdPairOf, zoneOfPoint } from '@/lib/domain/dynamics';
 import { kyivClock } from '@/lib/utils/kyivDay';
-import { cost, DASH, int, usd } from '@/components/report/utils/format';
+import { DASH, int, usd } from '@/components/report/utils/format';
 import { Button } from '@/components/ui/Button';
 import { ZONE_LABEL, ZONE_STROKE } from '../../../constants';
 import { METRIC_FORMAT, METRIC_LABEL } from '../../../utils/metrics';
+import { ThresholdMeter } from '../../../ThresholdMeter';
 
 // The tooltip exists for one reason: PLAN BESIDE FACT. A figure on its own says how the day went; a
 // figure beside the thresholds that graded it and the bases it was divided from says why, and says
@@ -90,18 +91,6 @@ function PointTooltip({ point, previous, metric, mode, position, total }: PointT
                             {ZONE_LABEL[zone]}
                         </p>
                     )}
-
-                    {/* The plan the fact was graded against — this Snapshot's own frozen copy, never
-                        the reader's live preset (ADR-0002). Absent when the copy was missing or
-                        unreadable, which is exactly when the line above reads "ungraded". */}
-                    {pair !== null && (
-                        <dl className="text-muted-foreground grid grid-cols-[auto_1fr] gap-x-2 font-mono">
-                            <dt>green &lt;</dt>
-                            <dd className="text-right">{cost(pair.gy)}</dd>
-                            <dt>red &gt;</dt>
-                            <dd className="text-right">{cost(pair.yr)}</dd>
-                        </dl>
-                    )}
                 </div>
 
                 <dl className="text-muted-foreground grid grid-cols-[auto_1fr] content-start gap-x-3 font-mono">
@@ -113,6 +102,11 @@ function PointTooltip({ point, previous, metric, mode, position, total }: PointT
                     <dd className="text-right">{usd(point.figures.revenue)}</dd>
                 </dl>
             </div>
+
+            {/* The plan the fact was graded against — this Snapshot's own frozen copy, never the
+                reader's live preset (ADR-0002). Full width, because it is a measurement and a
+                measurement needs a run: squeezed into the left column the mark had nowhere to sit. */}
+            {pair !== null && <ThresholdMeter value={value} greenBelow={pair.gy} redAbove={pair.yr} />}
 
             {/* The movement gets a row of its own across the whole card: squeezed into the right
                 column it wrapped onto a second line, and half a number under the other half is the

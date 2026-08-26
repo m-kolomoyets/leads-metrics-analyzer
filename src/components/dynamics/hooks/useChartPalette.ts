@@ -13,6 +13,10 @@ export type ChartPalette = {
     muted: string;
     border: string;
     text: string;
+    // The crosshair and the series' own guide: a translucent white on a dark theme, the same wash in
+    // ink on a light one. Deliberately not a token — it has to be see-through, and the theme's colours
+    // are opaque.
+    guide: string;
 };
 
 // The values the tokens carry in the dark theme, used until the first read lands (and on the server,
@@ -24,6 +28,7 @@ const FALLBACK: ChartPalette = {
     muted: '#94a3b8',
     border: '#1e293b',
     text: '#e2e8f0',
+    guide: 'rgb(255 255 255 / 0.35)',
 };
 
 function tokenOf(styles: CSSStyleDeclaration, name: string, fallback: string): string {
@@ -47,6 +52,9 @@ function readPalette(): ChartPalette {
         muted: tokenOf(styles, '--muted-foreground', FALLBACK.muted),
         border: tokenOf(styles, '--border', FALLBACK.border),
         text: tokenOf(styles, '--foreground', FALLBACK.text),
+        guide: document.documentElement.classList.contains('light')
+            ? 'rgb(15 23 42 / 0.35)'
+            : 'rgb(255 255 255 / 0.35)',
     };
 }
 
