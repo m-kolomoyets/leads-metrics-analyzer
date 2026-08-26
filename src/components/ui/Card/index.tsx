@@ -4,7 +4,7 @@ import { useRender } from '@base-ui/react/use-render';
 import { cn } from '@/lib/utils/cn';
 
 // One card, no variants. A card is an inline surface by definition — a hairline border and a step in
-// background lightness, never a shadow (ADR-0021) — so `glass` and `flat` were two names for a
+// background lightness, never a shadow (ADR-0021) — so the old surface variants were two names for a
 // decision the system no longer lets a caller make.
 function Card({ className, render, ...props }: CardProps) {
     return useRender({

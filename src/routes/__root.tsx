@@ -5,10 +5,8 @@ import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from '@tanst
 import { LucideProvider } from 'lucide-react';
 import { queryClient } from '@/lib/@queryClient';
 import { noopReturnNull } from '@/lib/utils/noopReturnNull';
-import { BackgroundProvider } from '@/context/BackgroundContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { useRemoveInitialStyle } from '@/hooks/useRemoveInitialStyle';
-import { BackgroundCanvas } from '@/components/BackgroundCanvas';
 import { Toast } from '@/components/ui/Toast';
 import { TooltipProvider } from '@/components/ui/Tooltip';
 import '@/styles/index.css';
@@ -116,13 +114,10 @@ function RootComponent() {
                 ones inside Base UI's portals and react-day-picker as well, and cannot drift. */}
             <LucideProvider strokeWidth={1.5}>
                 <ThemeProvider defaultTheme="dark">
-                    <BackgroundProvider>
-                        <TooltipProvider>
-                            <BackgroundCanvas />
-                            <Outlet />
-                            <Toast richColors={true} closeButton={true} swipeDirections={['bottom']} />
-                        </TooltipProvider>
-                    </BackgroundProvider>
+                    <TooltipProvider>
+                        <Outlet />
+                        <Toast richColors={true} closeButton={true} swipeDirections={['bottom']} />
+                    </TooltipProvider>
                     <Suspense>
                         <TanStackRouterDevtools position="bottom-right" />
                         <TanStackQueryDevtools position="bottom" />

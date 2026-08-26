@@ -7,7 +7,6 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/DropdownMenu';
-import { BackgroundItem } from './components/BackgroundItem';
 import { LogoutItem } from './components/LogoutItem';
 import { SidebarUserCard } from './components/SidebarUserCard';
 import { ThemeItem } from './components/ThemeItem';
@@ -38,7 +37,6 @@ function SidebarProfile() {
                         sideOffset={4}
                     >
                         <ThemeItem />
-                        <BackgroundItem />
                         <DropdownMenuSeparator />
                         <LogoutItem />
                     </DropdownMenuContent>
