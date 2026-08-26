@@ -25,7 +25,7 @@ type ModeToggleProps = {
 
 function ModeToggle({ mode, onSelect }: ModeToggleProps) {
     return (
-        <div className="border-border flex rounded-lg border p-0.5" role="group" aria-label="Chart mode">
+        <div className="border-border flex rounded-md border p-0.5" role="group" aria-label="Chart mode">
             {MODES.map((option) => {
                 const selected = option.mode === mode;
 
@@ -36,8 +36,10 @@ function ModeToggle({ mode, onSelect }: ModeToggleProps) {
                         aria-pressed={selected}
                         title={option.hint}
                         className={cn(
-                            'rounded-md px-3 py-1 text-xs font-medium transition-colors',
-                            selected ? 'surface-accent text-white' : 'text-muted-foreground hover:text-foreground'
+                            'rounded-sm px-3 py-1 text-xs font-medium motion-safe:transition-colors motion-safe:duration-150',
+                            selected
+                                ? 'bg-accent text-accent-foreground'
+                                : 'text-muted-foreground hover:text-foreground'
                         )}
                         onClick={() => {
                             onSelect(option.mode);

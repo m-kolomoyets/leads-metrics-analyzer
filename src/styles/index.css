@@ -67,8 +67,12 @@
     --sidebar-foreground: var(--foreground);
     --sidebar-primary: var(--accent);
     --sidebar-primary-foreground: var(--accent-foreground);
-    --sidebar-accent: var(--accent);
-    --sidebar-accent-foreground: var(--accent-foreground);
+
+    /* The sidebar's resting and hover state is achromatic — one surface step, not a wash. The
+       accent is reserved for the row that is actually selected, which reads it through
+       `--sidebar-primary`. */
+    --sidebar-accent: var(--background);
+    --sidebar-accent-foreground: var(--foreground);
     --sidebar-border: var(--border);
     --sidebar-ring: var(--accent);
 }

@@ -59,7 +59,7 @@ function ComparisonPanel({ points }: ComparisonPanelProps) {
                             <dt className="text-muted-foreground text-xs">{METRIC_LABEL[row.metric]}</dt>
 
                             {/* The figure now, carrying the weight — the number a buyer is looking for. */}
-                            <dd className="font-mono text-lg leading-tight font-semibold">
+                            <dd className="text-base leading-tight font-semibold tabular-nums">
                                 {format.value(row.current)}
                             </dd>
 
@@ -75,7 +75,7 @@ function ComparisonPanel({ points }: ComparisonPanelProps) {
 
                                     {/* Where it came from: present, so the movement can be checked,
                                         but never competing with the figure above it. */}
-                                    <dd className="font-mono text-xs leading-tight opacity-50">
+                                    <dd className="text-muted-foreground text-xs leading-tight tabular-nums">
                                         {format.value(row.previous)}
                                     </dd>
                                 </>

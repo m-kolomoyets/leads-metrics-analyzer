@@ -9,6 +9,7 @@ import {
 } from '@/services/admin/queries';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { TableCell, TableRow } from '@/components/ui/Table';
 import { NO_TEAM_VALUE } from '../../constants';
 import { LeadCombobox } from '../LeadCombobox';
 
@@ -48,8 +49,8 @@ function TeamRow({ team, leadOptions }: TeamRowProps) {
     };
 
     return (
-        <tr className="border-b last:border-b-0">
-            <td className="px-3 py-2">
+        <TableRow>
+            <TableCell>
                 {isEditing ? (
                     <div className="flex items-center gap-2">
                         <Input
@@ -78,8 +79,8 @@ function TeamRow({ team, leadOptions }: TeamRowProps) {
                 ) : (
                     <span className="block truncate">{team.name}</span>
                 )}
-            </td>
-            <td className="px-3 py-2">
+            </TableCell>
+            <TableCell>
                 <LeadCombobox
                     options={leadOptions}
                     value={team.leadId ?? NO_TEAM_VALUE}
@@ -90,8 +91,8 @@ function TeamRow({ team, leadOptions }: TeamRowProps) {
                         });
                     }}
                 />
-            </td>
-            <td className="px-3 py-2 text-right">
+            </TableCell>
+            <TableCell className="text-right">
                 {isConfirmingDelete ? (
                     <div className="flex items-center justify-end gap-2 whitespace-nowrap">
                         <span className="text-muted-foreground text-xs">Delete team?</span>
@@ -150,8 +151,8 @@ function TeamRow({ team, leadOptions }: TeamRowProps) {
                         </Button>
                     </div>
                 )}
-            </td>
-        </tr>
+            </TableCell>
+        </TableRow>
     );
 }
 

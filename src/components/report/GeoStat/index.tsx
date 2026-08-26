@@ -4,10 +4,10 @@ import type { GeoRollup } from '@/lib/domain';
 import type { GeoThresholds, ThresholdPair, Zone } from '@/lib/domain/types';
 import { zoneFor } from '@/lib/domain/verdict';
 import { cn } from '@/lib/utils/cn';
-import { ZONE_TEXT_CLASS } from '@/components/report/constants';
+import { ZONE_CARD_CLASS, ZONE_TEXT_CLASS } from '@/components/report/constants';
 import { DASH, flagEmoji, pct, percent, usd, usdSigned } from '@/components/report/utils/format';
 import { ui } from '@/components/report/utils/i18n';
-import { roiZone, ZONE_TINT_CLASS } from '@/components/report/utils/zones';
+import { roiZone } from '@/components/report/utils/zones';
 
 type GeoStatProps = {
     geo: string;
@@ -36,12 +36,12 @@ function wasteShare(waste: number | null, spendPlus: number): number | null {
     return spendPlus > 0 ? (waste / spendPlus) * 100 : 0;
 }
 
-// A band-tinted CPC/CPI/CPR/CPS value, mirroring the reference `<Metric>`.
+// A band-graded CPC/CPI/CPR/CPS value.
 function Metric({ value, pair }: { value: number | null; pair: ThresholdPair | undefined }) {
     const graded = value !== null && pair;
     const tone: Zone = graded ? zoneFor(value, pair) : 'neutral';
     return (
-        <span className={cn('font-mono', graded ? ZONE_TEXT_CLASS[tone] : 'text-muted-foreground')}>
+        <span className={cn('tabular-nums', graded ? ZONE_TEXT_CLASS[tone] : 'text-muted-foreground')}>
             {value === null ? '—' : usd(value)}
         </span>
     );
@@ -60,17 +60,17 @@ function Stat({
 }) {
     return (
         <div className="flex flex-col">
-            <span className="text-muted-foreground text-[11px] tracking-widest uppercase">{label}</span>
-            <span className={cn('font-mono font-semibold', size === 'lg' ? 'text-2xl' : 'text-xl', className)}>
+            <span className="text-muted-foreground text-xs tracking-widest uppercase">{label}</span>
+            <span className={cn('font-semibold tabular-nums', size === 'lg' ? 'text-xl' : 'text-base', className)}>
                 {value}
             </span>
         </div>
     );
 }
 
-// The market-level hero (S4): a blue-tinted glass panel with the geo label + graded cost line, then two
-// glowing stat pills — Spend/Revenue/Profit/ROI (glow tinted by the ROI band) and the waste readout
-// (glow tinted by its Waste-Zone band). Attributed / untagged gap (ADR-0003) rides under the first pill.
+// The market-level hero (S4): the geo label + graded cost line, then two stat panels — Spend /
+// Revenue / Profit / ROI, bordered by the ROI band, and the waste readout, bordered by its
+// Waste-Zone band. Attributed / untagged gap (ADR-0003) rides under the first panel.
 function GeoStat({ geo, rollup, thresholds, waste, wasteZone, action, locale }: GeoStatProps) {
     const { metrics, attributed } = rollup;
     // A Snapshot pushed before ADR-0015 froze no Geo Rollup, so its Untagged Revenue is gone: `metrics`
@@ -80,7 +80,7 @@ function GeoStat({ geo, rollup, thresholds, waste, wasteZone, action, locale }: 
     const wastePct = wasteShare(waste, metrics.spendPlus);
     const wasteTone: Zone = wasteZone && wastePct !== null ? zoneFor(wastePct, wasteZone) : 'neutral';
     const roi = hasTotal ? roiZone(metrics.roi) : 'neutral';
-    const profitClass = metrics.profit >= 0 ? 'text-success' : 'text-danger';
+    const profitClass = metrics.profit >= 0 ? ZONE_TEXT_CLASS.green : ZONE_TEXT_CLASS.red;
     // The Geo-Total gap (ADR-0003/0012): revenue on rows with no usable Sub ID. A growing share is a
     // tracking-health signal, so it is shown rather than folded in silently — but only when it is
     // non-zero, since most reports have none and an always-on 0 would be noise.
@@ -88,9 +88,9 @@ function GeoStat({ geo, rollup, thresholds, waste, wasteZone, action, locale }: 
     const untaggedPct = metrics.revenue > 0 ? (untaggedRevenue / metrics.revenue) * 100 : 0;
 
     return (
-        <section className="glass-tint tint-blue tint-s5 flex flex-col gap-4 rounded-lg p-4">
+        <section className="bg-surface border-border flex flex-col gap-4 rounded-md border p-4">
             <div className="flex flex-wrap items-center gap-4">
-                <span className="text-2xl font-semibold">
+                <span className="text-xl font-semibold">
                     {flagEmoji(geo)} {geo}
                 </span>
                 <span className="bg-border h-9 w-px" />
@@ -111,8 +111,8 @@ function GeoStat({ geo, rollup, thresholds, waste, wasteZone, action, locale }: 
             <div className="flex flex-wrap gap-4">
                 <div
                     className={cn(
-                        'glow-soft flex min-w-64 flex-1 flex-col gap-3 rounded-lg px-5 py-4',
-                        ZONE_TINT_CLASS[roi]
+                        'flex min-w-64 flex-1 flex-col gap-3 rounded-md border px-5 py-4',
+                        ZONE_CARD_CLASS[roi]
                     )}
                 >
                     <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
@@ -121,7 +121,9 @@ function GeoStat({ geo, rollup, thresholds, waste, wasteZone, action, locale }: 
                             label={ui('geoTotal', locale)}
                             value={hasTotal ? usd(metrics.revenue) : DASH}
                             size="md"
-                            className={hasTotal && metrics.revenue > 0 ? 'text-success' : 'text-muted-foreground'}
+                            className={
+                                hasTotal && metrics.revenue > 0 ? ZONE_TEXT_CLASS.green : 'text-muted-foreground'
+                            }
                         />
                         <Stat
                             label="Profit"
@@ -139,11 +141,11 @@ function GeoStat({ geo, rollup, thresholds, waste, wasteZone, action, locale }: 
 
                     {hasTotal && untaggedRevenue > 0.005 && (
                         <p
-                            className="text-muted-foreground text-[10px] leading-relaxed"
+                            className="text-muted-foreground text-xs leading-relaxed"
                             title={ui('divergenceNote', locale)}
                         >
                             {ui('attributed', locale)} {usd(attributed.revenue)} · {ui('untaggedGap', locale)}{' '}
-                            <span className="font-mono">
+                            <span className="tabular-nums">
                                 {usd(untaggedRevenue)} ({percent(untaggedPct)})
                             </span>
                         </p>
@@ -152,8 +154,8 @@ function GeoStat({ geo, rollup, thresholds, waste, wasteZone, action, locale }: 
 
                 <div
                     className={cn(
-                        'glow-soft flex min-w-64 flex-1 items-center gap-6 rounded-lg px-5 py-4',
-                        ZONE_TINT_CLASS[wasteTone]
+                        'flex min-w-64 flex-1 items-center gap-6 rounded-md border px-5 py-4',
+                        ZONE_CARD_CLASS[wasteTone]
                     )}
                 >
                     <Stat
@@ -170,7 +172,7 @@ function GeoStat({ geo, rollup, thresholds, waste, wasteZone, action, locale }: 
                     />
                     <span className="flex-1" />
                     {wasteZone && (
-                        <div className="text-muted-foreground text-right text-[10px] leading-relaxed">
+                        <div className="text-muted-foreground text-right text-xs leading-relaxed">
                             {ui('wasteZone', locale)}:
                             <br />
                             <span className={ZONE_TEXT_CLASS.green}>&lt;{wasteZone.gy}%</span> ·{' '}

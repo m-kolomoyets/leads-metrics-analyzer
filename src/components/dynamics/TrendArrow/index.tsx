@@ -8,8 +8,8 @@ import { cn } from '@/lib/utils/cn';
 // meaning map, so this component, the table arrows (#09) and the sparklines can never disagree.
 
 const TONE_CLASS = {
-    good: 'text-emerald-400',
-    bad: 'text-red-400',
+    good: 'text-zone-green',
+    bad: 'text-zone-red',
     neutral: 'text-muted-foreground',
 } as const;
 
@@ -56,7 +56,7 @@ function TrendArrow({ metric, change, label, hideLabel, className }: TrendArrowP
 
     return (
         <span
-            className={cn('inline-flex items-center gap-1 font-mono', TONE_CLASS[tone], className)}
+            className={cn('inline-flex items-center gap-1 tabular-nums', TONE_CLASS[tone], className)}
             title={hideLabel ? label : undefined}
         >
             {arrow && <span aria-hidden={true}>{arrow}</span>}

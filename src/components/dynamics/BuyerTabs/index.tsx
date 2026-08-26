@@ -9,15 +9,17 @@ import { DASH, usdSigned } from '@/components/report/utils/format';
 //
 // The colour is arithmetic, never magnitude: one dollar of loss is red, zero is green.
 
+// A tab rests on the chrome surface and reports its state in the Zone colour, in the text rather
+// than as a fill — a row of eight filled tabs is a row of eight alarms.
 const STATE_CLASS: Record<BuyerTabState, string> = {
-    missing: 'border-red-500/60 bg-red-500/15 text-red-200',
-    stale: 'border-amber-500/60 bg-amber-500/15 text-amber-200',
-    loss: 'border-red-500/60 bg-red-500/15 text-red-200',
-    profit: 'border-emerald-500/60 bg-emerald-500/15 text-emerald-200',
+    missing: 'border-zone-red bg-surface text-zone-red',
+    stale: 'border-zone-yellow bg-surface text-zone-yellow',
+    loss: 'border-zone-red bg-surface text-zone-red',
+    profit: 'border-zone-green bg-surface text-zone-green',
     // Reported, ungraded: the dollar-free roles have no total to colour by, so the tab states the
     // fact of the push and claims nothing about it.
-    reported: 'border-border text-foreground bg-[#162036]',
-    awaited: 'border-border text-muted-foreground bg-[#162036]',
+    reported: 'border-border bg-surface text-foreground',
+    awaited: 'border-border bg-surface text-muted-foreground',
 };
 
 // The marker that says WHY a tab is coloured, so the state survives a reader who cannot separate red
@@ -60,9 +62,9 @@ function BuyerTabs({ tabs, activeId, onSelect }: BuyerTabsProps) {
                         role="tab"
                         aria-selected={selected}
                         className={cn(
-                            'flex items-center gap-2 rounded-lg border px-3.5 py-2 text-sm font-semibold transition-colors',
+                            'flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium motion-safe:transition-colors motion-safe:duration-150',
                             STATE_CLASS[tab.state],
-                            selected && 'border-primary text-foreground'
+                            selected && 'border-accent bg-accent text-accent-foreground'
                         )}
                         onClick={() => {
                             onSelect(tab.id);
@@ -77,7 +79,7 @@ function BuyerTabs({ tabs, activeId, onSelect }: BuyerTabsProps) {
                             column at all, where a dash would imply a figure that is merely missing.
                             A dash still marks a push that froze no rollup (CONTEXT.md). */}
                         {tab.totalProfit !== undefined && (
-                            <span className="font-mono opacity-80">
+                            <span className="tabular-nums opacity-80">
                                 {tab.totalProfit === null ? DASH : usdSigned(tab.totalProfit)}
                             </span>
                         )}

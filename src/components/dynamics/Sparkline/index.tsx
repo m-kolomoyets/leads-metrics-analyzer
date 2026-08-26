@@ -24,8 +24,8 @@ import { ZoneSeries } from '../ZoneSeries';
 const STEP_SECONDS = 60;
 
 const TONE_TEXT_CLASS: Record<MetricTone, string> = {
-    good: 'text-success',
-    bad: 'text-danger',
+    good: 'text-zone-green',
+    bad: 'text-zone-red',
     neutral: 'text-foreground',
 };
 
@@ -145,8 +145,8 @@ function Sparkline({ label, values, zones, trailing, tone, selected, onSelect }:
             {/* Name over figure on the left, plot on the right: a line given the full width of the card
                 flattens into a near-horizontal streak, and the shape is the whole message. */}
             <span className="flex min-w-0 flex-col">
-                <span className="text-muted-foreground text-[11px] tracking-widest uppercase">{label}</span>
-                <span className={cn('font-mono text-sm font-semibold', TONE_TEXT_CLASS[tone])}>{trailing}</span>
+                <span className="text-muted-foreground text-xs tracking-widest uppercase">{label}</span>
+                <span className={cn('text-sm font-medium tabular-nums', TONE_TEXT_CLASS[tone])}>{trailing}</span>
             </span>
 
             {/* `pointer-events-none`: the chart is a picture here, and every click belongs to the

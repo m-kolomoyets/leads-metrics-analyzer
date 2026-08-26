@@ -91,7 +91,7 @@ function DetailTables({ snapshotId, previousSnapshotId, geo }: DetailTablesProps
 
     return (
         <div className="flex flex-col gap-6">
-            <SectionCard tone="violet">
+            <SectionCard>
                 <OffersTable
                     title={`📦 ${ui('offers', LOCALE)} · ${geo}`}
                     firstCol={ui('offers', LOCALE)}
@@ -106,7 +106,7 @@ function DetailTables({ snapshotId, previousSnapshotId, geo }: DetailTablesProps
                     }
                 />
             </SectionCard>
-            <SectionCard tone="blue">
+            <SectionCard>
                 <OsTable
                     title={`💻 ${ui('osTable', LOCALE)} · ${geo}`}
                     firstCol={ui('osTable', LOCALE)}
@@ -121,7 +121,7 @@ function DetailTables({ snapshotId, previousSnapshotId, geo }: DetailTablesProps
                     }
                 />
             </SectionCard>
-            <SectionCard tone="blue">
+            <SectionCard>
                 <CreativeTable
                     rows={current.creatives}
                     thresholds={current.thresholds}

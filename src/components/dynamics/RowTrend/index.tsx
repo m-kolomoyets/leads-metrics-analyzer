@@ -26,7 +26,7 @@ function RowTrend({ metric, trend }: RowTrendProps) {
             change={change}
             label={METRIC_FORMAT[metric].change(change)}
             hideLabel={true}
-            className="ml-1 align-middle text-[10px]"
+            className="ml-1 align-middle text-xs"
         />
     );
 }

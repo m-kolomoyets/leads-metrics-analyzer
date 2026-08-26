@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils/cn';
 import { ZONE_BUTTON_CLASS, ZONE_CARD_CLASS, ZONE_GLYPH } from '@/components/report/constants';
 import { actionLabel, ui } from '@/components/report/utils/i18n';
 import { Button } from '@/components/ui/Button';
-import { Pill } from '../Pill';
+import { StatusChip } from '../StatusChip';
 
 type BucketBlockProps = {
     zone: BucketZone;
@@ -16,8 +16,8 @@ type BucketBlockProps = {
     copyKey: string;
 };
 
-// One action bucket (СТОП / ТРИМАЄМО / БУСТ) under an Account: a zone-tinted glass panel with the
-// bucket pill + campaign count and a one-click copy of every campaign id in it.
+// One action bucket (СТОП / ТРИМАЄМО / БУСТ) under an Account: a panel hairlined in its zone, with
+// the bucket chip + campaign count and a one-click copy of every campaign id in it.
 function BucketBlock({ zone, campaigns, locale, copiedKey, onCopy, copyKey }: BucketBlockProps) {
     const idLine = campaigns
         .map((campaign) => {
@@ -26,19 +26,19 @@ function BucketBlock({ zone, campaigns, locale, copiedKey, onCopy, copyKey }: Bu
         .join(', ');
 
     return (
-        <div
-            className={cn(
-                'flex min-w-48 flex-1 flex-col gap-3 rounded-lg border p-3 backdrop-blur',
-                ZONE_CARD_CLASS[zone]
-            )}
-        >
-            <Pill color={zone} glyph={ZONE_GLYPH[zone]} label={actionLabel(zone, locale)} count={campaigns.length} />
+        <div className={cn('flex min-w-48 flex-1 flex-col gap-3 rounded-md border p-3', ZONE_CARD_CLASS[zone])}>
+            <StatusChip
+                zone={zone}
+                glyph={ZONE_GLYPH[zone]}
+                label={actionLabel(zone, locale)}
+                count={campaigns.length}
+            />
 
             <textarea
                 readOnly
                 value={idLine}
                 aria-label={`${actionLabel(zone, locale)} campaign ids`}
-                className="bg-background/60 min-h-14 w-full flex-1 resize-none rounded-md border p-2 font-mono text-[11px]"
+                className="bg-background border-border min-h-14 w-full flex-1 resize-none rounded-sm border p-2 text-xs"
             />
 
             <Button

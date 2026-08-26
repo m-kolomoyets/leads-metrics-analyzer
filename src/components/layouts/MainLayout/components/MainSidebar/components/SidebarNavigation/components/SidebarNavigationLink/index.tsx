@@ -13,7 +13,9 @@ function SidebarNavigationLink({ activeProps, activeOptions, tooltipText, ...pro
                         ...activeOptions,
                     }}
                     activeProps={{
-                        className: 'bg-sidebar-accent text-sidebar-accent-foreground',
+                        // The one accent in the sidebar: the route the reader is on. Hover and press
+                        // stay achromatic so this is the only thing painted.
+                        className: 'bg-sidebar-primary text-sidebar-primary-foreground',
                         ...activeProps,
                     }}
                     {...props}

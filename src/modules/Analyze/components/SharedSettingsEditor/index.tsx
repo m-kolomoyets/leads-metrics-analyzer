@@ -172,7 +172,7 @@ function SharedSettingsEditor({ shared, canEdit, locale, seed, onSaved }: Shared
     return (
         <section className="flex flex-col gap-3">
             <div className="flex items-center gap-2">
-                <h4 className="text-muted-foreground text-[11px] font-normal tracking-wider uppercase">
+                <h4 className="text-muted-foreground text-xs font-normal tracking-wider uppercase">
                     {ui('sharedSettings', locale)}
                 </h4>
                 {!canEdit && <span className="text-muted-foreground text-xs">{ui('readonly', locale)}</span>}
@@ -234,16 +234,16 @@ function SharedSettingsEditor({ shared, canEdit, locale, seed, onSaved }: Shared
             {/* Tolerated-loss band (% of Spend⁺). Same green→yellow→red shape as a threshold pair, but a
                 team-global policy, so it saves with the shared settings rather than a preset version. */}
             <div className="border-border/60 flex flex-col gap-2 border-t pt-3">
-                <h5 className="text-muted-foreground text-[11px] font-normal tracking-wider uppercase">
+                <h5 className="text-muted-foreground text-xs font-normal tracking-wider uppercase">
                     {ui('wasteRange', locale)}
                 </h5>
                 <div className="flex flex-wrap items-center gap-2.5">
-                    <span className="text-success text-[11px]">{ui('zGreen', locale)}</span>
+                    <span className="text-zone-green text-xs">{ui('zGreen', locale)}</span>
                     <Input
                         id="ss-waste-gy"
                         type="number"
                         inputMode="decimal"
-                        className="h-8 w-16 font-mono text-[13px]"
+                        className="h-8 w-16 text-sm tabular-nums"
                         aria-label={`${ui('wasteRange', locale)} ${ui('gy', locale)}`}
                         disabled={!canEdit || isPending}
                         value={draft.wasteZones.gy}
@@ -251,12 +251,12 @@ function SharedSettingsEditor({ shared, canEdit, locale, seed, onSaved }: Shared
                             setWasteBound('gy', event.target.value);
                         }}
                     />
-                    <span className="text-warning text-[11px]">{ui('zYellow', locale)}</span>
+                    <span className="text-warning text-xs">{ui('zYellow', locale)}</span>
                     <Input
                         id="ss-waste-yr"
                         type="number"
                         inputMode="decimal"
-                        className="h-8 w-16 font-mono text-[13px]"
+                        className="h-8 w-16 text-sm tabular-nums"
                         aria-label={`${ui('wasteRange', locale)} ${ui('yr', locale)}`}
                         disabled={!canEdit || isPending}
                         value={draft.wasteZones.yr}
@@ -264,7 +264,7 @@ function SharedSettingsEditor({ shared, canEdit, locale, seed, onSaved }: Shared
                             setWasteBound('yr', event.target.value);
                         }}
                     />
-                    <span className="text-danger text-[11px]">{ui('zRed', locale)}</span>
+                    <span className="text-zone-red text-xs">{ui('zRed', locale)}</span>
                 </div>
             </div>
 

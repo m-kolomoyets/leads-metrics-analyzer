@@ -20,8 +20,9 @@ type GeoTabsProps = {
     onSelect: (geo: string) => void;
 };
 
-// Geo navigation (reference nav): one glass pill per parsed geo. The active pill takes the blue
-// gradient + glow; the rest stay ghost. Selecting reruns the per-geo view (state lives in the parent).
+// Geo navigation: one square-cornered tab per parsed geo on the chrome surface. Selection is the
+// one thing here that earns the accent; the rest rest achromatic. Selecting reruns the per-geo view
+// (state lives in the parent).
 function GeoTabs({ geos, active, spendByGeo, onSelect }: GeoTabsProps) {
     return (
         <div role="tablist" aria-label="Geo" className="flex flex-wrap gap-2">
@@ -36,22 +37,24 @@ function GeoTabs({ geos, active, spendByGeo, onSelect }: GeoTabsProps) {
                         role="tab"
                         aria-selected={selected}
                         className={cn(
-                            'rounded-lg border px-3.5 py-2 text-sm font-semibold transition-colors flex items-center',
+                            'flex items-center rounded-md border px-3 py-1.5 text-sm font-medium motion-safe:transition-colors motion-safe:duration-150',
                             selected
-                                ? 'surface-accent border-primary  text-white'
-                                : 'text-muted-foreground hover:text-foreground border-border bg-[#162036]'
+                                ? 'border-accent bg-accent text-accent-foreground'
+                                : 'text-muted-foreground hover:text-foreground border-border bg-surface'
                         )}
                         onClick={() => {
                             onSelect(geo);
                         }}
                     >
                         {flag && (
-                            <span aria-hidden={true} className="mr-1.5 text-lg">
+                            <span aria-hidden={true} className="mr-1.5 text-base">
                                 {flag}
                             </span>
                         )}
                         {geo}
-                        {spend !== undefined && <span className="ml-1.5 font-mono  opacity-80">{usdRound(spend)}</span>}
+                        {spend !== undefined && (
+                            <span className="ml-1.5 tabular-nums opacity-80">{usdRound(spend)}</span>
+                        )}
                     </button>
                 );
             })}

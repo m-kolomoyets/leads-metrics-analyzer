@@ -7,7 +7,7 @@ import { int, usd } from '@/components/report/utils/format';
 import { ui } from '@/components/report/utils/i18n';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { Pill } from '../Pill';
+import { StatusChip } from '../StatusChip';
 
 type SalesBlockProps = {
     campaigns: CampaignRollup[];
@@ -17,8 +17,9 @@ type SalesBlockProps = {
     copyKey: string;
 };
 
-// The Account's campaigns that produced ≥1 sale — the buyer's proven winners, in their own violet
-// panel (reference "З ПРОДАЖАМИ") with a funnel stat line and copyable ids, independent of zone.
+// The Account's campaigns that produced ≥1 sale — the buyer's proven winners, in their own panel
+// ("З ПРОДАЖАМИ") with a funnel stat line and copyable ids. Zone-independent, so it wears no zone
+// colour: a sale is a fact, not a judgement.
 function SalesBlock({ campaigns, locale, copiedKey, onCopy, copyKey }: SalesBlockProps) {
     const idLine = campaigns
         .map((campaign) => {
@@ -32,10 +33,10 @@ function SalesBlock({ campaigns, locale, copiedKey, onCopy, copyKey }: SalesBloc
     );
 
     return (
-        <Card className="min-w-48 flex-1 gap-3 border-violet-500/30 bg-violet-500/5 p-3 backdrop-blur">
-            <Pill color="violet" glyph="$" label={ui('sales', locale)} count={campaigns.length} />
+        <Card className="min-w-48 flex-1 gap-3 p-3">
+            <StatusChip zone="neutral" glyph="$" label={ui('sales', locale)} count={campaigns.length} />
 
-            <p className="text-muted-foreground font-mono text-[11px] leading-relaxed">
+            <p className="text-muted-foreground text-xs leading-relaxed tabular-nums">
                 Spend {usd(stat.spendPlus)} · Clicks {int(stat.linkClicks)} · Inst {int(stat.installs)} · Reg{' '}
                 {int(stat.regs)} · Sales {int(stat.sales)}
             </p>
@@ -44,7 +45,7 @@ function SalesBlock({ campaigns, locale, copiedKey, onCopy, copyKey }: SalesBloc
                 readOnly
                 value={idLine}
                 aria-label="sales campaign ids"
-                className="bg-background/60 min-h-10 w-full flex-1 resize-none rounded-md border p-2 font-mono text-[11px]"
+                className="bg-background border-border min-h-10 w-full flex-1 resize-none rounded-sm border p-2 text-xs"
             />
 
             <Button

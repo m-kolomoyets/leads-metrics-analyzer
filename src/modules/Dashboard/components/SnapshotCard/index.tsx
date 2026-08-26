@@ -3,9 +3,10 @@ import type { ReportCard } from '../../types';
 import { Link } from '@tanstack/react-router';
 import { ArrowUpRightIcon } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { ZONE_CARD_CLASS } from '@/components/report/constants';
 import { GeoStat } from '@/components/report/GeoStat';
 import { ui } from '@/components/report/utils/i18n';
-import { roiZone, ZONE_TINT_CLASS } from '@/components/report/utils/zones';
+import { roiZone } from '@/components/report/utils/zones';
 import { Button } from '@/components/ui/Button';
 import { toGeoRollup } from '../../utils/toGeoRollup';
 
@@ -23,19 +24,19 @@ const timeFormat = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '
 //
 // The card prints no figures of its own. Every number it could show is already in the `GeoStat` rows
 // below it, and a summed copy sitting above them reads as a second, subtly different set of numbers.
-// The summed headline survives only as the card's ROI tint, which is a colour rather than a figure.
+// The summed headline survives only as the card's ROI border, which is a colour rather than a figure.
 function SnapshotCard({ card, locale }: SnapshotCardProps) {
     const { headline } = card;
-    // Tinted by the ROI summed across the Snapshot's Geos, so a bad day is visible from across the
+    // Bordered by the ROI summed across the Snapshot's Geos, so a bad day is visible from across the
     // room (spec story 9). A Snapshot with no frozen rollup has no ROI to band and stays neutral.
     const tone = roiZone(headline?.roi ?? null);
 
     return (
-        <article className={cn('glow-soft flex flex-col gap-4 rounded-lg p-4', ZONE_TINT_CLASS[tone])}>
+        <article className={cn('flex flex-col gap-4 rounded-md border p-4', ZONE_CARD_CLASS[tone])}>
             <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
                 <div className="flex flex-col">
-                    <span className="font-mono text-lg font-semibold">{card.reportDate}</span>
-                    <span className="text-muted-foreground text-[11px]">
+                    <span className="text-base font-semibold tabular-nums">{card.reportDate}</span>
+                    <span className="text-muted-foreground text-xs">
                         {ui('pushed', locale)} {timeFormat.format(new Date(card.takenAt))}
                     </span>
                 </div>

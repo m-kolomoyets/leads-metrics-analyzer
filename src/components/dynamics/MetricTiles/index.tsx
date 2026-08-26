@@ -40,8 +40,8 @@ type MetricTilesProps = {
 
 function MetricTiles({ point }: MetricTilesProps) {
     return (
-        // The same tinted glass panel every analysis section wears (SectionCard): a bare bordered box
-        // read as a hole in the page next to the tables under it.
+        // The same card every analysis section wears (SectionCard), so the tiles sit on the page the
+        // way the tables under them do.
         <SectionCard label="The day so far" className="flex flex-col gap-3">
             <p className="text-muted-foreground text-xs">
                 first report today — one push is not yet a trajectory, so there is no chart to draw
@@ -56,19 +56,19 @@ function MetricTiles({ point }: MetricTilesProps) {
                     return (
                         <div
                             key={metric}
-                            className={cn('flex flex-col gap-0.5 rounded-lg border p-3', ZONE_CARD_CLASS[zone])}
+                            className={cn('flex flex-col gap-0.5 rounded-md border p-3', ZONE_CARD_CLASS[zone])}
                         >
-                            <dt className="text-muted-foreground text-[11px] tracking-widest uppercase">
+                            <dt className="text-muted-foreground text-xs tracking-widest uppercase">
                                 {METRIC_LABEL[metric]}
                             </dt>
-                            <dd className={cn('font-mono text-2xl font-semibold', ZONE_TEXT_CLASS[zone])}>
+                            <dd className={cn('text-xl font-semibold tabular-nums', ZONE_TEXT_CLASS[zone])}>
                                 {METRIC_FORMAT[metric].value(value)}
                             </dd>
 
                             {/* The plan beside the fact, from this push's own frozen copy — the same
                                 reason the chart's tooltip carries it. */}
                             {pair !== null && (
-                                <dd className="text-muted-foreground font-mono text-[10px]">
+                                <dd className="text-muted-foreground text-xs tabular-nums">
                                     green &lt; {cost(pair.gy)} · red &gt; {cost(pair.yr)}
                                 </dd>
                             )}

@@ -452,9 +452,7 @@ function TrajectoryChart({ points, mode }: TrajectoryChartProps) {
             >
                 <AccordionItem value="trajectory">
                     <AccordionHeader>
-                        <AccordionTrigger className="text-[13px] tracking-widest uppercase">
-                            Trajectory
-                        </AccordionTrigger>
+                        <AccordionTrigger className="text-sm tracking-widest uppercase">Trajectory</AccordionTrigger>
                     </AccordionHeader>
 
                     <AccordionPanel>
@@ -552,7 +550,7 @@ function TrajectoryChart({ points, mode }: TrajectoryChartProps) {
                             </p>
 
                             {presentFlags.length > 0 && (
-                                <ul className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
+                                <ul className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-xs">
                                     {presentFlags.map((flag) => {
                                         return (
                                             <li

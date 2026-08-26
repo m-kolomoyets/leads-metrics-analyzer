@@ -75,7 +75,7 @@ function Dashboard() {
             <div className="flex flex-col gap-4">
                 <div className="flex flex-wrap items-center gap-3">
                     <RangePicker range={range} onChange={changeRange} locale={locale} />
-                    <span className="text-muted-foreground font-mono text-xs">
+                    <span className="text-muted-foreground text-xs tabular-nums">
                         {resolved.from} → {resolved.to}
                     </span>
                 </div>

@@ -78,7 +78,7 @@ function PointTooltip({ point, previous, metric, mode, position, total }: PointT
                             {prefix}
                             {METRIC_LABEL[metric]}
                         </span>
-                        <span className="font-mono text-base font-semibold">{format.value(value)}</span>
+                        <span className="text-base font-semibold tabular-nums">{format.value(value)}</span>
                     </p>
 
                     {zone !== null && (
@@ -93,7 +93,7 @@ function PointTooltip({ point, previous, metric, mode, position, total }: PointT
                     )}
                 </div>
 
-                <dl className="text-muted-foreground grid grid-cols-[auto_1fr] content-start gap-x-3 font-mono">
+                <dl className="text-muted-foreground grid grid-cols-[auto_1fr] content-start gap-x-3 tabular-nums">
                     <dt>{prefix}Spend⁺</dt>
                     <dd className="text-right">{usd(point.figures.spendPlus)}</dd>
                     <dt>{prefix}Installs</dt>
@@ -111,7 +111,7 @@ function PointTooltip({ point, previous, metric, mode, position, total }: PointT
             {/* The movement gets a row of its own across the whole card: squeezed into the right
                 column it wrapped onto a second line, and half a number under the other half is the
                 one thing a figure must never do. */}
-            <p className="text-muted-foreground border-border flex items-baseline justify-between gap-3 border-t pt-2 font-mono whitespace-nowrap">
+            <p className="text-muted-foreground border-border flex items-baseline justify-between gap-3 border-t pt-2 whitespace-nowrap tabular-nums">
                 <span>{isDelta ? 'Δ vs previous' : 'since last push'}</span>
                 <span className="text-foreground font-semibold">
                     {previous === null

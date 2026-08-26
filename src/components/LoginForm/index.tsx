@@ -62,7 +62,7 @@ function LoginForm() {
     return (
         <div className="p-6 md:p-8 w-full max-w-md">
             <div className="flex flex-col items-center text-center mb-6">
-                <h1 className="text-2xl font-semibold">Welcome back</h1>
+                <h1 className="text-xl font-semibold">Welcome back</h1>
                 <p className="text-balance text-muted-foreground">Login to your account</p>
             </div>
             <form

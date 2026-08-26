@@ -13,14 +13,14 @@ function Login() {
         <div className="grid h-full lg:grid-cols-2">
             <div className="relative hidden flex-col justify-between bg-black p-10 lg:flex dark:bg-white">
                 <Link className="w-fit rounded-md" to="/login">
-                    <span className="text-background text-2xl font-semibold tracking-tight">{WORDMARK}</span>
+                    <span className="text-background text-xl font-semibold tracking-tight">{WORDMARK}</span>
                 </Link>
                 <h3 className="text-background text-lg">{TAGLINE}</h3>
             </div>
             <div className="flex flex-col gap-4 p-6 md:p-10">
                 <div className="flex flex-col items-center justify-center gap-2 lg:hidden">
                     <Link to="/login" className="w-fit rounded-md font-medium">
-                        <span className="text-2xl font-semibold tracking-tight">{WORDMARK}</span>
+                        <span className="text-xl font-semibold tracking-tight">{WORDMARK}</span>
                     </Link>
                     <h3 className="text-md text-muted-foreground">{TAGLINE}</h3>
                 </div>

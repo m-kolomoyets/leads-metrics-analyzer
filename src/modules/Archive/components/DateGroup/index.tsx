@@ -16,7 +16,7 @@ type DateGroupProps = {
 function DateGroup({ group, locale }: DateGroupProps) {
     return (
         <section className="border-border flex flex-col gap-4 rounded-lg border p-4">
-            <h2 className="font-mono text-lg font-semibold">{group.reportDate}</h2>
+            <h2 className="text-base font-semibold tabular-nums">{group.reportDate}</h2>
 
             {group.users.map(({ user, cards }) => {
                 return (

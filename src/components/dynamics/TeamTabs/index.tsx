@@ -28,10 +28,10 @@ function TeamTabs({ teams, activeId, onSelect }: TeamTabsProps) {
                         role="tab"
                         aria-selected={selected}
                         className={cn(
-                            'rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors',
+                            'rounded-md border px-3 py-1.5 text-xs font-medium motion-safe:transition-colors motion-safe:duration-150',
                             selected
-                                ? 'surface-accent border-primary text-white'
-                                : 'text-muted-foreground hover:text-foreground border-border bg-[#162036]'
+                                ? 'border-accent bg-accent text-accent-foreground'
+                                : 'text-muted-foreground hover:text-foreground border-border bg-surface'
                         )}
                         onClick={() => {
                             onSelect(team.id);

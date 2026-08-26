@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { deleteUserMutationOptions } from '@/services/admin/queries';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { TableCell, TableRow } from '@/components/ui/Table';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/Tooltip';
 import { getTeamName } from '../../utils/teamOptions';
 
@@ -24,9 +25,9 @@ function UserRow({ user, teams, currentUserId, onEdit, onInvite, onReset }: User
     const isSelf = user.id === currentUserId;
 
     return (
-        <tr className="border-b last:border-b-0">
-            <td className="px-3 py-2 font-medium">{user.nickname}</td>
-            <td className="px-3 py-2">
+        <TableRow>
+            <TableCell className="font-medium">{user.nickname}</TableCell>
+            <TableCell>
                 <span className="flex items-center gap-2">
                     {user.email}
                     {user.hasPendingReset && (
@@ -42,15 +43,15 @@ function UserRow({ user, teams, currentUserId, onEdit, onInvite, onReset }: User
                         </Tooltip>
                     )}
                 </span>
-            </td>
-            <td className="px-3 py-2">
+            </TableCell>
+            <TableCell>
                 <Badge variant="outline">{user.role}</Badge>
-            </td>
-            <td className="px-3 py-2">{getTeamName(user.teamId, teams)}</td>
-            <td className="px-3 py-2">
+            </TableCell>
+            <TableCell>{getTeamName(user.teamId, teams)}</TableCell>
+            <TableCell>
                 <Badge variant={STATUS_VARIANT[user.status]}>{user.status}</Badge>
-            </td>
-            <td className="px-3 py-2 text-right whitespace-nowrap">
+            </TableCell>
+            <TableCell className="text-right">
                 {isConfirmingDelete ? (
                     <div className="flex items-center justify-end gap-2">
                         <span className="text-muted-foreground text-xs">Delete user?</span>
@@ -133,8 +134,8 @@ function UserRow({ user, teams, currentUserId, onEdit, onInvite, onReset }: User
                         )}
                     </>
                 )}
-            </td>
-        </tr>
+            </TableCell>
+        </TableRow>
     );
 }
 

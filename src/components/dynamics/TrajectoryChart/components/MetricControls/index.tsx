@@ -24,7 +24,7 @@ type MetricControlsProps = {
 };
 
 function Caption({ children }: { children: React.ReactNode }) {
-    return <span className="text-muted-foreground/70 text-[10px] tracking-[0.15em] uppercase">{children}</span>;
+    return <span className="text-muted-foreground/70 text-xs tracking-[0.15em] uppercase">{children}</span>;
 }
 
 function MetricControls({ costMetrics, figure, onToggleCost, onSelectFigure }: MetricControlsProps) {

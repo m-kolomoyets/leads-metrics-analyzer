@@ -69,24 +69,24 @@ function ThresholdFields({ draft, idPrefix, disabled, locale, onChange }: Thresh
                         <Label htmlFor={`${idPrefix}-${metric}-gy`} className="w-24 text-sm font-normal">
                             {metricLabel(metric, locale)}
                         </Label>
-                        <span className="text-success text-[11px]">{ui('zGreen', locale)}</span>
+                        <span className="text-zone-green text-xs">{ui('zGreen', locale)}</span>
                         <Input
                             id={`${idPrefix}-${metric}-gy`}
                             type="number"
                             inputMode="decimal"
-                            className="h-8 w-16 font-mono text-[13px]"
+                            className="h-8 w-16 text-sm tabular-nums"
                             disabled={disabled}
                             value={draft[metric].gy}
                             onChange={(event) => {
                                 onChange(metric, 'gy', event.target.value);
                             }}
                         />
-                        <span className="text-warning text-[11px]">{ui('zYellow', locale)}</span>
+                        <span className="text-warning text-xs">{ui('zYellow', locale)}</span>
                         <Input
                             id={`${idPrefix}-${metric}-yr`}
                             type="number"
                             inputMode="decimal"
-                            className="h-8 w-16 font-mono text-[13px]"
+                            className="h-8 w-16 text-sm tabular-nums"
                             aria-label={`${metricLabel(metric, locale)} ${ui('yr', locale)}`}
                             disabled={disabled}
                             value={draft[metric].yr}
@@ -94,7 +94,7 @@ function ThresholdFields({ draft, idPrefix, disabled, locale, onChange }: Thresh
                                 onChange(metric, 'yr', event.target.value);
                             }}
                         />
-                        <span className="text-danger text-[11px]">{ui('zRed', locale)}</span>
+                        <span className="text-zone-red text-xs">{ui('zRed', locale)}</span>
                     </div>
                 );
             })}

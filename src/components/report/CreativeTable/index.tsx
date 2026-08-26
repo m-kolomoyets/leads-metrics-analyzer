@@ -11,6 +11,7 @@ import { ZONE_ACCENT_CLASS, ZONE_TEXT_CLASS } from '@/components/report/constant
 import { cost, ctrPct, flagEmoji, int, pct, usd, usdSigned } from '@/components/report/utils/format';
 import { ui, verdictWhy } from '@/components/report/utils/i18n';
 import { rollUpRows, showsFooter } from '@/components/report/utils/rollup';
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
 
 type CreativeTableProps = {
     rows: CreativeRow[];
@@ -60,14 +61,18 @@ function CostCell({
     trend?: MetricTrend | null;
 }) {
     if (value === null) {
-        return <td className={cn('p-2 font-mono', className)}>—</td>;
+        return (
+            <TableCell isNumeric className={className}>
+                —
+            </TableCell>
+        );
     }
     const zone = plain ? undefined : ZONE_TEXT_CLASS[zoneFor(value, pair)];
     return (
-        <td className={cn('p-2 font-mono', zone, className)}>
+        <TableCell isNumeric className={cn(zone, className)}>
             {cost(value)}
             <RowTrend metric="cpi" trend={trend ?? null} />
-        </td>
+        </TableCell>
     );
 }
 
@@ -95,42 +100,47 @@ function MetricCells({
     const dim = plain ? undefined : 'text-muted-foreground';
     return (
         <>
-            <td className="p-2 font-mono">{int(m.linkClicks)}</td>
-            <td className="p-2 font-mono">{int(m.installs)}</td>
-            <td className="p-2 font-mono">{int(m.regs)}</td>
-            <td className="p-2 font-mono">{int(m.sales)}</td>
-            <td className={cn('p-2 font-mono', dim)}>{cost(m.epc)}</td>
-            <td className={cn('p-2 font-mono', BLOCK_START, !plain && m.revenue > 0 && 'text-success')}>
+            <TableCell isNumeric>{int(m.linkClicks)}</TableCell>
+            <TableCell isNumeric>{int(m.installs)}</TableCell>
+            <TableCell isNumeric>{int(m.regs)}</TableCell>
+            <TableCell isNumeric>{int(m.sales)}</TableCell>
+            <TableCell isNumeric className={dim}>
+                {cost(m.epc)}
+            </TableCell>
+            <TableCell isNumeric className={cn(BLOCK_START, !plain && m.revenue > 0 && ZONE_TEXT_CLASS.green)}>
                 {usd(m.revenue)}
                 <RowTrend metric="revenue" trend={trend ?? null} />
-            </td>
-            <td className={cn('p-2 font-mono', dim)}>
+            </TableCell>
+            <TableCell isNumeric className={dim}>
                 {usd(m.spendPlus)}
                 <RowTrend metric="spend" trend={trend ?? null} />
-            </td>
-            <td
-                className={cn(
-                    'p-2 font-mono font-semibold',
-                    !plain && (m.profit >= 0 ? 'text-success' : 'text-danger')
-                )}
+            </TableCell>
+            <TableCell
+                isNumeric
+                className={cn('font-medium', !plain && (m.profit >= 0 ? ZONE_TEXT_CLASS.green : ZONE_TEXT_CLASS.red))}
             >
                 {usdSigned(m.profit)}
                 <RowTrend metric="profit" trend={trend ?? null} />
-            </td>
-            <td
+            </TableCell>
+            <TableCell
+                isNumeric
                 className={cn(
-                    'p-2 font-mono font-semibold',
-                    !plain && m.roi !== null && (m.roi >= 0 ? 'text-success' : 'text-danger')
+                    'font-medium',
+                    !plain && m.roi !== null && (m.roi >= 0 ? ZONE_TEXT_CLASS.green : ZONE_TEXT_CLASS.red)
                 )}
             >
                 {pct(m.roi)}
                 <RowTrend metric="roi" trend={trend ?? null} />
-            </td>
+            </TableCell>
             <CostCell value={m.cpi} pair={thresholds.installs} className={BLOCK_START} plain={plain} trend={trend} />
             <CostCell value={m.cpr} pair={thresholds.regs} plain={plain} />
             <CostCell value={m.cps} pair={thresholds.sales} plain={plain} />
-            <td className={cn('p-2 font-mono', BLOCK_START, dim)}>{ctrPct(ctr)}</td>
-            <td className={cn('p-2 font-mono', dim)}>{cpm === null ? '—' : usd(cpm)}</td>
+            <TableCell isNumeric className={cn(BLOCK_START, dim)}>
+                {ctrPct(ctr)}
+            </TableCell>
+            <TableCell isNumeric className={dim}>
+                {cpm === null ? '—' : usd(cpm)}
+            </TableCell>
         </>
     );
 }
@@ -162,70 +172,65 @@ function CreativeTable({ rows, thresholds, locale, geo, previous }: CreativeTabl
 
     return (
         <div className="flex flex-col gap-2">
-            <h3 className="text-muted-foreground text-[13px] font-normal tracking-widest uppercase">
+            <h3 className="text-muted-foreground text-xs font-medium tracking-widest uppercase">
                 {ui('creatives', locale)} · {geo}
             </h3>
-            <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-right text-xs">
-                    <thead>
-                        <tr className="text-muted-foreground border-b">
-                            <th className="w-1.5 p-0" />
-                            <th className="p-2 text-left font-normal whitespace-nowrap">{ui('creative', locale)}</th>
-                            {HEAD_COLS.map((col) => {
-                                return (
-                                    <th key={col.label} className={cn('p-2 font-normal', col.start && BLOCK_START)}>
-                                        {col.label}
-                                    </th>
-                                );
-                            })}
-                            <th className="p-2 text-left font-normal whitespace-nowrap">{ui('why', locale)}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {rows.map((row) => {
+            <Table density="compact" className="text-xs">
+                <TableHeader>
+                    <TableRow>
+                        <TableHead className="w-1.5 p-0" />
+                        <TableHead>{ui('creative', locale)}</TableHead>
+                        {HEAD_COLS.map((col) => {
                             return (
-                                <tr key={row.key} className="border-b">
-                                    <td className={cn('p-0', ZONE_ACCENT_CLASS[row.verdict.verdict])} />
-                                    <td className="p-2 text-left whitespace-nowrap">
-                                        <span className="text-base">{flagEmoji(row.cc)}</span>{' '}
-                                        <span className="font-mono font-semibold">{row.key}</span>
-                                    </td>
-                                    <MetricCells
-                                        m={row.metrics}
-                                        ctr={row.ctr}
-                                        cpm={row.cpm}
-                                        thresholds={thresholds}
-                                        trend={trendBetween(previousRows.get(row.key) ?? null, row.metrics)}
-                                    />
-                                    <td className="text-muted-foreground p-2 text-left text-[11px]">
-                                        {verdictWhy(row.verdict, locale)}
-                                    </td>
-                                </tr>
+                                <TableHead key={col.label} isNumeric className={cn(col.start && BLOCK_START)}>
+                                    {col.label}
+                                </TableHead>
                             );
                         })}
-                    </tbody>
-                    {showFooter && (
-                        <tfoot>
-                            <tr className="border-t-2 font-semibold">
-                                <td className="p-0" />
-                                <td className="text-muted-foreground p-2 text-left whitespace-nowrap">
-                                    {ui('totalAvg', locale)}
-                                </td>
+                        <TableHead>{ui('why', locale)}</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {rows.map((row) => {
+                        return (
+                            <TableRow key={row.key}>
+                                <TableCell className={cn('p-0', ZONE_ACCENT_CLASS[row.verdict.verdict])} />
+                                <TableCell>
+                                    <span>{flagEmoji(row.cc)}</span> <span className="font-medium">{row.key}</span>
+                                </TableCell>
                                 <MetricCells
-                                    m={totals}
-                                    ctr={impressions > 0 ? (totals.linkClicks / impressions) * 100 : null}
-                                    cpm={impressions > 0 ? (totals.spendPlus / impressions) * 1000 : null}
+                                    m={row.metrics}
+                                    ctr={row.ctr}
+                                    cpm={row.cpm}
                                     thresholds={thresholds}
-                                    plain
-                                    trend={totalsTrend}
+                                    trend={trendBetween(previousRows.get(row.key) ?? null, row.metrics)}
                                 />
-                                <td className="p-2" />
-                            </tr>
-                        </tfoot>
-                    )}
-                </table>
-            </div>
-            <p className="text-muted-foreground text-[10px]">{ui('creativeEstimate', locale)}</p>
+                                <TableCell className="text-muted-foreground text-xs whitespace-normal">
+                                    {verdictWhy(row.verdict, locale)}
+                                </TableCell>
+                            </TableRow>
+                        );
+                    })}
+                </TableBody>
+                {showFooter && (
+                    <TableFooter>
+                        <TableRow className="font-medium">
+                            <TableCell className="p-0" />
+                            <TableCell className="text-muted-foreground">{ui('totalAvg', locale)}</TableCell>
+                            <MetricCells
+                                m={totals}
+                                ctr={impressions > 0 ? (totals.linkClicks / impressions) * 100 : null}
+                                cpm={impressions > 0 ? (totals.spendPlus / impressions) * 1000 : null}
+                                thresholds={thresholds}
+                                plain
+                                trend={totalsTrend}
+                            />
+                            <TableCell />
+                        </TableRow>
+                    </TableFooter>
+                )}
+            </Table>
+            <p className="text-muted-foreground text-xs">{ui('creativeEstimate', locale)}</p>
         </div>
     );
 }

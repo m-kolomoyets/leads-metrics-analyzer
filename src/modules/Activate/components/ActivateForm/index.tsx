@@ -55,7 +55,7 @@ function ActivateForm() {
     if (!token) {
         return (
             <div className="w-full max-w-md text-center">
-                <h1 className="text-2xl font-semibold">Invalid invitation</h1>
+                <h1 className="text-xl font-semibold">Invalid invitation</h1>
                 <p className="text-muted-foreground mt-2 text-balance">
                     This invitation link is invalid or has expired. Ask the Head to send you a new one.
                 </p>
@@ -66,7 +66,7 @@ function ActivateForm() {
     return (
         <div className="w-full max-w-md p-6 md:p-8">
             <div className="mb-6 flex flex-col items-center text-center">
-                <h1 className="text-2xl font-semibold">Set your password</h1>
+                <h1 className="text-xl font-semibold">Set your password</h1>
                 <p className="text-muted-foreground text-balance">Choose a password to activate your account</p>
             </div>
             <form

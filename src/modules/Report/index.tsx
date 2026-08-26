@@ -131,7 +131,7 @@ function Report() {
 
                         {thresholds && (
                             <div className="flex flex-col gap-6">
-                                <SectionCard tone="violet">
+                                <SectionCard>
                                     <OffersTable
                                         title={`📦 ${ui('offers', locale)} · ${geoRollup.geo}`}
                                         firstCol={ui('offers', locale)}
@@ -141,7 +141,7 @@ function Report() {
                                         locale={locale}
                                     />
                                 </SectionCard>
-                                <SectionCard tone="blue">
+                                <SectionCard>
                                     <OsTable
                                         title={`💻 ${ui('osTable', locale)} · ${geoRollup.geo}`}
                                         firstCol={ui('osTable', locale)}
@@ -151,7 +151,7 @@ function Report() {
                                         locale={locale}
                                     />
                                 </SectionCard>
-                                <SectionCard tone="blue">
+                                <SectionCard>
                                     <CreativeTable
                                         rows={creatives}
                                         thresholds={thresholds}

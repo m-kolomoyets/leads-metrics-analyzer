@@ -10,8 +10,8 @@ import { problemReason, ui } from '@/components/report/utils/i18n';
 import { Button } from '@/components/ui/Button';
 import { AccountCampaigns } from '../AccountCampaigns';
 import { BucketBlock } from '../BucketBlock';
-import { Pill } from '../Pill';
 import { SalesBlock } from '../SalesBlock';
+import { StatusChip } from '../StatusChip';
 
 type AccountBlockProps = {
     account: AccountRollup;
@@ -30,8 +30,8 @@ type AccountBlockProps = {
     onToggleReviewed: () => void;
 };
 
-// One Account panel: a glass frame (red when Problem) with a metrics header, the three action buckets
-// + sales block, and the full campaign table. `id="acc-<account>"` is the summary table's jump anchor;
+// One Account panel: a hairline frame (red when Problem) with a metrics header, the three action
+// buckets + sales block, and the full campaign table. `id="acc-<account>"` is the summary table's jump anchor;
 // collapse and "reviewed" are both controlled by the parent.
 function AccountBlock({
     account,
@@ -75,9 +75,9 @@ function AccountBlock({
         <section
             id={`acc-${account.account}`}
             className={cn(
-                'scroll-mt-4 rounded-lg p-4 transition-opacity',
-                problem ? 'glass-tint tint-red' : 'glass-tint tint-blue tint-s4',
-                // The pulse is a call to act, so reviewing silences it — the red frame and pill stay,
+                'bg-surface scroll-mt-4 rounded-md border p-4 motion-safe:transition-opacity',
+                problem ? 'border-zone-red' : 'border-border',
+                // The pulse is a call to act, so reviewing silences it — the red frame and chip stay,
                 // since the account is still Problem, only no longer unhandled.
                 problem && !reviewed && 'pulse-red',
                 reviewed && 'opacity-60'
@@ -98,7 +98,7 @@ function AccountBlock({
                 <button
                     type="button"
                     title="copy account id"
-                    className={cn('font-mono text-base font-semibold', problem && 'text-danger')}
+                    className={cn('text-base font-semibold tabular-nums', problem && ZONE_TEXT_CLASS.red)}
                     onClick={() => {
                         onCopy(account.account, `acc:${account.account}`);
                     }}
@@ -106,7 +106,7 @@ function AccountBlock({
                     {copiedKey === `acc:${account.account}` ? ui('copied', locale) : account.account}
                 </button>
 
-                {problem && <Pill color="red" glyph="!" label={ui('problem', locale)} />}
+                {problem && <StatusChip zone="red" glyph="!" label={ui('problem', locale)} />}
 
                 <label className="text-muted-foreground flex items-center gap-1.5 text-xs">
                     <input type="checkbox" checked={reviewed} onChange={onToggleReviewed} />
@@ -122,18 +122,21 @@ function AccountBlock({
                         <Stat
                             label="Rev"
                             value={metrics.revenue > 0 ? usdRound(metrics.revenue) : '—'}
-                            className={metrics.revenue > 0 ? 'text-success' : 'text-muted-foreground'}
+                            className={metrics.revenue > 0 ? ZONE_TEXT_CLASS.green : 'text-muted-foreground'}
                         />
-                        <Stat label="Spend" value={usd(metrics.spendPlus)} className="font-semibold" />
+                        <Stat label="Spend" value={usd(metrics.spendPlus)} className="font-medium" />
                         <Stat
                             label="Profit"
                             value={usdSigned(metrics.profit)}
-                            className={cn('font-semibold', metrics.profit >= 0 ? 'text-success' : 'text-danger')}
+                            className={cn(
+                                'font-medium',
+                                metrics.profit >= 0 ? ZONE_TEXT_CLASS.green : ZONE_TEXT_CLASS.red
+                            )}
                         />
                         <Stat
                             label="ROI"
                             value={pct(metrics.roi)}
-                            className={cn('font-semibold', roiClass(metrics.roi))}
+                            className={cn('font-medium', roiClass(metrics.roi))}
                         />
                     </div>
 
@@ -160,7 +163,7 @@ function AccountBlock({
                         />
                     </div>
 
-                    <span className="border-l pl-3 font-mono">
+                    <span className="border-l pl-3 tabular-nums">
                         <span className={ZONE_TEXT_CLASS.red}>●{counts.red}</span>{' '}
                         <span className={ZONE_TEXT_CLASS.yellow}>●{counts.yellow}</span>{' '}
                         <span className={ZONE_TEXT_CLASS.green}>●{counts.green}</span>{' '}
@@ -171,7 +174,7 @@ function AccountBlock({
             </div>
 
             {problem && open && (
-                <p className="mt-2 text-xs text-danger">
+                <p className={cn('mt-2 text-xs', ZONE_TEXT_CLASS.red)}>
                     ⚠ {problemReason(problem, metrics.spendPlus, metrics.cpi, locale)} — {ui('checkManually', locale)}.
                 </p>
             )}
@@ -206,10 +209,8 @@ function AccountBlock({
                     </div>
 
                     {account.salesCampaigns.length > 0 && (
-                        <div className="flex flex-col gap-2 rounded-lg border border-violet-500/30 bg-violet-500/5 p-3">
-                            <span className="text-sm font-semibold text-violet-400">
-                                {ui('salesCampaigns', locale)}
-                            </span>
+                        <div className="border-border flex flex-col gap-2 rounded-md border p-3">
+                            <span className="text-sm font-medium">{ui('salesCampaigns', locale)}</span>
                             <AccountCampaigns
                                 campaigns={account.salesCampaigns}
                                 thresholds={thresholds}
@@ -257,12 +258,12 @@ function AccountBlock({
     );
 }
 
-// One labelled figure in the header strip: dim label, coloured mono value.
+// One labelled figure in the header strip: dim label, coloured tabular value.
 function Stat({ label, value, className }: { label: string; value: string; className?: string }) {
     return (
         <span className="flex items-baseline gap-1 whitespace-nowrap">
-            <span className="text-muted-foreground text-[10px] tracking-wide uppercase">{label}</span>
-            <span className={cn('font-mono', className)}>{value}</span>
+            <span className="text-muted-foreground text-xs tracking-wide uppercase">{label}</span>
+            <span className={cn('tabular-nums', className)}>{value}</span>
         </span>
     );
 }
@@ -279,7 +280,7 @@ function roiClass(roi: number | null): string {
     if (roi === null) {
         return 'text-muted-foreground';
     }
-    return roi >= 0 ? 'text-success' : 'text-danger';
+    return roi >= 0 ? ZONE_TEXT_CLASS.green : ZONE_TEXT_CLASS.red;
 }
 
 export { AccountBlock };
