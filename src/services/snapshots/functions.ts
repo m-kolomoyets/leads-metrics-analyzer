@@ -1,3 +1,4 @@
+import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import type { Viewer } from '@/lib/auth/scope';
 import type { SnapshotSubject } from '@/lib/auth/snapshotAccess';
 import type { ReplacementVerdict } from '@/lib/auth/snapshotReplacement';
@@ -459,7 +460,11 @@ const assertSavedVersions = async (presetVersionIds: string[], sharedSettingsVer
 // owns the boundary. The OWNER is passed in rather than read from the session — a Head correcting a
 // buyer's push must not re-attribute the day to itself, or the buyer's trajectory loses a point and
 // the Head's gains one (ADR-0018).
-type SnapshotWriter = Parameters<Parameters<typeof db.transaction>[0]>[0];
+// Derived from the DRIVER type, never from the `db` instance. `typeof db.transaction` would name a
+// value from a module whose import opens a Postgres connection, and `verbatimModuleSyntax` keeps that
+// import alive for the type alone — which drags `postgres` into the browser bundle and fails the
+// build. A type-only import of the driver is erased and cannot.
+type SnapshotWriter = Parameters<Parameters<PostgresJsDatabase['transaction']>[0]>[0];
 
 type SnapshotOwner = {
     createdByUserId: string;
