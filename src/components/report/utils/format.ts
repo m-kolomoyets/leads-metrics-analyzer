@@ -39,6 +39,12 @@ const signedPercentFormat = new Intl.NumberFormat(NUMBER_LOCALE, {
     signDisplay: 'exceptZero',
 });
 
+const signedDecimalFormat = new Intl.NumberFormat(NUMBER_LOCALE, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+    signDisplay: 'always',
+});
+
 const percentFormats = [0, 1, 2].map((digits) => {
     return new Intl.NumberFormat(NUMBER_LOCALE, {
         style: 'percent',
@@ -70,6 +76,11 @@ export function usdRound(value: number): string {
 // A cost-per metric: em dash when the denominator was zero (metric "not shown", not zero).
 export function cost(value: number | null): string {
     return value === null ? DASH : decimalFormat.format(value);
+}
+
+// A signed cost-per movement, e.g. a CPI that fell: -4.10. Null → em dash, never a signed zero.
+export function costSigned(value: number | null): string {
+    return value === null ? DASH : signedDecimalFormat.format(value);
 }
 
 // A percentage with sign, e.g. ROI +42% / -15%; null → em dash. Input is percent points.

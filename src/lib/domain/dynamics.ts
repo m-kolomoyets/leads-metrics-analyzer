@@ -284,3 +284,61 @@ export function summarize(parts: Iterable<DynamicsBases>): DynamicsFigures {
     }
     return figuresFrom(bases);
 }
+
+// The comparison panel's arithmetic (SPEC §6.5): the two most recent pushes of a Geo, read side by
+// side. Unlike a Delta, this subtracts the DISPLAYED figures — a CPI that went 22.50 → 18.40 changed
+// by −4.10, which is what a buyer means by "it got cheaper since last time". A Delta answers a
+// different question (what the interval itself cost) and the two must not be confused.
+export type MetricTone = 'good' | 'bad' | 'neutral';
+
+// The panel's row for one metric: the figure now, the figure before, what moved, and how to read it.
+export type MetricComparison = {
+    metric: DynamicsMetric;
+    current: number | null;
+    previous: number | null;
+    // Null when either side is unmeasurable — a change against `—` is not a change of zero.
+    change: number | null;
+    tone: MetricTone;
+};
+
+// Where each metric's figure lives on a `DynamicsFigures`. `spend` is Spend⁺ (see `DynamicsMetric`).
+function figureOf(figures: DynamicsFigures, metric: DynamicsMetric): number | null {
+    switch (metric) {
+        case 'spend':
+            return figures.spendPlus;
+        case 'revenue':
+            return figures.revenue;
+        default:
+            return figures[metric];
+    }
+}
+
+// The arrow follows arithmetic; the tone follows meaning. A metric that is `neutral` in the map is
+// neutral in every direction — spend alone is neither good nor bad, and the ROI beside it judges it.
+// No movement is no verdict either.
+export function toneOf(metric: DynamicsMetric, change: number | null): MetricTone {
+    const meaning = meaningOf(metric);
+
+    if (change === null || change === 0 || meaning === 'neutral') {
+        return 'neutral';
+    }
+
+    const rising = change > 0;
+
+    return rising === (meaning === 'up-good') ? 'good' : 'bad';
+}
+
+// Every metric the panel renders, in reading order: the money first, then the verdict, then the
+// costs the verdict is made of. `previous` is null on the day's first push — there is nothing to
+// compare against, and every change is null rather than "up from zero".
+const COMPARISON_METRICS: DynamicsMetric[] = ['spend', 'revenue', 'profit', 'roi', 'cpi', 'cpr', 'cps', 'cpc'];
+
+export function compareFigures(previous: DynamicsFigures | null, current: DynamicsFigures): MetricComparison[] {
+    return COMPARISON_METRICS.map((metric): MetricComparison => {
+        const now = figureOf(current, metric);
+        const before = previous === null ? null : figureOf(previous, metric);
+        const change = now === null || before === null ? null : now - before;
+
+        return { metric, current: now, previous: before, change, tone: toneOf(metric, change) };
+    });
+}

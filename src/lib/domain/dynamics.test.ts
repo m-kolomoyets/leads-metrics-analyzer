@@ -4,6 +4,7 @@ import type { GeoThresholds } from './types';
 import { describe, expect, it } from 'vitest';
 import {
     buildSeries,
+    compareFigures,
     deltaBetween,
     deltasFor,
     deriveFrom,
@@ -11,6 +12,7 @@ import {
     meaningOf,
     METRIC_MEANING,
     summarize,
+    toneOf,
 } from './dynamics';
 
 // The trajectory arithmetic (ADR-0017): pushes are cumulative, so the shape of a day is what changed
@@ -392,5 +394,91 @@ describe('axis ordering', () => {
                 return one.snapshotId;
             })
         ).toEqual(['a', 'b', 'c']);
+    });
+});
+
+describe('toneOf', () => {
+    it('colours by meaning, not by the sign: a cheaper CPI is good, a falling ROI is bad', () => {
+        expect(toneOf('cpi', -4.1)).toBe('good');
+        expect(toneOf('cpi', 4.1)).toBe('bad');
+        expect(toneOf('roi', -5)).toBe('bad');
+        expect(toneOf('roi', 5)).toBe('good');
+    });
+
+    it('leaves spend neutral in every direction, because spend alone judges nothing', () => {
+        expect(toneOf('spend', 250)).toBe('neutral');
+        expect(toneOf('spend', -250)).toBe('neutral');
+    });
+
+    it('reads no verdict into no movement, or into a change nobody could measure', () => {
+        expect(toneOf('profit', 0)).toBe('neutral');
+        expect(toneOf('cpi', null)).toBe('neutral');
+    });
+});
+
+describe('compareFigures', () => {
+    it('subtracts the displayed figures, so a CPI of 22.50 then 18.40 moved by -4.10', () => {
+        const previous = figuresFrom({ spendPlus: 225, revenue: 0, linkClicks: 0, installs: 10, regs: 0, sales: 0 });
+        const current = figuresFrom({ spendPlus: 460, revenue: 0, linkClicks: 0, installs: 25, regs: 0, sales: 0 });
+
+        const cpi = compareFigures(previous, current).find((one) => {
+            return one.metric === 'cpi';
+        });
+
+        expect(cpi?.previous).toBeCloseTo(22.5);
+        expect(cpi?.current).toBeCloseTo(18.4);
+        expect(cpi?.change).toBeCloseTo(-4.1);
+        expect(cpi?.tone).toBe('good');
+    });
+
+    it('keeps spend neutral while the profit it bought reads red', () => {
+        const previous = figuresFrom({ spendPlus: 100, revenue: 300, linkClicks: 0, installs: 0, regs: 0, sales: 0 });
+        const current = figuresFrom({ spendPlus: 250, revenue: 300, linkClicks: 0, installs: 0, regs: 0, sales: 0 });
+
+        const rows = compareFigures(previous, current);
+        const spend = rows.find((one) => {
+            return one.metric === 'spend';
+        });
+        const profit = rows.find((one) => {
+            return one.metric === 'profit';
+        });
+
+        expect(spend?.change).toBe(150);
+        expect(spend?.tone).toBe('neutral');
+        expect(profit?.change).toBe(-150);
+        expect(profit?.tone).toBe('bad');
+    });
+
+    it('reports every metric the panel renders, in reading order', () => {
+        const figures = figuresFrom({ spendPlus: 0, revenue: 0, linkClicks: 0, installs: 0, regs: 0, sales: 0 });
+
+        expect(
+            compareFigures(null, figures).map((one) => {
+                return one.metric;
+            })
+        ).toEqual(['spend', 'revenue', 'profit', 'roi', 'cpi', 'cpr', 'cps', 'cpc']);
+    });
+
+    it('changes nothing against a first push: there is no previous figure to subtract', () => {
+        const current = figuresFrom({ spendPlus: 250, revenue: 400, linkClicks: 0, installs: 10, regs: 0, sales: 0 });
+
+        for (const row of compareFigures(null, current)) {
+            expect(row.previous).toBeNull();
+            expect(row.change).toBeNull();
+            expect(row.tone).toBe('neutral');
+        }
+    });
+
+    it('refuses to call an unmeasurable figure a change of zero', () => {
+        const previous = figuresFrom({ spendPlus: 100, revenue: 0, linkClicks: 0, installs: 0, regs: 0, sales: 0 });
+        const current = figuresFrom({ spendPlus: 200, revenue: 0, linkClicks: 0, installs: 8, regs: 0, sales: 0 });
+
+        const cpi = compareFigures(previous, current).find((one) => {
+            return one.metric === 'cpi';
+        });
+
+        expect(cpi?.previous).toBeNull();
+        expect(cpi?.current).toBe(25);
+        expect(cpi?.change).toBeNull();
     });
 });

@@ -1,6 +1,8 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
+import { buildSeries } from '@/lib/domain/dynamics';
 import { dynamicsDayQueryOptions } from '@/services/dynamics/queries';
 import { activeGeo } from '@/modules/Report/utils/activeGeo';
+import { ComparisonPanel } from '@/components/dynamics/ComparisonPanel';
 import { GeoTabs } from '@/components/report/GeoTabs';
 import { geoTabs } from '../../utils/frame';
 
@@ -8,8 +10,7 @@ import { geoTabs } from '../../utils/frame';
 // switching buyers suspends this alone — the team and buyer rows above are read from the roster and
 // must not blink while a trajectory loads.
 //
-// The blocks that hang under the geo row — the comparison panel, the chart and the tables — arrive
-// with their own issues; this slice is the frame plus the geo level itself.
+// The chart and the tables that hang under the comparison panel arrive with their own issues.
 
 type BuyerDayProps = {
     buyerId: string;
@@ -39,7 +40,16 @@ function BuyerDay({ buyerId, reportDate, geo, onSelectGeo }: BuyerDayProps) {
         return <p className="text-muted-foreground text-sm">No market with spend was reported for this day.</p>;
     }
 
-    return <GeoTabs geos={geos} active={selected} spendByGeo={spendByGeo} onSelect={onSelectGeo} />;
+    // The selected market's trajectory: every active push that froze it, oldest first. The panel
+    // reads the last two points of it; the chart to come reads all of them.
+    const series = buildSeries(snapshots, selected);
+
+    return (
+        <div className="flex flex-col gap-4">
+            <GeoTabs geos={geos} active={selected} spendByGeo={spendByGeo} onSelect={onSelectGeo} />
+            <ComparisonPanel points={series} />
+        </div>
+    );
 }
 
 export { BuyerDay };
