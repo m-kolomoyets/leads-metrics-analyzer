@@ -9,8 +9,10 @@ import { buyerTabs } from '@/modules/Dynamics/utils/buyerTabs';
 import { activeBuyer, tabsOfTeam, teamsOf } from '@/modules/Dynamics/utils/frame';
 import { BuyerTabs } from '@/components/dynamics/BuyerTabs';
 import { DataAge } from '@/components/dynamics/DataAge';
+import { RefreshButton } from '@/components/dynamics/RefreshButton';
 import { TeamTabs } from '@/components/dynamics/TeamTabs';
 import { MainLayoutHeader } from '@/components/layouts/MainLayoutHeader';
+import { PendingArea } from '@/components/PendingArea';
 import { PAGE_TITLE } from './constants';
 import { BuyerDimensionDay } from './components/BuyerDimensionDay';
 
@@ -70,6 +72,8 @@ function DynamicsDimension({ dimension }: DynamicsDimensionProps) {
                     {PAGE_TITLE[dimension]} · {reportDate}
                 </h1>
                 <DataAge takenAt={buyer?.lastTakenAt ?? null} now={now} />
+                <span className="flex-1" />
+                <RefreshButton />
             </MainLayoutHeader>
 
             <div className="flex flex-col gap-4">
@@ -84,7 +88,7 @@ function DynamicsDimension({ dimension }: DynamicsDimensionProps) {
                         // Keyed on the buyer so switching people remounts the boundary rather than
                         // holding the previous person's markets on screen while the next day loads.
                         key={buyer.id}
-                        fallback={<p className="text-muted-foreground text-sm">Loading the day…</p>}
+                        fallback={<PendingArea label="Working out the day…" />}
                     >
                         <BuyerDimensionDay
                             dimension={dimension}

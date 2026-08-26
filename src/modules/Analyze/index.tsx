@@ -1,7 +1,7 @@
 import type { GeoThresholds } from '@/lib/domain/types';
 import type { PresetView } from '@/services/presets/types';
 import type { ImportedShared } from './utils/importPresets';
-import { useState } from 'react';
+import { useDeferredValue, useState } from 'react';
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 import { analyzeParsed } from '@/lib/domain';
@@ -10,6 +10,7 @@ import { creativesFor } from '@/lib/domain/creatives';
 import { mergeParsed } from '@/lib/domain/parse';
 import { presetsQueryOptions, sharedSettingsQueryOptions } from '@/services/presets/queries';
 import { MainLayoutHeader } from '@/components/layouts/MainLayoutHeader';
+import { PendingArea } from '@/components/PendingArea';
 import { AccountSummary } from '@/components/report/AccountSummary';
 import { CreativeTable } from '@/components/report/CreativeTable';
 import { GeoStat } from '@/components/report/GeoStat';
@@ -102,14 +103,21 @@ function Analyze() {
     const { copied, copy } = useClipboard();
 
     const ruleset = toRuleset(presets, shared);
+    // The grading input, one render behind the upload. `analyzeParsed` over a month of exports is long
+    // enough to feel, and it runs during render: deferring it lets React paint the new file list and
+    // the indicator below first, then grade. The dropzones keep the live `files` — a removal must show
+    // up under the cursor immediately, whatever the tables are still busy with.
+    const gradedFiles = useDeferredValue(files);
+    // True exactly while the tables on screen are grading an older upload than the one in the zones.
+    const isCalculating = gradedFiles !== files;
     // Files are parsed once at ingest; here we only merge their rows (cheap) and grade. A preset/shared
     // edit re-runs `analyzeParsed` but never Papa.parse — the reference's parse-once, grade-many split.
     const parsed = mergeParsed(
-        files.map((file) => {
+        gradedFiles.map((file) => {
             return file.parsed;
         })
     );
-    const result = files.length ? analyzeParsed(parsed, ruleset) : null;
+    const result = gradedFiles.length ? analyzeParsed(parsed, ruleset) : null;
 
     const geos = (result?.geos ?? []).map((geo) => {
         return geo.geo;
@@ -290,9 +298,12 @@ function Analyze() {
     // through the empty dropzones on the way in reads as a lost session.
     if (!isHydrated) {
         return (
-            <MainLayoutHeader>
-                <h1 className="text-xl">Analyze</h1>
-            </MainLayoutHeader>
+            <>
+                <MainLayoutHeader>
+                    <h1 className="text-xl">Analyze</h1>
+                </MainLayoutHeader>
+                <PendingArea label="Restoring your last upload…" />
+            </>
         );
     }
 
@@ -330,7 +341,11 @@ function Analyze() {
 
                 <FileDropzones files={files} onChange={replaceFiles} />
 
-                {result && geos.length === 0 && (
+                {/* The grade is a render behind the zones, so say so rather than leave the previous
+                    upload's tables standing under a file list that has already changed. */}
+                {isCalculating && <PendingArea label="Working out the report…" />}
+
+                {result && geos.length === 0 && !isCalculating && (
                     <p className="text-muted-foreground text-sm">
                         No campaigns parsed. Check the uploaded files are FB + Keitaro exports.
                     </p>

@@ -8,8 +8,10 @@ import { dynamicsRosterQueryOptions } from '@/services/dynamics/queries';
 import { BuyerTabs } from '@/components/dynamics/BuyerTabs';
 import { DataAge } from '@/components/dynamics/DataAge';
 import { ModeToggle } from '@/components/dynamics/ModeToggle';
+import { RefreshButton } from '@/components/dynamics/RefreshButton';
 import { TeamTabs } from '@/components/dynamics/TeamTabs';
 import { MainLayoutHeader } from '@/components/layouts/MainLayoutHeader';
+import { PendingArea } from '@/components/PendingArea';
 import { buyerTabs } from './utils/buyerTabs';
 import { activeBuyer, tabsOfTeam, teamsOf } from './utils/frame';
 import { BuyerDay } from './components/BuyerDay';
@@ -71,6 +73,7 @@ function Dynamics() {
                 <DataAge takenAt={buyer?.lastTakenAt ?? null} now={now} />
                 <span className="flex-1" />
                 <ModeToggle mode={mode} onSelect={setMode} />
+                <RefreshButton />
             </MainLayoutHeader>
 
             <div className="flex flex-col gap-4">
@@ -83,10 +86,7 @@ function Dynamics() {
                 {buyer ? (
                     // Keyed on the buyer so switching people remounts the boundary rather than
                     // holding the previous person's markets on screen while the next day loads.
-                    <Suspense
-                        key={buyer.id}
-                        fallback={<p className="text-muted-foreground text-sm">Loading the day…</p>}
-                    >
+                    <Suspense key={buyer.id} fallback={<PendingArea label="Working out the day…" />}>
                         <BuyerDay
                             buyerId={buyer.id}
                             reportDate={reportDate}

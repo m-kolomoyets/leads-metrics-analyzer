@@ -8,6 +8,7 @@ import { activeGeo } from '@/modules/Report/utils/activeGeo';
 import { ComparisonPanel } from '@/components/dynamics/ComparisonPanel';
 import { MetricTiles } from '@/components/dynamics/MetricTiles';
 import { TrajectoryChart } from '@/components/dynamics/TrajectoryChart';
+import { PendingArea } from '@/components/PendingArea';
 import { GeoTabs } from '@/components/report/GeoTabs';
 import { geoTabs } from '../../utils/frame';
 import { DetailTables } from '../DetailTables';
@@ -109,7 +110,7 @@ function BuyerDay({ buyerId, reportDate, geo, onSelectGeo, mode }: BuyerDayProps
                     // Keyed on the push so switching market or buyer starts the second read cleanly
                     // rather than showing the previous market's offers while this one loads.
                     key={`${latest.snapshotId}:${selected}`}
-                    fallback={<p className="text-muted-foreground text-sm">Loading the tables…</p>}
+                    fallback={<PendingArea label="Working out the tables…" />}
                 >
                     <DetailTables
                         snapshotId={latest.snapshotId}

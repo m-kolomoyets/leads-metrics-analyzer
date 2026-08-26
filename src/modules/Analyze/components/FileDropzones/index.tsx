@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { FileSpreadsheet, TriangleAlert, Upload, X } from 'lucide-react';
 import { parseFile } from '@/lib/domain/parse';
 import { cn } from '@/lib/utils/cn';
+import { PendingArea } from '@/components/PendingArea';
 import { Button } from '@/components/ui/Button';
 
 type FileDropzonesProps = {
@@ -146,17 +147,30 @@ function FileRow({ file, onRemove }: { file: UploadedFile; onRemove: () => void 
 
 function FileDropzones({ files, onChange }: FileDropzonesProps) {
     const [draggedOver, setDraggedOver] = useState<FileType | null>(null);
+    // How many files are still being read and parsed. A month of exports is seconds of `Papa.parse`
+    // during which the zone would otherwise look like it swallowed the drop: this count is what the
+    // indicator reports, and what locks the zones while it is non-zero.
+    const [parsingCount, setParsingCount] = useState(0);
+    const isParsing = parsingCount > 0;
 
     async function addFiles(picked: File[]) {
-        if (picked.length === 0) {
+        // A second drop mid-parse would compute its next list from the pre-parse `files` and throw the
+        // in-flight batch away, so the zones stay shut until the current one has landed.
+        if (picked.length === 0 || isParsing) {
             return;
         }
         const accepted = picked.filter(isCsv);
         const rejected = picked.filter((file) => {
             return !isCsv(file);
         });
-        const added = await toUploaded(accepted);
-        onChange(reconcile([...files, ...added, ...rejected.map(toRejected)]));
+        setParsingCount(accepted.length);
+
+        try {
+            const added = await toUploaded(accepted);
+            onChange(reconcile([...files, ...added, ...rejected.map(toRejected)]));
+        } finally {
+            setParsingCount(0);
+        }
     }
 
     async function handleInput(event: React.ChangeEvent<HTMLInputElement>) {
@@ -205,7 +219,15 @@ function FileDropzones({ files, onChange }: FileDropzonesProps) {
 
     return (
         <section className="bg-surface border-border flex flex-col gap-3 rounded-md border p-4">
-            <h3 className="text-muted-foreground text-xs font-medium tracking-widest uppercase">Files</h3>
+            <div className="flex items-center gap-3">
+                <h3 className="text-muted-foreground text-xs font-medium tracking-widest uppercase">Files</h3>
+                {isParsing && (
+                    <PendingArea
+                        variant="inline"
+                        label={`Reading ${parsingCount} ${parsingCount === 1 ? 'file' : 'files'}…`}
+                    />
+                )}
+            </div>
             <div className="grid gap-3 sm:grid-cols-3">
                 {ZONES.map((zone) => {
                     const zoneFiles = files.filter((file) => {
@@ -219,7 +241,8 @@ function FileDropzones({ files, onChange }: FileDropzonesProps) {
                             className={cn(
                                 'bg-primary/5 border-primary/25 flex flex-col overflow-hidden rounded-md border motion-safe:transition-colors motion-safe:duration-150',
                                 zoneFiles.length === 0 ? 'border-dashed' : 'border-primary/40',
-                                isDraggedOver && 'border-primary/70 bg-primary/15 border-solid'
+                                isDraggedOver && 'border-primary/70 bg-primary/15 border-solid',
+                                isParsing && 'pointer-events-none opacity-60'
                             )}
                             onDragOver={(event) => {
                                 handleDragOver(event, zone.type);
@@ -241,7 +264,7 @@ function FileDropzones({ files, onChange }: FileDropzonesProps) {
                                 <span className="flex min-w-0 flex-col">
                                     <span className="truncate text-sm font-medium">{zone.label}</span>
                                     <span className="text-muted-foreground truncate text-xs">
-                                        {zoneHint(zone.hint, zoneFiles.length, isDraggedOver)}
+                                        {isParsing ? 'Reading…' : zoneHint(zone.hint, zoneFiles.length, isDraggedOver)}
                                     </span>
                                 </span>
                                 {zoneFiles.length > 0 && (
@@ -254,6 +277,7 @@ function FileDropzones({ files, onChange }: FileDropzonesProps) {
                                     accept=".csv,text/csv"
                                     multiple
                                     className="sr-only"
+                                    disabled={isParsing}
                                     onChange={(event) => {
                                         void handleInput(event);
                                     }}
