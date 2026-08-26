@@ -1,5 +1,6 @@
 import type { FrozenGeoRollup } from './snapshot';
-import type { GeoThresholds } from './types';
+import type { GeoThresholds, ThresholdPair, Zone } from './types';
+import { zoneFor } from './verdict';
 
 // The Dynamics page's arithmetic (ADR-0010): a day's Frozen Geo Rollups in, one buyer's trajectory
 // through that day out. Pure — no services, no DB, no React (ADR-0004, ADR-0005).
@@ -43,6 +44,39 @@ export function meaningOf(metric: DynamicsMetric): MetricDirection {
     return METRIC_MEANING[metric];
 }
 
+// The cost-per metrics the chart paints by zone. Money carries no zone — there are no thresholds for
+// income, and a green Revenue would be a verdict nobody wrote (SPEC §6.6).
+export type CostMetric = 'cpi' | 'cpr' | 'cps' | 'cpc';
+
+export const COST_METRICS: CostMetric[] = ['cpi', 'cpr', 'cps', 'cpc'];
+
+// Which threshold pair grades which cost: a CPI is judged against the installs line, never a shared
+// one. The Verdict Engine's waterfall picks a stage; the chart is asked about a stage outright.
+const COST_PAIR: Record<CostMetric, keyof GeoThresholds> = {
+    cpi: 'installs',
+    cpr: 'regs',
+    cps: 'sales',
+    cpc: 'clicks',
+};
+
+export function thresholdPairOf(metric: CostMetric, thresholds: GeoThresholds | null): ThresholdPair | null {
+    return thresholds === null ? null : thresholds[COST_PAIR[metric]];
+}
+
+// One point's zone for one cost metric, graded against THAT Snapshot's own frozen copy (ADR-0002,
+// ADR-0015): a buyer editing a preset at noon must never repaint the morning. Neutral — not red —
+// when the figure is unmeasurable or the copy is missing: an ungraded point is not a failing one.
+export function zoneOfPoint(point: SeriesPoint, metric: CostMetric): Zone {
+    const value = point.figures[metric];
+    const pair = thresholdPairOf(metric, point.thresholds);
+
+    if (value === null || pair === null) {
+        return 'neutral';
+    }
+
+    return zoneFor(value, pair);
+}
+
 // The counts and money a delta subtracts. Everything else on this page is derived from these.
 export type DynamicsBases = {
     // Spend⁺ — the commission-inclusive cost, the numerator of every cost-per metric.
@@ -79,6 +113,10 @@ export type DynamicsSnapshot = {
     // Per-Geo copied thresholds. A Geo whose copy is missing or unparseable is ungraded, not graded
     // by the reader's live ruleset (ADR-0002, spec story 32).
     thresholds: Record<string, GeoThresholds | null>;
+    // When the push this one CORRECTED was superseded, ISO instant, or null when it corrected nothing
+    // (ADR-0018). The replaced push is gone from every number; this stamp is all that is left of it,
+    // and it is what lets the chart say "replaced at 15:30" to someone who read the old figure.
+    replacedAt: string | null;
 };
 
 // One point on the trajectory: a single Snapshot's figures for a single Geo, carrying the thresholds
@@ -89,6 +127,9 @@ export type SeriesPoint = {
     geo: string;
     figures: DynamicsFigures;
     thresholds: GeoThresholds | null;
+    // Carried from the Snapshot: the moment the push this one replaced was superseded, or null. Only
+    // this point is marked — the badge does not cascade onto later ones (ADR-0018).
+    replacedAt: string | null;
 };
 
 // The three edge cases, all of which occur in production.
@@ -216,6 +257,7 @@ export function buildSeries(snapshots: DynamicsSnapshot[], geo: string): SeriesP
             // beneath it is worse than one that reads `—`.
             figures: figuresFrom(basesOf(rollup)),
             thresholds: snapshot.thresholds[geo] ?? null,
+            replacedAt: snapshot.replacedAt,
         });
     }
     return points;

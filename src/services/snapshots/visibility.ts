@@ -20,10 +20,13 @@ export const activeSnapshotsOnly = (): SQL => {
     return eq(snapshot.status, 'active');
 };
 
+// The row-scope axis alone, WITHOUT the lifecycle half. Exported for the one read that wants the
+// other side of the lifecycle — the Dynamics chart's replacement stamps (ADR-0018) — which must name
+// `status = 'replaced'` itself. Every counting read composes `listSnapshotsFilter` instead.
 // The row-scope axis as a WHERE clause over `snapshot`. Filters on the STAMPED `team_id`, so a
 // member's transfer never re-attributes their past Snapshots. `undefined` means "no filter" (head
 // sees every row); a teamless team-scope viewer is excluded upstream, so a bound teamId is expected.
-const snapshotRowFilter = (scope: VisibilityScope): SQL | undefined => {
+export const snapshotRowFilter = (scope: VisibilityScope): SQL | undefined => {
     switch (scope.rowScope) {
         case 'all': {
             return undefined;

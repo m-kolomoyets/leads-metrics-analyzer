@@ -12,6 +12,13 @@ export type DaySnapshotRow = {
     takenAt: Date;
 };
 
+// A superseded push, reduced to the only thing left of it: which active Snapshot corrected it and
+// when (ADR-0018). Its figures are not read — a replaced Snapshot contributes to no number anywhere.
+export type DayReplacementRow = {
+    replacedBy: string;
+    replacedAt: Date;
+};
+
 export type DayRollupRow = FrozenGeoRollup & {
     snapshotId: string;
 };
@@ -30,8 +37,22 @@ const key = (appliedRulesetId: string, geo: string): string => {
 export const toDynamicsSnapshots = (
     rows: DaySnapshotRow[],
     rollups: DayRollupRow[],
-    geoRules: DayGeoRuleRow[]
+    geoRules: DayGeoRuleRow[],
+    replacements: DayReplacementRow[] = []
 ): DynamicsSnapshot[] => {
+    // The correction stamp lands on the push that DID the correcting — the replaced one is not in
+    // `rows` at all. The latest wins when a push corrected more than one: the badge names when the
+    // figures on screen last changed, and an older stamp would understate that.
+    const replacedAt = new Map<string, Date>();
+
+    for (const replacement of replacements) {
+        const known = replacedAt.get(replacement.replacedBy);
+
+        if (!known || known < replacement.replacedAt) {
+            replacedAt.set(replacement.replacedBy, replacement.replacedAt);
+        }
+    }
+
     // Thresholds come out of jsonb, so an unparseable copy degrades THAT Geo to ungraded — never
     // graded by the reader's live ruleset (ADR-0002, spec story 32), and never a thrown page.
     const thresholds = new Map<string, DynamicsSnapshot['thresholds'][string]>();
@@ -58,6 +79,7 @@ export const toDynamicsSnapshots = (
             id: row.id,
             takenAt: row.takenAt.toISOString(),
             geoRollups,
+            replacedAt: replacedAt.get(row.id)?.toISOString() ?? null,
             // Only the Geos this Snapshot froze: a threshold copy for a market it did not report
             // grades nothing, and carrying it would invite a point that has no figures.
             thresholds: Object.fromEntries(

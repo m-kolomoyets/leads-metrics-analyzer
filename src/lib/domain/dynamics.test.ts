@@ -13,6 +13,7 @@ import {
     METRIC_MEANING,
     summarize,
     toneOf,
+    zoneOfPoint,
 } from './dynamics';
 
 // The trajectory arithmetic (ADR-0017): pushes are cumulative, so the shape of a day is what changed
@@ -56,11 +57,14 @@ function snapshot(id: string, takenAt: string, rollups: FrozenGeoRollup[]): Dyna
                 return [one.geo, THRESHOLDS];
             })
         ),
+        replacedAt: null,
     };
 }
 
-function point(over: Partial<DynamicsBases> & { id?: string; takenAt?: string }): SeriesPoint {
-    const { id = 'p', takenAt = '2026-08-26T10:00:00Z', ...bases } = over;
+function point(
+    over: Partial<DynamicsBases> & { id?: string; takenAt?: string; thresholds?: GeoThresholds | null }
+): SeriesPoint {
+    const { id = 'p', takenAt = '2026-08-26T10:00:00Z', thresholds = THRESHOLDS, ...bases } = over;
     return {
         snapshotId: id,
         takenAt,
@@ -74,7 +78,8 @@ function point(over: Partial<DynamicsBases> & { id?: string; takenAt?: string })
             sales: 0,
             ...bases,
         }),
-        thresholds: THRESHOLDS,
+        thresholds,
+        replacedAt: null,
     };
 }
 
@@ -480,5 +485,41 @@ describe('compareFigures', () => {
         expect(cpi?.previous).toBeNull();
         expect(cpi?.current).toBe(25);
         expect(cpi?.change).toBeNull();
+    });
+});
+
+describe('zoneOfPoint', () => {
+    it('grades a cost against the pair its own stage owns', () => {
+        const graded = point({ spendPlus: 90, installs: 10, regs: 1, sales: 1, linkClicks: 100 });
+
+        // CPI 9 against installs 10/20 → green; CPR 90 against regs 30/60 → red.
+        expect(zoneOfPoint(graded, 'cpi')).toBe('green');
+        expect(zoneOfPoint(graded, 'cpr')).toBe('red');
+        expect(zoneOfPoint(graded, 'cpc')).toBe('green');
+    });
+
+    it('grades against the point OWN frozen thresholds, never a passed-in live ruleset', () => {
+        const strict: GeoThresholds = {
+            installs: { gy: 5, yr: 8 },
+            regs: { gy: 30, yr: 60 },
+            sales: { gy: 100, yr: 200 },
+            clicks: { gy: 1, yr: 2 },
+        };
+        const bases = { spendPlus: 90, installs: 10, regs: 0, sales: 0, linkClicks: 0 };
+
+        expect(zoneOfPoint(point(bases), 'cpi')).toBe('green');
+        expect(zoneOfPoint(point({ ...bases, thresholds: strict }), 'cpi')).toBe('red');
+    });
+
+    it('is neutral when the figure is unmeasurable — an ungraded point is not a bad one', () => {
+        const ungraded = point({ spendPlus: 90, installs: 0, regs: 0, sales: 0, linkClicks: 0 });
+
+        expect(zoneOfPoint(ungraded, 'cpi')).toBe('neutral');
+    });
+
+    it('is neutral when the snapshot froze no readable thresholds', () => {
+        const unreadable = point({ spendPlus: 90, installs: 10, regs: 0, sales: 0, linkClicks: 0, thresholds: null });
+
+        expect(zoneOfPoint(unreadable, 'cpi')).toBe('neutral');
     });
 });

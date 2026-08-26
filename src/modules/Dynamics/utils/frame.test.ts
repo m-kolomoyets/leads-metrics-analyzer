@@ -38,7 +38,7 @@ const rollup = (geo: string, spendPlus: number): FrozenGeoRollup => {
 };
 
 const snapshot = (id: string, takenAt: string, rollups: FrozenGeoRollup[]): DynamicsSnapshot => {
-    return { id, takenAt, geoRollups: rollups, thresholds: {} };
+    return { id, takenAt, geoRollups: rollups, thresholds: {}, replacedAt: null };
 };
 
 describe('teamsOf', () => {

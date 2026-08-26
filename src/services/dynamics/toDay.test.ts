@@ -110,3 +110,42 @@ describe('toDynamicsSnapshots', () => {
         expect(Object.keys(day.thresholds)).toEqual(['UA']);
     });
 });
+
+describe('toDynamicsSnapshots · replacement stamps', () => {
+    it('stamps the push that did the correcting, and only that one', () => {
+        const day = toDynamicsSnapshots(
+            [rowOf('snap-1', '2026-08-26T06:00:00.000Z'), rowOf('snap-2', '2026-08-26T09:00:00.000Z')],
+            [rollupOf('snap-1', 'KR'), rollupOf('snap-2', 'KR')],
+            [ruleOf('KR', THRESHOLDS)],
+            [{ replacedBy: 'snap-1', replacedAt: new Date('2026-08-26T06:20:00.000Z') }]
+        );
+
+        expect(day[0].replacedAt).toBe('2026-08-26T06:20:00.000Z');
+        // The badge does not cascade forward (ADR-0018).
+        expect(day[1].replacedAt).toBeNull();
+    });
+
+    it('keeps the latest stamp when one push corrected several', () => {
+        const day = toDynamicsSnapshots(
+            [rowOf('snap-1', '2026-08-26T06:00:00.000Z')],
+            [rollupOf('snap-1', 'KR')],
+            [ruleOf('KR', THRESHOLDS)],
+            [
+                { replacedBy: 'snap-1', replacedAt: new Date('2026-08-26T05:40:00.000Z') },
+                { replacedBy: 'snap-1', replacedAt: new Date('2026-08-26T05:55:00.000Z') },
+            ]
+        );
+
+        expect(day[0].replacedAt).toBe('2026-08-26T05:55:00.000Z');
+    });
+
+    it('leaves every push unstamped when nothing was replaced', () => {
+        const day = toDynamicsSnapshots(
+            [rowOf('snap-1', '2026-08-26T06:00:00.000Z')],
+            [rollupOf('snap-1', 'KR')],
+            [ruleOf('KR', THRESHOLDS)]
+        );
+
+        expect(day[0].replacedAt).toBeNull();
+    });
+});

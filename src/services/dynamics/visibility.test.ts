@@ -3,7 +3,7 @@ import type { Viewer } from '@/lib/auth/scope';
 import { PgDialect } from 'drizzle-orm/pg-core';
 import { describe, expect, it } from 'vitest';
 import { scopeFor } from '@/lib/auth/scope';
-import { dynamicsDayFilter, dynamicsDayTotalsFilter, visibleBuyerFilter } from './visibility';
+import { dynamicsDayFilter, dynamicsDayTotalsFilter, dynamicsReplacedFilter, visibleBuyerFilter } from './visibility';
 
 // Renders a clause to SQL text with its parameters inlined, so a test can assert on the predicate
 // rather than on `$1`. No connection is opened — `PgDialect` is pure string building.
@@ -106,5 +106,22 @@ describe('dynamicsDayTotalsFilter', () => {
         expect(render(dynamicsDayTotalsFilter(scopeFor(buyer), '2026-08-26'))).toContain(
             '"snapshot"."created_by_user_id" = buyer-1'
         );
+    });
+});
+
+// The chart's replacement badges are the only read that wants a superseded row (ADR-0018). It asks
+// for `status = 'replaced'` outright, under the same row-scope as every other read.
+describe('dynamicsReplacedFilter', () => {
+    it('asks for replaced rows of that buyer and that report date', () => {
+        const clause = render(dynamicsReplacedFilter(scopeFor(lead), 'buyer-1', '2026-08-26'));
+
+        expect(clause).toContain('"snapshot"."status" = replaced');
+        expect(clause).toContain('"snapshot"."created_by_user_id" = buyer-1');
+        expect(clause).toContain('"snapshot"."report_date" = 2026-08-26');
+        expect(clause).toContain('"snapshot"."team_id" = team-1');
+    });
+
+    it('never asks for active rows — the counting reads own that half', () => {
+        expect(render(dynamicsReplacedFilter(scopeFor(head), 'buyer-1', '2026-08-26'))).not.toContain('= active');
     });
 });

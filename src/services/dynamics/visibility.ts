@@ -2,7 +2,7 @@ import type { SQL } from 'drizzle-orm';
 import type { VisibilityScope } from '@/lib/auth/scope';
 import { and, eq } from 'drizzle-orm';
 import { snapshot, user } from '@/lib/db/schema';
-import { listSnapshotsFilter, userRowFilter } from '@/services/snapshots/visibility';
+import { listSnapshotsFilter, snapshotRowFilter, userRowFilter } from '@/services/snapshots/visibility';
 
 // Where the Dynamics day read decides which rows it may see. Both clauses are composed from the
 // scope descriptor alone (ADR-0007) — no role literal appears here or in the handlers, so a role
@@ -30,4 +30,20 @@ export const dynamicsDayFilter = (scope: VisibilityScope, buyerId: string, repor
 // them at once; narrowing per buyer would cost a round trip per tab.
 export const dynamicsDayTotalsFilter = (scope: VisibilityScope, reportDate: string): SQL | undefined => {
     return and(listSnapshotsFilter(scope), eq(snapshot.reportDate, reportDate));
+};
+
+// The one read that deliberately asks for superseded rows: the chart's replacement badges (ADR-0018).
+// Nothing is counted from them — only `replaced_at` and `replaced_by` are selected — so the lifecycle
+// clause is inverted here rather than forgotten, and row-scope still applies in full.
+export const dynamicsReplacedFilter = (
+    scope: VisibilityScope,
+    buyerId: string,
+    reportDate: string
+): SQL | undefined => {
+    return and(
+        snapshotRowFilter(scope),
+        eq(snapshot.status, 'replaced'),
+        eq(snapshot.createdByUserId, buyerId),
+        eq(snapshot.reportDate, reportDate)
+    );
 };

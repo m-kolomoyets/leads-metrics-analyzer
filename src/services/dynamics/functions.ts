@@ -4,7 +4,7 @@ import type { DynamicsSnapshot } from '@/lib/domain/dynamics';
 import type { MeData } from '@/services/auth/types';
 import type { DynamicsRosterUser } from './types';
 import { createServerFn } from '@tanstack/react-start';
-import { and, eq, inArray, sum } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, sum } from 'drizzle-orm';
 import { assertDimension } from '@/lib/auth/denial';
 import { requireUser } from '@/lib/auth/guards';
 import { scopeFor } from '@/lib/auth/scope';
@@ -16,7 +16,7 @@ import { matchesNoRows, userRowFilter } from '@/services/snapshots/visibility';
 import { dynamicsDayInputSchema, dynamicsRosterInputSchema } from './schemas';
 import { toDynamicsSnapshots } from './toDay';
 import { toRoster } from './toRoster';
-import { dynamicsDayFilter, dynamicsDayTotalsFilter, visibleBuyerFilter } from './visibility';
+import { dynamicsDayFilter, dynamicsDayTotalsFilter, dynamicsReplacedFilter, visibleBuyerFilter } from './visibility';
 
 // The two reads behind the Dynamics page (ADR-0010, ADR-0017). Both go through `scopeFor(viewer)`
 // (ADR-0007) — no hand-rolled role check — and neither touches a `snapshot_fact` row: a whole day is
@@ -93,7 +93,11 @@ export const listDayFn = createServerFn({ method: 'GET' })
         const rulesetIds = rows.map((row) => {
             return row.appliedRulesetId;
         });
-        const [rollups, geoRules] = await Promise.all([
+        const snapshotIds = rows.map((row) => {
+            return row.id;
+        });
+
+        const [rollups, geoRules, replacements] = await Promise.all([
             db
                 // Explicit columns: `select()` would carry the row's own primary key into the wire
                 // shape, and a Frozen Geo Rollup is identified by its Snapshot and Geo, not by a row id.
@@ -116,14 +120,7 @@ export const listDayFn = createServerFn({ method: 'GET' })
                     waste: snapshotGeo.waste,
                 })
                 .from(snapshotGeo)
-                .where(
-                    inArray(
-                        snapshotGeo.snapshotId,
-                        rows.map((row) => {
-                            return row.id;
-                        })
-                    )
-                )
+                .where(inArray(snapshotGeo.snapshotId, snapshotIds))
                 .orderBy(snapshotGeo.geo),
             db
                 .select({
@@ -133,9 +130,34 @@ export const listDayFn = createServerFn({ method: 'GET' })
                 })
                 .from(appliedRulesetGeo)
                 .where(inArray(appliedRulesetGeo.appliedRulesetId, rulesetIds)),
+            // The day's superseded pushes, reduced to their lifecycle columns (ADR-0018). Deliberately
+            // the one read that looks past `status = 'active'`: no figure of theirs is selected, and
+            // the point they are stamped onto is one the viewer may already see. Without it a buyer
+            // who read the 15:00 figure has no way to learn that it was corrected rather than changed.
+            db
+                .select({ replacedBy: snapshot.replacedBy, replacedAt: snapshot.replacedAt })
+                .from(snapshot)
+                .where(
+                    and(
+                        dynamicsReplacedFilter(scope, buyerId, data.reportDate),
+                        inArray(snapshot.replacedBy, snapshotIds),
+                        isNotNull(snapshot.replacedAt)
+                    )
+                ),
         ]);
 
-        return toDynamicsSnapshots(rows, rollups, geoRules);
+        return toDynamicsSnapshots(
+            rows,
+            rollups,
+            geoRules,
+            // The nulls are excluded in SQL; the narrowing is spelled here because the column is
+            // nullable in the schema and a `replaced` row without a stamp would be a broken write.
+            replacements.flatMap((row) => {
+                return row.replacedBy === null || row.replacedAt === null
+                    ? []
+                    : [{ replacedBy: row.replacedBy, replacedAt: row.replacedAt }];
+            })
+        );
     });
 
 // The tab row's companion read: the buyers the viewer may see, each with their latest active push
