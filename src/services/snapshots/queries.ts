@@ -1,4 +1,4 @@
-import type { CreateSnapshotInput } from './schemas';
+import type { CreateSnapshotInput, ReplaceSnapshotInput } from './schemas';
 import { mutationOptions, queryOptions } from '@tanstack/react-query';
 import {
     createSnapshotFn,
@@ -7,6 +7,7 @@ import {
     getSnapshotFactsFn,
     getSnapshotFn,
     listSnapshotsFn,
+    replaceSnapshotFn,
 } from './functions';
 import { snapshotKeys } from './queryKeys';
 
@@ -65,6 +66,21 @@ export const createSnapshotMutationOptions = () => {
         },
         onSuccess(_data, _variables, _onMutateResult, { client }) {
             client.invalidateQueries({ queryKey: snapshotKeys.listQueryKey() });
+        },
+    });
+};
+
+// Correcting a push within the window (ADR-0018). Invalidates the whole Snapshot namespace rather
+// than the list alone: the replaced Snapshot's own detail, facts and bundle entries all go stale at
+// once — it stops being readable — and so does every derived feed that counted it.
+export const replaceSnapshotMutationOptions = () => {
+    return mutationOptions({
+        mutationKey: snapshotKeys.replaceMutationKey(),
+        mutationFn(data: ReplaceSnapshotInput) {
+            return replaceSnapshotFn({ data });
+        },
+        onSuccess(_data, _variables, _onMutateResult, { client }) {
+            client.invalidateQueries({ queryKey: snapshotKeys.all });
         },
     });
 };

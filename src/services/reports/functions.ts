@@ -11,6 +11,7 @@ import { USER_ROLES } from '@/lib/constants';
 import { db } from '@/lib/db';
 import { appliedRuleset, appliedRulesetGeo, snapshot, snapshotGeo, user } from '@/lib/db/schema';
 import { appliedSettingsSchema, geoThresholdsSchema } from '@/services/snapshots/schemas';
+import { listSnapshotsFilter, rosterSnapshotJoinOn } from '@/services/snapshots/visibility';
 import { reportRangeInputSchema } from './schemas';
 
 // The two reads behind the Report feed (S4, #56). Both run through `scopeFor(viewer)` (ADR-0007) —
@@ -44,22 +45,6 @@ const userRowFilter = (scope: VisibilityScope): SQL | undefined => {
     }
 };
 
-// Same axis over the `snapshot` table, filtering on the STAMPED `team_id` so a member's transfer
-// never re-attributes their past Snapshots.
-const snapshotRowFilter = (scope: VisibilityScope): SQL | undefined => {
-    switch (scope.rowScope) {
-        case 'all': {
-            return undefined;
-        }
-        case 'team': {
-            return eq(snapshot.teamId, scope.teamId ?? '');
-        }
-        case 'own': {
-            return eq(snapshot.createdByUserId, scope.userId ?? '');
-        }
-    }
-};
-
 // True when the viewer can read no Snapshot at all: a dollar-barred role (designer/bdm), or a team
 // lead not yet placed on a team, who can match no team's rows.
 const readsNothing = (scope: VisibilityScope): boolean => {
@@ -87,7 +72,9 @@ export const listVisibleUsersFn = createServerFn({ method: 'GET' }).handler(asyn
             lastTakenAt: max(snapshot.takenAt),
         })
         .from(user)
-        .leftJoin(snapshot, eq(snapshot.createdByUserId, user.id))
+        // The lifecycle filter rides in the JOIN, not the WHERE: a buyer whose only push has been
+        // replaced must still appear in the roster reading "never", not drop out of the feed.
+        .leftJoin(snapshot, rosterSnapshotJoinOn())
         .where(and(eq(user.status, 'active'), inArray(user.role, CAMPAIGN_ROLES), userRowFilter(scope)))
         .groupBy(user.id, user.nickname, user.role)
         .orderBy(user.nickname);
@@ -127,7 +114,7 @@ export const listReportFn = createServerFn({ method: 'GET' })
             .from(snapshot)
             .innerJoin(appliedRuleset, eq(snapshot.appliedRulesetId, appliedRuleset.id))
             .where(
-                and(snapshotRowFilter(scope), gte(snapshot.reportDate, data.from), lte(snapshot.reportDate, data.to))
+                and(listSnapshotsFilter(scope), gte(snapshot.reportDate, data.from), lte(snapshot.reportDate, data.to))
             )
             .orderBy(snapshot.takenAt);
 

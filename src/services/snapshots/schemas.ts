@@ -160,3 +160,11 @@ export type SnapshotIdInput = z.infer<typeof snapshotIdInputSchema>;
 export const snapshotIdInputSchema = z.object({
     id: z.uuid(),
 });
+
+// The replacement payload (ADR-0018): the id of the Snapshot being superseded plus exactly what a
+// create takes. The correction is a full re-push, not a patch — a Snapshot is self-sufficient
+// (ADR-0015), so a partial replacement would produce a report that half-agrees with itself.
+export type ReplaceSnapshotInput = z.infer<typeof replaceSnapshotInputSchema>;
+export const replaceSnapshotInputSchema = createSnapshotInputSchema.extend({
+    id: z.uuid(),
+});

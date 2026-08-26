@@ -1,7 +1,8 @@
-import type { SQL } from 'drizzle-orm';
-import type { Viewer, VisibilityScope } from '@/lib/auth/scope';
+import type { Viewer } from '@/lib/auth/scope';
 import type { SnapshotSubject } from '@/lib/auth/snapshotAccess';
+import type { ReplacementVerdict } from '@/lib/auth/snapshotReplacement';
 import type { MeData } from '@/services/auth/types';
+import type { CreateSnapshotInput } from './schemas';
 import type {
     AppliedGeo,
     AppliedGeoRuleView,
@@ -14,11 +15,12 @@ import type {
     SnapshotView,
 } from './types';
 import { createServerFn } from '@tanstack/react-start';
-import { asc, eq, inArray, sum } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, sum } from 'drizzle-orm';
 import { rollupDimensionFor } from '@/lib/auth/dimensionRollup';
 import { FORBIDDEN_MESSAGE, requireUser } from '@/lib/auth/guards';
 import { scopeFor } from '@/lib/auth/scope';
 import { snapshotAccessFor } from '@/lib/auth/snapshotAccess';
+import { replacementVerdictFor } from '@/lib/auth/snapshotReplacement';
 import { db } from '@/lib/db';
 import {
     appliedRuleset,
@@ -31,20 +33,31 @@ import {
     snapshotFact,
     snapshotGeo,
 } from '@/lib/db/schema';
-import { SNAPSHOT_NOT_FOUND } from './constants';
+import {
+    SNAPSHOT_ALREADY_REPLACED,
+    SNAPSHOT_DATE_MISMATCH,
+    SNAPSHOT_NOT_FOUND,
+    SNAPSHOT_SUPERSEDED,
+    SNAPSHOT_WINDOW_ELAPSED,
+} from './constants';
 import {
     appliedSettingsSchema,
     createSnapshotInputSchema,
     geoThresholdsSchema,
     mutedCampaignCount,
+    replaceSnapshotInputSchema,
     snapshotIdInputSchema,
 } from './schemas';
+import { activeSnapshotsOnly, listSnapshotsFilter, readableSnapshotFilter } from './visibility';
 
 // Snapshots API (T6, #8). Every read runs through `scopeFor(viewer)` (ADR-0007) — no hand-rolled role
-// check — and Snapshots are immutable once saved (rows are only ever INSERTed, ADR-0002). Row-scope
-// filters on the Snapshot's STAMPED `team_id`, so a member's transfer never re-attributes their past
-// Snapshots. A Snapshot pins ALREADY-SAVED ruleset versions (spec story 35): the handler asserts each
-// referenced version exists before freezing the bundle.
+// check — and composes its WHERE through `./visibility`, which carries BOTH axes: row-scope and the
+// `status = 'active'` lifecycle filter, so no read can quietly count a corrected day (ADR-0018).
+// Snapshots stay immutable once saved (ADR-0002): the only UPDATE in this file is the replacement
+// flip, which writes the three lifecycle columns and nothing else. Row-scope filters on the
+// Snapshot's STAMPED `team_id`, so a member's transfer never re-attributes their past Snapshots. A
+// Snapshot pins ALREADY-SAVED ruleset versions (spec story 35): the handler asserts each referenced
+// version exists before freezing the bundle.
 
 const UNSAVED_RULESET_MESSAGE = 'A snapshot can only be built from saved ruleset versions';
 
@@ -65,23 +78,6 @@ const SNAPSHOT_COLUMNS = {
     takenAt: snapshot.takenAt,
     sharedSettingsVersionId: appliedRuleset.sharedSettingsVersionId,
 } as const;
-
-// Translates the row-scope axis of the descriptor into a WHERE clause. `undefined` means "no filter"
-// (head sees every row); a teamless team-scope viewer is excluded upstream so a bound teamId is
-// expected here.
-const snapshotRowFilter = (scope: VisibilityScope): SQL | undefined => {
-    switch (scope.rowScope) {
-        case 'all': {
-            return undefined;
-        }
-        case 'team': {
-            return eq(snapshot.teamId, scope.teamId ?? '');
-        }
-        case 'own': {
-            return eq(snapshot.createdByUserId, scope.userId ?? '');
-        }
-    }
-};
 
 // Loads every pinned Geo for a set of Applied Rulesets in one query, grouped by ruleset id — avoids an
 // N+1 when assembling a list of Snapshot views.
@@ -160,7 +156,7 @@ export const listSnapshotsFn = createServerFn({ method: 'GET' }).handler(async (
         .select(SNAPSHOT_COLUMNS)
         .from(snapshot)
         .innerJoin(appliedRuleset, eq(snapshot.appliedRulesetId, appliedRuleset.id))
-        .where(snapshotRowFilter(scope))
+        .where(listSnapshotsFilter(scope))
         .orderBy(snapshot.takenAt);
 
     const geosByRuleset = await loadGeosByRuleset(
@@ -175,13 +171,15 @@ export const listSnapshotsFn = createServerFn({ method: 'GET' }).handler(async (
 });
 
 // Loads one Snapshot and applies the row-scope verdict. A Snapshot the viewer may not see is reported
-// as not-found rather than forbidden, so its existence never leaks across teams.
+// as not-found rather than forbidden, so its existence never leaks across teams. A REPLACED Snapshot
+// is not-found for the same reason and by the same mechanism — except to the Head, which reads it for
+// audit (`readableSnapshotFilter`, ADR-0018).
 const loadVisibleSnapshot = async (viewer: Viewer, id: string) => {
     const [row] = await db
         .select(SNAPSHOT_COLUMNS)
         .from(snapshot)
         .innerJoin(appliedRuleset, eq(snapshot.appliedRulesetId, appliedRuleset.id))
-        .where(eq(snapshot.id, id))
+        .where(and(eq(snapshot.id, id), readableSnapshotFilter(viewer)))
         .limit(1);
 
     if (!row || snapshotAccessFor(viewer, subjectFrom(row)) === 'none') {
@@ -403,6 +401,10 @@ export const getDimensionRollupFn = createServerFn({ method: 'GET' }).handler(
                 sales: sum(snapshotFact.sales).mapWith(Number),
             })
             .from(snapshotFact)
+            // Joined for its lifecycle column alone: a replaced Snapshot's facts must not survive in
+            // the one read that never touches the `snapshot` table otherwise (ADR-0018).
+            .innerJoin(snapshot, eq(snapshotFact.snapshotId, snapshot.id))
+            .where(activeSnapshotsOnly())
             .groupBy(keyColumn)
             .orderBy(asc(keyColumn));
 
@@ -452,6 +454,84 @@ const assertSavedVersions = async (presetVersionIds: string[], sharedSettingsVer
     }
 };
 
+// The write half of a Snapshot push, shared by create and replace. Takes a transaction rather than
+// opening one: a replacement must flip the old row and insert the new one atomically, so the caller
+// owns the boundary. The OWNER is passed in rather than read from the session — a Head correcting a
+// buyer's push must not re-attribute the day to itself, or the buyer's trajectory loses a point and
+// the Head's gains one (ADR-0018).
+type SnapshotWriter = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+type SnapshotOwner = {
+    createdByUserId: string;
+    teamId: string | null;
+};
+
+const insertSnapshot = async (tx: SnapshotWriter, owner: SnapshotOwner, data: CreateSnapshotInput): Promise<string> => {
+    const [ruleset] = await tx
+        .insert(appliedRuleset)
+        .values({ sharedSettingsVersionId: data.sharedSettingsVersionId, settings: data.settings })
+        .returning({ id: appliedRuleset.id });
+
+    await tx.insert(appliedRulesetGeo).values(
+        data.geos.map((geo) => {
+            return {
+                appliedRulesetId: ruleset.id,
+                geo: geo.geo,
+                presetVersionId: geo.presetVersionId,
+                // Copied, not merely referenced: the pin above is `set null` when a Preset is
+                // deleted, and grading that a delete can erase is not frozen.
+                thresholds: geo.thresholds,
+            };
+        })
+    );
+
+    const [created] = await tx
+        .insert(snapshot)
+        .values({
+            createdByUserId: owner.createdByUserId,
+            teamId: owner.teamId,
+            appliedRulesetId: ruleset.id,
+            reportDate: data.reportDate,
+            meta: data.meta ?? null,
+        })
+        .returning({ id: snapshot.id });
+
+    await tx.insert(snapshotFact).values(
+        data.facts.map((fact) => {
+            return { ...fact, snapshotId: created.id };
+        })
+    );
+
+    // The three completeness tables. Each can legitimately be empty — a Snapshot pushed by an
+    // older client carries none of them (ADR-0015) — so an empty array is skipped rather than
+    // sent as a zero-row INSERT, which drizzle rejects.
+    if (data.geoRollups.length > 0) {
+        await tx.insert(snapshotGeo).values(
+            data.geoRollups.map((geo) => {
+                return { ...geo, snapshotId: created.id };
+            })
+        );
+    }
+
+    if (data.creatives.length > 0) {
+        await tx.insert(snapshotCreative).values(
+            data.creatives.map((creative) => {
+                return { ...creative, snapshotId: created.id };
+            })
+        );
+    }
+
+    if (data.campaignModels.length > 0) {
+        await tx.insert(snapshotCampaignModel).values(
+            data.campaignModels.map((model) => {
+                return { ...model, snapshotId: created.id };
+            })
+        );
+    }
+
+    return created.id;
+};
+
 export const createSnapshotFn = createServerFn({ method: 'POST' })
     .inputValidator(createSnapshotInputSchema)
     .handler(async ({ data }): Promise<SnapshotView> => {
@@ -474,70 +554,138 @@ export const createSnapshotFn = createServerFn({ method: 'POST' })
         // nothing — so a Snapshot is never half-frozen: a report missing its Creative Splits or its
         // Frozen Geo Rollup would render partly `—` with nothing to say why (ADR-0015). Creator-owned
         // and stamped with the creator's CURRENT team.
+        const snapshotId = await db.transaction((tx) => {
+            return insertSnapshot(tx, { createdByUserId: me.id, teamId: me.teamId }, data);
+        });
+
+        const row = await loadVisibleSnapshot(viewer, snapshotId);
+
+        if (!row) {
+            throw new Error(SNAPSHOT_NOT_FOUND);
+        }
+
+        const geosByRuleset = await loadGeosByRuleset([row.appliedRulesetId]);
+
+        return toSnapshotView(viewer, row, geosByRuleset.get(row.appliedRulesetId) ?? []);
+    });
+
+// Maps a refusal from the pure policy seam onto the message the client sees. Every branch throws —
+// a refused replacement is never a silent no-op, because the buyer would go on believing the broken
+// numbers had been corrected (ADR-0018).
+const assertPermitted = (verdict: ReplacementVerdict) => {
+    switch (verdict) {
+        case 'ok': {
+            return;
+        }
+        case 'forbidden': {
+            throw new Error(FORBIDDEN_MESSAGE);
+        }
+        case 'already-replaced': {
+            throw new Error(SNAPSHOT_ALREADY_REPLACED);
+        }
+        case 'window-elapsed': {
+            throw new Error(SNAPSHOT_WINDOW_ELAPSED);
+        }
+        case 'superseded': {
+            throw new Error(SNAPSHOT_SUPERSEDED);
+        }
+    }
+};
+
+// The correction path (ADR-0018): a buyer who pushed a broken analysis re-pushes it within the hour
+// and the old Snapshot is SUPERSEDED, never edited and never deleted. The whole thing is one
+// transaction — a failure must leave neither a flipped original nor an orphan successor — and the old
+// row is locked `for update` inside it, so two corrections racing each other cannot both win.
+export const replaceSnapshotFn = createServerFn({ method: 'POST' })
+    .inputValidator(replaceSnapshotInputSchema)
+    .handler(async ({ data }): Promise<SnapshotView> => {
+        const me = await requireUser();
+        const viewer = viewerFrom(me);
+
+        // Checked outside the transaction: it reads tables the replacement does not write, and a
+        // payload built from unsaved rulesets is refused before anything is locked (spec story 35).
+        await assertSavedVersions(
+            data.geos.map((geo) => {
+                return geo.presetVersionId;
+            }),
+            data.sharedSettingsVersionId
+        );
+
         const snapshotId = await db.transaction(async (tx) => {
-            const [ruleset] = await tx
-                .insert(appliedRuleset)
-                .values({ sharedSettingsVersionId: data.sharedSettingsVersionId, settings: data.settings })
-                .returning({ id: appliedRuleset.id });
-
-            await tx.insert(appliedRulesetGeo).values(
-                data.geos.map((geo) => {
-                    return {
-                        appliedRulesetId: ruleset.id,
-                        geo: geo.geo,
-                        presetVersionId: geo.presetVersionId,
-                        // Copied, not merely referenced: the pin above is `set null` when a Preset is
-                        // deleted, and grading that a delete can erase is not frozen.
-                        thresholds: geo.thresholds,
-                    };
+            const [existing] = await tx
+                .select({
+                    id: snapshot.id,
+                    createdByUserId: snapshot.createdByUserId,
+                    teamId: snapshot.teamId,
+                    status: snapshot.status,
+                    takenAt: snapshot.takenAt,
+                    reportDate: snapshot.reportDate,
                 })
+                .from(snapshot)
+                .where(eq(snapshot.id, data.id))
+                .limit(1)
+                .for('update');
+
+            // An id the viewer may not even read is not-found, so a replacement attempt never
+            // discloses another team's activity by the shape of its refusal (spec story 42).
+            if (!existing || snapshotAccessFor(viewer, subjectFrom(existing)) === 'none') {
+                throw new Error(SNAPSHOT_NOT_FOUND);
+            }
+
+            // A correction re-states the same day. Moving the report date would silently relocate a
+            // point on the trajectory rather than fix it, and the supersession rule below is written
+            // per (buyer × report_date) — a mismatch would evaluate it against the wrong day.
+            if (data.reportDate !== existing.reportDate) {
+                throw new Error(SNAPSHOT_DATE_MISMATCH);
+            }
+
+            // The one fact the pure verdict cannot answer for itself: has the buyer already pushed
+            // again for this day? Locked rows above plus this read inside the same transaction means
+            // the answer cannot change under us.
+            const [newer] = await tx
+                .select({ id: snapshot.id })
+                .from(snapshot)
+                .where(
+                    and(
+                        eq(snapshot.createdByUserId, existing.createdByUserId),
+                        eq(snapshot.reportDate, existing.reportDate),
+                        activeSnapshotsOnly(),
+                        gt(snapshot.takenAt, existing.takenAt)
+                    )
+                )
+                .limit(1);
+
+            assertPermitted(
+                replacementVerdictFor(
+                    viewer,
+                    {
+                        createdByUserId: existing.createdByUserId,
+                        teamId: existing.teamId,
+                        status: existing.status,
+                        takenAt: existing.takenAt,
+                        reportDate: existing.reportDate,
+                        hasNewerActive: Boolean(newer),
+                    },
+                    new Date()
+                )
             );
 
-            const [created] = await tx
-                .insert(snapshot)
-                .values({
-                    createdByUserId: me.id,
-                    teamId: me.teamId,
-                    appliedRulesetId: ruleset.id,
-                    reportDate: data.reportDate,
-                    meta: data.meta ?? null,
-                })
-                .returning({ id: snapshot.id });
-
-            await tx.insert(snapshotFact).values(
-                data.facts.map((fact) => {
-                    return { ...fact, snapshotId: created.id };
-                })
+            // Attributed to the ORIGINAL creator, not to whoever pushed the correction: a Head fixing
+            // a buyer's day must leave the day on the buyer's trajectory.
+            const createdId = await insertSnapshot(
+                tx,
+                { createdByUserId: existing.createdByUserId, teamId: existing.teamId },
+                data
             );
 
-            // The three completeness tables. Each can legitimately be empty — a Snapshot pushed by an
-            // older client carries none of them (ADR-0015) — so an empty array is skipped rather than
-            // sent as a zero-row INSERT, which drizzle rejects.
-            if (data.geoRollups.length > 0) {
-                await tx.insert(snapshotGeo).values(
-                    data.geoRollups.map((geo) => {
-                        return { ...geo, snapshotId: created.id };
-                    })
-                );
-            }
+            // The only UPDATE a Snapshot ever receives. Re-asserting `status = 'active'` in the WHERE
+            // makes the flip idempotent under concurrency even if the lock above were ever lost.
+            await tx
+                .update(snapshot)
+                .set({ status: 'replaced', replacedBy: createdId, replacedAt: new Date() })
+                .where(and(eq(snapshot.id, existing.id), activeSnapshotsOnly()));
 
-            if (data.creatives.length > 0) {
-                await tx.insert(snapshotCreative).values(
-                    data.creatives.map((creative) => {
-                        return { ...creative, snapshotId: created.id };
-                    })
-                );
-            }
-
-            if (data.campaignModels.length > 0) {
-                await tx.insert(snapshotCampaignModel).values(
-                    data.campaignModels.map((model) => {
-                        return { ...model, snapshotId: created.id };
-                    })
-                );
-            }
-
-            return created.id;
+            return createdId;
         });
 
         const row = await loadVisibleSnapshot(viewer, snapshotId);

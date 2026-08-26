@@ -7,8 +7,9 @@
 //   T6 (#8)  — applied_ruleset, applied_ruleset_geo, snapshot, snapshot_fact ✓
 //   S2a (#53) — snapshot_geo, snapshot_creative, snapshot_campaign_model, snapshot_fact.attribution,
 //               copied thresholds on applied_ruleset(_geo) ✓
+//   D3 — snapshot.status/replaced_by/replaced_at (replaceable Snapshots) ✓
 // See docs/specs/0001-multi-user-auth-teams-persistence.md, docs/specs/0003-reports-feed-archive-detailed-report.md
-// and docs/adr/0002, 0006, 0007, 0015.
+// and docs/adr/0002, 0006, 0007, 0015, 0018.
 
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import {
@@ -281,12 +282,19 @@ export const factZone = pgEnum('fact_zone', ['green', 'yellow', 'red', 'neutral'
 // money-losing safeguard must not hang off a UI string (ADR-0015).
 export const factAttribution = pgEnum('fact_attribution', ['full', 'campaign_lost']);
 
+// A Snapshot's lifecycle (ADR-0018). `active` is the only state a read ever counts; `replaced` marks
+// a row superseded by a correction. There are no other states, and the column is not nullable — every
+// pre-existing row reads `active` through the default, with no backfill script.
+export const snapshotStatus = pgEnum('snapshot_status', ['active', 'replaced']);
+
 // A saved Snapshot (spec §Snapshots). Creator-owned (`created_by_user_id`) and STAMPED with the
 // creator's team at creation (`team_id`) so a member's later transfer never re-attributes their past
 // Snapshots (spec story 13, ADR row-scope). Row-scope visibility filters on this stamped `team_id`.
-// Immutable once saved — rows are only ever INSERTed. `owner` cascades; `team_id` is `set null` so a
-// deleted team leaves the Snapshot standing (still creator-attributed). `meta` carries report-level
-// context (date range, source hashes) as jsonb.
+// Immutable once saved — rows are only ever INSERTed, and the three lifecycle columns below are the
+// single exception: a replacement flips them and touches nothing else, so the superseded row still
+// rebuilds its own report for audit (ADR-0018). A replaced Snapshot is never DELETEd. `owner`
+// cascades; `team_id` is `set null` so a deleted team leaves the Snapshot standing (still
+// creator-attributed). `meta` carries report-level context (date range, source hashes) as jsonb.
 export const snapshot = pgTable('snapshot', {
     id: uuid('id').primaryKey().defaultRandom(),
     createdByUserId: uuid('created_by_user_id')
@@ -310,6 +318,18 @@ export const snapshot = pgTable('snapshot', {
         }),
     reportDate: date('report_date').notNull(),
     takenAt: timestamp('taken_at', { withTimezone: true }).notNull().defaultNow(),
+    // Lifecycle (ADR-0018). `replaced_by` points at the correction that superseded this row — a
+    // self-FK, so it carries the AnyPgColumn annotation like the other circular pointers above. It is
+    // `set null` on delete rather than cascading: a Snapshot is never deleted, and if one ever were,
+    // losing the pointer must not take the audit trail with it.
+    status: snapshotStatus('status').notNull().default('active'),
+    replacedBy: uuid('replaced_by').references(
+        (): AnyPgColumn => {
+            return snapshot.id;
+        },
+        { onDelete: 'set null' }
+    ),
+    replacedAt: timestamp('replaced_at', { withTimezone: true }),
     meta: jsonb('meta'),
 });
 

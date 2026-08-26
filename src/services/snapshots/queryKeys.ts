@@ -18,4 +18,7 @@ export const snapshotKeys = {
     createMutationKey() {
         return [...snapshotKeys.all, 'create'] as const;
     },
+    replaceMutationKey() {
+        return [...snapshotKeys.all, 'replace'] as const;
+    },
 };
