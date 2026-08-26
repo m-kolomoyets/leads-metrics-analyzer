@@ -422,3 +422,43 @@ export function compareFigures(previous: DynamicsFigures | null, current: Dynami
         return { metric, current: now, previous: before, change, tone: toneOf(metric, change) };
     });
 }
+
+// The tables' arrows (SPEC §6.7): the same comparison the panel makes, narrowed to the five metrics
+// a dense table can carry an arrow beside without trading signal for shimmer. Anything wider —
+// counts, conversion rates, CPR/CPS — is deliberately left plain.
+export type TrendMetric = Extract<DynamicsMetric, 'spend' | 'revenue' | 'profit' | 'roi' | 'cpi'>;
+
+// One row's movement against the previous Snapshot, in each metric's own units. A metric is null
+// when either side was unmeasurable — a change against `—` is not a change of zero.
+export type MetricTrend = Record<TrendMetric, number | null>;
+
+// A row's movement, or null when there is nothing to compare against: the first push of the day, or
+// a row (an offer, an OS, a creative) that did not exist in the previous Snapshot at all. Null means
+// "no arrow", which is not the same as an arrow that points nowhere.
+//
+// `DynamicsFigures` is structural here on purpose: a table row's `Metrics` already carries every
+// field it names, so the tables compare through the very same arithmetic and the very same meaning
+// map as the comparison panel above them.
+export function trendBetween(previous: DynamicsFigures | null, current: DynamicsFigures): MetricTrend | null {
+    if (previous === null) {
+        return null;
+    }
+
+    const changes = compareFigures(previous, current);
+
+    function changeOf(metric: TrendMetric): number | null {
+        const row = changes.find((candidate) => {
+            return candidate.metric === metric;
+        });
+
+        return row?.change ?? null;
+    }
+
+    return {
+        spend: changeOf('spend'),
+        revenue: changeOf('revenue'),
+        profit: changeOf('profit'),
+        roi: changeOf('roi'),
+        cpi: changeOf('cpi'),
+    };
+}

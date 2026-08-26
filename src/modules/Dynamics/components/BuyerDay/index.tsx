@@ -1,5 +1,6 @@
 import type { DynamicsMode } from '@/components/dynamics/types';
 import type { SeriesPoint } from '@/lib/domain/dynamics';
+import { Suspense } from 'react';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { buildSeries } from '@/lib/domain/dynamics';
 import { dynamicsDayQueryOptions } from '@/services/dynamics/queries';
@@ -9,6 +10,7 @@ import { MetricTiles } from '@/components/dynamics/MetricTiles';
 import { TrajectoryChart } from '@/components/dynamics/TrajectoryChart';
 import { GeoTabs } from '@/components/report/GeoTabs';
 import { geoTabs } from '../../utils/frame';
+import { DetailTables } from '../DetailTables';
 
 // The frame's third level: the markets one buyer ran on one day. Split out from the page so that
 // switching buyers suspends this alone — the team and buyer rows above are read from the roster and
@@ -18,7 +20,9 @@ import { geoTabs } from '../../utils/frame';
 // the series known. None of them is a spinner or a blank box: the screen must never look broken to
 // someone whose buyer simply has not pushed twice yet (SPEC §6.6).
 //
-// The tables that hang under the chart arrive with their own issue.
+// The tables that hang under the chart get a Suspense boundary of their own: they read the whole
+// Snapshot bundle, which is the expensive half of the page, and must not hold the trajectory back
+// (SPEC §8).
 
 type BuyerDayProps = {
     buyerId: string;
@@ -90,11 +94,30 @@ function BuyerDay({ buyerId, reportDate, geo, onSelectGeo, mode }: BuyerDayProps
     // The selected market's trajectory: every active push that froze it, oldest first. The panel
     // reads the last two points of it; the chart reads all of them.
     const series = buildSeries(snapshots, selected);
+    // The tables read the latest push of the day and compare it against the one before — the same two
+    // points the comparison panel above them reads, so the arrows and the panel cannot disagree.
+    const latest = series.at(-1) ?? null;
+    const beforeLatest = series.at(-2) ?? null;
 
     return (
         <div className="flex flex-col gap-4">
             <GeoTabs geos={geos} active={selected} spendByGeo={spendByGeo} onSelect={onSelectGeo} />
             <ChartArea points={series} mode={mode} />
+
+            {latest && (
+                <Suspense
+                    // Keyed on the push so switching market or buyer starts the second read cleanly
+                    // rather than showing the previous market's offers while this one loads.
+                    key={`${latest.snapshotId}:${selected}`}
+                    fallback={<p className="text-muted-foreground text-sm">Loading the tables…</p>}
+                >
+                    <DetailTables
+                        snapshotId={latest.snapshotId}
+                        previousSnapshotId={beforeLatest?.snapshotId ?? null}
+                        geo={selected}
+                    />
+                </Suspense>
+            )}
         </div>
     );
 }

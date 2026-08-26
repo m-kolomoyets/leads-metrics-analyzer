@@ -36,17 +36,31 @@ type TrendArrowProps = {
     change: number | null;
     // The already-formatted movement, in the caller's units — this component never formats numbers.
     label: string;
+    // A table cell has no room for the movement itself, and five printed changes per row would trade
+    // the tables' signal for shimmer (SPEC §6.7). The arrow then carries the direction and the colour
+    // the verdict, while the figure stays available on hover and to a screen reader.
+    hideLabel?: boolean;
     className?: string;
 };
 
-function TrendArrow({ metric, change, label, className }: TrendArrowProps) {
+function TrendArrow({ metric, change, label, hideLabel, className }: TrendArrowProps) {
     const tone = toneOf(metric, change);
     const arrow = arrowOf(change);
 
+    // Nothing moved, or there was nothing to move against: with the label hidden there is no signal
+    // left to render, and an em dash in a dense cell reads as a missing figure rather than as an
+    // absent movement.
+    if (hideLabel && arrow === null) {
+        return null;
+    }
+
     return (
-        <span className={cn('inline-flex items-center gap-1 font-mono', TONE_CLASS[tone], className)}>
+        <span
+            className={cn('inline-flex items-center gap-1 font-mono', TONE_CLASS[tone], className)}
+            title={hideLabel ? label : undefined}
+        >
             {arrow && <span aria-hidden={true}>{arrow}</span>}
-            {label}
+            <span className={hideLabel ? 'sr-only' : undefined}>{label}</span>
             {arrow && <span className="sr-only">{TONE_LABEL[tone]}</span>}
         </span>
     );

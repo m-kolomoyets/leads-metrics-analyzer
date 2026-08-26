@@ -16,6 +16,7 @@ import {
     METRIC_MEANING,
     summarize,
     toneOf,
+    trendBetween,
     zoneOfPoint,
 } from './dynamics';
 
@@ -595,5 +596,50 @@ describe('deltaPointsFor', () => {
 
     it('draws nothing from an empty series', () => {
         expect(deltaPointsFor([])).toEqual([]);
+    });
+});
+
+describe('trendBetween', () => {
+    it('has no arrow at all when there is nothing to compare against', () => {
+        const current = figuresFrom({ spendPlus: 100, revenue: 300, linkClicks: 0, installs: 10, regs: 0, sales: 0 });
+
+        expect(trendBetween(null, current)).toBeNull();
+    });
+
+    it('carries the five table metrics and nothing wider', () => {
+        const previous = figuresFrom({ spendPlus: 100, revenue: 300, linkClicks: 0, installs: 10, regs: 5, sales: 0 });
+        const current = figuresFrom({ spendPlus: 200, revenue: 700, linkClicks: 0, installs: 40, regs: 5, sales: 0 });
+
+        expect(Object.keys(trendBetween(previous, current) ?? {}).sort()).toEqual([
+            'cpi',
+            'profit',
+            'revenue',
+            'roi',
+            'spend',
+        ]);
+    });
+
+    it('moves each metric in its own units, Spend being Spend+', () => {
+        const previous = figuresFrom({ spendPlus: 225, revenue: 300, linkClicks: 0, installs: 10, regs: 0, sales: 0 });
+        const current = figuresFrom({ spendPlus: 460, revenue: 700, linkClicks: 0, installs: 25, regs: 0, sales: 0 });
+
+        const trend = trendBetween(previous, current);
+
+        expect(trend?.spend).toBeCloseTo(235);
+        expect(trend?.revenue).toBeCloseTo(400);
+        // Profit: (700 - 460) - (300 - 225).
+        expect(trend?.profit).toBeCloseTo(165);
+        // CPI: 460/25 - 225/10 = 18.40 - 22.50.
+        expect(trend?.cpi).toBeCloseTo(-4.1);
+    });
+
+    it('leaves a metric null when either side was unmeasurable', () => {
+        const previous = figuresFrom({ spendPlus: 100, revenue: 0, linkClicks: 0, installs: 0, regs: 0, sales: 0 });
+        const current = figuresFrom({ spendPlus: 200, revenue: 0, linkClicks: 0, installs: 20, regs: 0, sales: 0 });
+
+        // The previous push bought no installs, so it had no CPI — and a change against `—` is not
+        // a change of zero.
+        expect(trendBetween(previous, current)?.cpi).toBeNull();
+        expect(trendBetween(previous, current)?.spend).toBeCloseTo(100);
     });
 });
