@@ -4,10 +4,10 @@ import type { Zone } from '@/lib/domain/types';
 // carries. `var()` is unusable in an SVG presentation attribute, so each of these is set through
 // `style` rather than as a `stroke=` attribute.
 export const ZONE_STROKE: Record<Zone, string> = {
-    green: 'var(--success)',
-    yellow: 'var(--warning)',
-    red: 'var(--danger)',
-    neutral: 'var(--neutral)',
+    green: 'var(--zone-green)',
+    yellow: 'var(--zone-yellow)',
+    red: 'var(--zone-red)',
+    neutral: 'var(--zone-neutral)',
 };
 
 export const ZONE_LABEL: Record<Zone, string> = {

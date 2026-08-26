@@ -1,35 +1,31 @@
-import type { Zone } from '@/lib/domain/types';
+import type { ChartPalette } from '../types';
 import { useSyncExternalStore } from 'react';
 
-// Canvas takes colours, not custom properties: `ctx.strokeStyle = 'var(--danger)'` silently paints
+// Canvas takes colours, not custom properties: `ctx.strokeStyle = 'var(--zone-red)'` silently paints
 // nothing. So the theme tokens are resolved to real values here and handed to the chart, and read
 // again whenever the theme flips — otherwise a light-mode switch would leave the canvas dark-themed
-// until the next data change.
-
-export type ChartPalette = {
-    zone: Record<Zone, string>;
-    accent: string;
-    background: string;
-    muted: string;
-    border: string;
-    text: string;
-    // The crosshair and the series' own guide: a translucent white on a dark theme, the same wash in
-    // ink on a light one. Deliberately not a token — it has to be see-through, and the theme's colours
-    // are opaque.
-    guide: string;
-};
+// until the next data change. One direction only: no colour is declared here and mirrored into CSS
+// (ADR-0020).
 
 // The values the tokens carry in the dark theme, used until the first read lands (and on the server,
-// where there is no computed style at all).
+// where there is no computed style at all). This is what the first paint uses, so it is kept honest
+// against `src/styles/index.css` rather than left at whatever it once was.
 const FALLBACK: ChartPalette = {
-    zone: { green: '#22c55e', yellow: '#eab308', red: '#ef4444', neutral: '#94a3b8' },
-    accent: '#3b82f6',
-    background: '#0b1220',
-    muted: '#94a3b8',
-    border: '#1e293b',
-    text: '#e2e8f0',
+    zone: { green: '#26a69a', yellow: '#e0a33e', red: '#ef5350', neutral: '#8f8f8f' },
+    accent: '#2196f3',
+    background: '#101010',
+    surface: '#1e1e1e',
+    muted: '#8f8f8f',
+    border: '#2b2b2b',
+    text: '#e8e8e8',
     guide: 'rgb(255 255 255 / 0.35)',
+    fontFamily: '"Inter", sans-serif',
+    fontSize: 12,
 };
+
+// Chart axes are the 12px label step from the type scale. It is a number, not a colour, so it has no
+// custom property to read — the scale lives in `docs/design-system.md` and this is its canvas copy.
+const AXIS_FONT_SIZE = 12;
 
 function tokenOf(styles: CSSStyleDeclaration, name: string, fallback: string): string {
     const value = styles.getPropertyValue(name).trim();
@@ -42,19 +38,22 @@ function readPalette(): ChartPalette {
 
     return {
         zone: {
-            green: tokenOf(styles, '--success', FALLBACK.zone.green),
-            yellow: tokenOf(styles, '--warning', FALLBACK.zone.yellow),
-            red: tokenOf(styles, '--danger', FALLBACK.zone.red),
-            neutral: tokenOf(styles, '--neutral', FALLBACK.zone.neutral),
+            green: tokenOf(styles, '--zone-green', FALLBACK.zone.green),
+            yellow: tokenOf(styles, '--zone-yellow', FALLBACK.zone.yellow),
+            red: tokenOf(styles, '--zone-red', FALLBACK.zone.red),
+            neutral: tokenOf(styles, '--zone-neutral', FALLBACK.zone.neutral),
         },
-        accent: tokenOf(styles, '--accent-solid', FALLBACK.accent),
+        accent: tokenOf(styles, '--accent', FALLBACK.accent),
         background: tokenOf(styles, '--background', FALLBACK.background),
+        surface: tokenOf(styles, '--surface-overlay', FALLBACK.surface),
         muted: tokenOf(styles, '--muted-foreground', FALLBACK.muted),
         border: tokenOf(styles, '--border', FALLBACK.border),
         text: tokenOf(styles, '--foreground', FALLBACK.text),
         guide: document.documentElement.classList.contains('light')
-            ? 'rgb(15 23 42 / 0.35)'
+            ? 'rgb(19 19 19 / 0.35)'
             : 'rgb(255 255 255 / 0.35)',
+        fontFamily: tokenOf(styles, '--font-sans', FALLBACK.fontFamily),
+        fontSize: AXIS_FONT_SIZE,
     };
 }
 

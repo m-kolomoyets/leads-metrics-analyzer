@@ -1,10 +1,12 @@
-import type { UTCTimestamp } from 'lightweight-charts';
+import type { DeepPartial, TimeChartOptions, UTCTimestamp } from 'lightweight-charts';
 import type { MetricTone } from '@/lib/domain/dynamics';
 import type { Zone } from '@/lib/domain/types';
+import type { ChartPalette } from '../types';
 import type { ZoneSeriesApi } from '../ZoneSeries/types';
 import { useEffect, useRef } from 'react';
-import { ColorType, CrosshairMode } from 'lightweight-charts';
+import { CrosshairMode } from 'lightweight-charts';
 import { cn } from '@/lib/utils/cn';
+import { chartOptionsFor } from '../utils/chartOptions';
 import { useChartInstance } from '../hooks/useChartInstance';
 import { useChartPalette } from '../hooks/useChartPalette';
 import { ZoneSeries } from '../ZoneSeries';
@@ -42,20 +44,38 @@ type SparklineProps = {
     onSelect: () => void;
 };
 
-function Sparkline({ label, values, zones, trailing, tone, selected, onSelect }: SparklineProps) {
-    const palette = useChartPalette();
-    const seriesRef = useRef<ZoneSeriesApi | null>(null);
-    const { containerRef, chart } = useChartInstance({
-        autoSize: true,
-        layout: { background: { type: ColorType.Solid, color: 'transparent' }, attributionLogo: false },
+// The system's options with everything that explains a chart taken away — no axes, no ticks, no grid,
+// no crosshair, no panning. A sparkline is read as a shape, and the strip is scanned, not studied.
+// What stays is the layout: the same font and the same colours, so a metric read here and read in the
+// big chart are the same metric (ADR-0020).
+function sparklineOptionsFor(palette: ChartPalette): DeepPartial<TimeChartOptions> {
+    const base = chartOptionsFor(palette);
+
+    return {
+        ...base,
         grid: { vertLines: { visible: false }, horzLines: { visible: false } },
-        leftPriceScale: { visible: false },
-        rightPriceScale: { visible: false },
-        timeScale: { visible: false, fixLeftEdge: true, fixRightEdge: true },
+        leftPriceScale: { ...base.leftPriceScale, visible: false },
+        rightPriceScale: { ...base.rightPriceScale, visible: false },
+        timeScale: { ...base.timeScale, visible: false, fixLeftEdge: true, fixRightEdge: true },
         crosshair: { mode: CrosshairMode.Hidden },
         handleScroll: false,
         handleScale: false,
-    });
+    };
+}
+
+function Sparkline({ label, values, zones, trailing, tone, selected, onSelect }: SparklineProps) {
+    const palette = useChartPalette();
+    const seriesRef = useRef<ZoneSeriesApi | null>(null);
+    const { containerRef, chart } = useChartInstance(sparklineOptionsFor(palette));
+
+    // Theme tokens resolve to real colours only in the browser, and they change under the app's own
+    // light/dark switch — so the chrome is re-applied whenever the palette does.
+    useEffect(
+        function applyPalette() {
+            chart?.applyOptions(sparklineOptionsFor(palette));
+        },
+        [chart, palette]
+    );
 
     // Serialised rather than passed by identity: the row is rebuilt on every render, and a fresh
     // array each time would tear the series down and put it back for no change at all.

@@ -33,9 +33,9 @@ export const FLAG_GLYPH: Record<DeltaFlag, string> = {
 };
 
 export const FLAG_STROKE: Record<DeltaFlag, string> = {
-    firstOfDay: 'var(--accent-solid)',
+    firstOfDay: 'var(--accent)',
     corrected: CORRECTED_STROKE,
-    spendWithoutConversions: 'var(--warning)',
+    spendWithoutConversions: 'var(--zone-yellow)',
 };
 
 export const FLAG_LABEL: Record<DeltaFlag, string> = {

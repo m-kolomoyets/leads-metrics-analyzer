@@ -23,12 +23,12 @@ function ThresholdMeter({ value, greenBelow, redAbove, className }: ThresholdMet
     // The colour turns AT the lines, with a short blend either side: a hard edge would claim a cost a
     // cent under the line is a different kind of thing from one a cent over it.
     const gradient = `linear-gradient(90deg,
-        var(--success) 0%,
-        var(--success) ${Math.max(scale.green - 6, 0)}%,
-        var(--warning) ${Math.min(scale.green + 4, 100)}%,
-        var(--warning) ${Math.max(scale.red - 6, 0)}%,
-        var(--danger) ${Math.min(scale.red + 4, 100)}%,
-        var(--danger) 100%)`;
+        var(--zone-green) 0%,
+        var(--zone-green) ${Math.max(scale.green - 6, 0)}%,
+        var(--zone-yellow) ${Math.min(scale.green + 4, 100)}%,
+        var(--zone-yellow) ${Math.max(scale.red - 6, 0)}%,
+        var(--zone-red) ${Math.min(scale.red + 4, 100)}%,
+        var(--zone-red) 100%)`;
 
     // A label sitting exactly over its notch would hang off the rail at either end, so the ones near
     // the edges are pushed inwards instead of centred.
