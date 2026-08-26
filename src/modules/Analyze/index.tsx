@@ -1,7 +1,5 @@
-import type { Locale } from '@/components/report/utils/i18n';
 import type { GeoThresholds } from '@/lib/domain/types';
 import type { PresetView } from '@/services/presets/types';
-import type { UploadedFile } from './types';
 import type { ImportedShared } from './utils/importPresets';
 import { useState } from 'react';
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
@@ -35,8 +33,10 @@ import {
 } from '@/components/ui/Combobox';
 import { presetForGeo, presetsForGeo } from './utils/presetForGeo';
 import { toRuleset } from './utils/toRuleset';
+import { useAnalyzeDraft } from './context/AnalyzeDraftContext';
 import { useClipboard } from './hooks/useClipboard';
 import { AccountBlock } from './components/AccountBlock';
+import { DraftBanner } from './components/DraftBanner';
 import { FileDropzones } from './components/FileDropzones';
 import { PresetCreator } from './components/PresetCreator';
 import { SaveSnapshot } from './components/SaveSnapshot';
@@ -59,6 +59,7 @@ function thresholdsFor(
 }
 
 const routeApi = getRouteApi('/_authenticated');
+const analyzeRouteApi = getRouteApi('/_authenticated/analyze/');
 
 function Analyze() {
     const { data: presets } = useSuspenseQuery(presetsQueryOptions());
@@ -67,31 +68,37 @@ function Analyze() {
             return context.auth.me.role;
         },
     });
-    const [files, setFiles] = useState<UploadedFile[]>([]);
-    const [selectedGeo, setSelectedGeo] = useState<string | null>(null);
+    // The upload and the analyst's triage live above this route (`AnalyzeDraftProvider`), so leaving
+    // the page keeps them, and are mirrored to IndexedDB, so a reload keeps them too.
+    const {
+        isHydrated,
+        restoredAt,
+        files,
+        excluded,
+        collapsed,
+        reviewed,
+        selectedPresetByGeo,
+        replaceFiles,
+        toggleFlag,
+        setFlag,
+        selectPreset,
+        clearDraft,
+    } = useAnalyzeDraft();
+    // Market and language ride the URL: both are answers to "what am I looking at", so the back
+    // button and a pasted link should reproduce them (the triage sets are far too big for a query
+    // string and stay in the draft).
+    const { geo: selectedGeo, locale } = analyzeRouteApi.useSearch();
+    const navigate = analyzeRouteApi.useNavigate();
     // The server picks the scope: the viewer's own team, or the global (null-team) row when they are
     // on no team. Non-suspense, sharing the route loader's preloaded key, so first render is warm.
     const { data: sharedData } = useQuery(sharedSettingsQueryOptions());
     const shared = sharedData ?? null;
-    // Which preset drives grading for a Geo that carries several — owner's pick, keyed by Geo.
-    const [selectedPresetByGeo, setSelectedPresetByGeo] = useState<Record<string, string>>({});
     // Shared tunables lifted from an imported file, with a bump counter so each import re-seeds the
     // shared-settings editor even when the values repeat.
     const [importedShared, setImportedShared] = useState<{ seed: ImportedShared; n: number } | null>(null);
     // Zone-metrics disclosure, tagged with the geo it was taken for so switching geo falls back to the
     // default rather than carrying the previous geo's choice across.
     const [zoneOpen, setZoneOpen] = useState<{ geo: string; open: boolean } | null>(null);
-    const [locale, setLocale] = useState<Locale>('uk');
-    // Muted campaigns, keyed `${geo}:${campaign}` so the same id in two geos toggles independently.
-    const [excluded, setExcluded] = useState<ReadonlySet<string>>(new Set());
-    // AccountBlocks whose open state is *flipped from its default*, keyed `${geo}:${account}`. Stored as
-    // a flip rather than "is collapsed" because the default differs per account — Problem Accounts start
-    // collapsed (their campaign tables are noise until the account itself is checked by hand), everything
-    // else starts open. Lifted so the summary nav table can open a block on row click (#36).
-    const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
-    // Accounts the analyst has triaged this session, keyed `${geo}:${account}`. Pure view state — it
-    // changes no figure (unlike `excluded`), only the pulse and the tint.
-    const [reviewed, setReviewed] = useState<ReadonlySet<string>>(new Set());
     const { copied, copy } = useClipboard();
 
     const ruleset = toRuleset(presets, shared);
@@ -112,7 +119,7 @@ function Analyze() {
     for (const geo of result?.geos ?? []) {
         spendByGeo[geo.geo] = geo.metrics.spendPlus;
     }
-    const activeGeo = geos.includes(selectedGeo ?? '') ? selectedGeo : (geos[0] ?? null);
+    const activeGeo = geos.includes(selectedGeo ?? '') ? (selectedGeo ?? null) : (geos[0] ?? null);
     // The very preset that fed this geo's grading — the inline editor mutates it so edits and
     // verdicts stay in lock-step. When the geo carries several, the owner's pick wins (else first
     // active). Team Leads own the team-global shared-settings write.
@@ -176,67 +183,21 @@ function Analyze() {
     const wasteZone = shared?.payload?.wasteZones;
 
     function toggleExcluded(campaign: string) {
-        const key = `${activeGeo}:${campaign}`;
-        setExcluded((current) => {
-            const next = new Set(current);
-            if (next.has(key)) {
-                next.delete(key);
-            } else {
-                next.add(key);
-            }
-            return next;
-        });
+        toggleFlag('excluded', `${activeGeo}:${campaign}`);
     }
 
     function toggleCollapsed(account: string) {
-        const key = `${activeGeo}:${account}`;
-        setCollapsed((current) => {
-            const next = new Set(current);
-            if (next.has(key)) {
-                next.delete(key);
-            } else {
-                next.add(key);
-            }
-            return next;
-        });
+        toggleFlag('collapsed', `${activeGeo}:${account}`);
     }
 
     function toggleReviewed(account: string) {
-        const key = `${activeGeo}:${account}`;
-        setReviewed((current) => {
-            const next = new Set(current);
-            if (next.has(key)) {
-                next.delete(key);
-            } else {
-                next.add(key);
-            }
-            return next;
-        });
-    }
-
-    // A new upload replaces the facts, so every per-campaign / per-account toggle taken against the old
-    // ones is void. `excluded` matters most: a stale mute silently drops campaigns from account metrics,
-    // counts, waste and the Problem rules with no visible cue.
-    function replaceFiles(next: UploadedFile[]) {
-        setFiles(next);
-        setExcluded(new Set());
-        setCollapsed(new Set());
-        setReviewed(new Set());
+        toggleFlag('reviewed', `${activeGeo}:${account}`);
     }
 
     // Summary-row click: force the target block open, then scroll its anchor into view. "Open" is the
     // flipped state for a Problem Account and the default one for everything else.
     function jumpToAccount(account: string) {
-        const key = `${activeGeo}:${account}`;
-        setCollapsed((current) => {
-            const next = new Set(current);
-            if (startsOpen(account)) {
-                next.delete(key);
-            } else {
-                next.add(key);
-            }
-            return next;
-        });
+        setFlag('collapsed', `${activeGeo}:${account}`, !startsOpen(account));
         document.getElementById(`acc-${account}`)?.scrollIntoView({ block: 'start', behavior: 'smooth' });
     }
 
@@ -296,9 +257,7 @@ function Analyze() {
                         value={activePreset ?? null}
                         onValueChange={(preset) => {
                             if (preset) {
-                                setSelectedPresetByGeo((current) => {
-                                    return { ...current, [activeGeo]: preset.id };
-                                });
+                                selectPreset(activeGeo, preset.id);
                             }
                         }}
                         itemToStringLabel={(preset) => {
@@ -327,6 +286,16 @@ function Analyze() {
         </>
     );
 
+    // Nothing report-shaped renders until the stored draft has been read — a restored upload flashing
+    // through the empty dropzones on the way in reads as a lost session.
+    if (!isHydrated) {
+        return (
+            <MainLayoutHeader>
+                <h1 className="text-xl">Analyze</h1>
+            </MainLayoutHeader>
+        );
+    }
+
     return (
         <>
             <MainLayoutHeader>
@@ -341,7 +310,12 @@ function Analyze() {
                                 size="xs"
                                 variant={code === locale ? 'default' : 'ghost'}
                                 onClick={() => {
-                                    setLocale(code);
+                                    void navigate({
+                                        search: (current) => {
+                                            return { ...current, locale: code };
+                                        },
+                                        replace: true,
+                                    });
                                 }}
                             >
                                 {code.toUpperCase()}
@@ -352,6 +326,8 @@ function Analyze() {
             </MainLayoutHeader>
 
             <div className="flex flex-col gap-6">
+                {restoredAt !== null && <DraftBanner savedAt={restoredAt} onClear={clearDraft} />}
+
                 <FileDropzones files={files} onChange={replaceFiles} />
 
                 {result && geos.length === 0 && (
@@ -363,7 +339,19 @@ function Analyze() {
                 {activeGeo && (
                     <div className="flex flex-col gap-4">
                         <div className="flex items-center gap-3">
-                            <GeoTabs geos={geos} active={activeGeo} spendByGeo={spendByGeo} onSelect={setSelectedGeo} />
+                            <GeoTabs
+                                geos={geos}
+                                active={activeGeo}
+                                spendByGeo={spendByGeo}
+                                onSelect={(geo) => {
+                                    void navigate({
+                                        search: (current) => {
+                                            return { ...current, geo };
+                                        },
+                                        replace: true,
+                                    });
+                                }}
+                            />
                             {!thresholds && (
                                 <span className="text-muted-foreground text-xs">{ui('noPreset', locale)}</span>
                             )}
