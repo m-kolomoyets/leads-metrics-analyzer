@@ -1,4 +1,5 @@
 import type { BuyerTab, BuyerTabState } from '@/modules/Dynamics/utils/buyerTabs';
+import { cn } from '@/lib/utils/cn';
 import { DASH, usdSigned } from '@/components/report/utils/format';
 import { Segmented, SegmentedItem } from '@/components/ui/Segmented';
 
@@ -59,7 +60,14 @@ function BuyerTabs({ tabs, activeId, onSelect }: BuyerTabsProps) {
                     <SegmentedItem
                         key={tab.id}
                         selected={tab.id === activeId}
-                        className={STATE_CLASS[tab.state]}
+                        className={cn(
+                            // Bordered here and nowhere else: the buyer row is the page's primary
+                            // control, and an outline gives each name a hit target a reader can see
+                            // before hovering it.
+                            'border',
+                            tab.id === activeId ? 'border-border-strong' : 'border-border',
+                            STATE_CLASS[tab.state]
+                        )}
                         onSelect={() => {
                             onSelect(tab.id);
                         }}
