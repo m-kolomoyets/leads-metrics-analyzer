@@ -119,6 +119,7 @@
         "selector-class-pattern": "^[a-z][a-z0-9-]+$",
         "selector-id-pattern": "^[a-z][a-z0-9-]+$",
         "alpha-value-notation": "number",
+        "custom-property-pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*(-\\*)?$",
         "font-family-name-quotes": "always-unless-keyword"
     }
 }

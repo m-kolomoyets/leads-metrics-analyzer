@@ -35,8 +35,8 @@ const THEME_SCRIPT = `
 // Paints the background before Tailwind loads, avoiding a flash; removed after mount
 // (useRemoveInitialStyle).
 const INITIAL_STYLE = `
-:root { --initial-bg: rgb(248 250 253); }
-html.dark { --initial-bg: rgb(8 11 20); }
+:root { --initial-bg: #fafafa; }
+html.dark { --initial-bg: #101010; }
 html { font-family: "Inter", sans-serif; }
 body { background-color: var(--initial-bg); margin: 0; position: relative; }
 `;
@@ -67,8 +67,8 @@ export const Route = createRootRouteWithContext<RouterContext>()({
                 { name: 'format-detection', content: 'telephone=no' },
                 { name: 'viewport', content: 'width=device-width, initial-scale=1.0' },
                 { name: 'color-scheme', content: 'light dark' },
-                { name: 'theme-color', content: '#ffffff', media: '(prefers-color-scheme: light)' },
-                { name: 'theme-color', content: '#080b14', media: '(prefers-color-scheme: dark)' },
+                { name: 'theme-color', content: '#fafafa', media: '(prefers-color-scheme: light)' },
+                { name: 'theme-color', content: '#101010', media: '(prefers-color-scheme: dark)' },
                 { title: 'Adjoin' },
             ],
             links: [
@@ -78,11 +78,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
                 { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossOrigin: 'anonymous' },
                 {
                     rel: 'stylesheet',
-                    href: 'https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap',
-                },
-                {
-                    rel: 'stylesheet',
-                    href: 'https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@100..700&display=swap',
+                    href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400..600&display=swap',
                 },
             ],
         };
