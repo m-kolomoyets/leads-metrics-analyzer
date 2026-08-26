@@ -1,4 +1,4 @@
-import type { DynamicsRosterUser } from '@/services/dynamics/types';
+import type { DynamicsDimensionRosterUser, DynamicsRosterUser } from '@/services/dynamics/types';
 import { describe, expect, it } from 'vitest';
 import { buyerTabs, buyerTabState } from './buyerTabs';
 
@@ -99,5 +99,55 @@ describe('buyerTabs', () => {
         buyerTabs(roster, NOON_KYIV);
 
         expect(roster[0]?.id).toBe('b');
+    });
+});
+
+// The dollar-free tab row (#10). A Designer/BDM roster carries no `totalProfit` FIELD at all — the
+// server never selects one for them — which is a different thing from a push that froze no rollup,
+// and must not be told apart wrongly: they have reported, they simply have no money to be graded on.
+describe('buyerTabState without a dollar dimension', () => {
+    const dimensionPerson = (over: Partial<DynamicsDimensionRosterUser> & { id: string }) => {
+        return {
+            nickname: over.id,
+            role: 'buyer' as const,
+            teamId: 't1',
+            teamName: 'Alpha',
+            lastTakenAt: NOON_KYIV.toISOString(),
+            ...over,
+        };
+    };
+
+    it('calls a push with no money dimension reported, never awaited', () => {
+        expect(buyerTabState(dimensionPerson({ id: 'ann' }), NOON_KYIV)).toBe('reported');
+    });
+
+    it('still paints a silent buyer missing past the deadline', () => {
+        const silent = dimensionPerson({ id: 'bob', lastTakenAt: null });
+
+        expect(buyerTabState(silent, NOON_KYIV)).toBe('missing');
+        expect(buyerTabState(silent, NINE_KYIV)).toBe('awaited');
+    });
+
+    it('still warns on a stale push', () => {
+        const stale = dimensionPerson({ id: 'cid', lastTakenAt: '2026-08-26T04:00:00Z' });
+
+        expect(buyerTabState(stale, NOON_KYIV)).toBe('stale');
+    });
+
+    it('orders problems first, then everyone who reported, by nickname', () => {
+        const tabs = buyerTabs(
+            [
+                dimensionPerson({ id: 'zoe' }),
+                dimensionPerson({ id: 'ann' }),
+                dimensionPerson({ id: 'bob', lastTakenAt: null }),
+            ],
+            NOON_KYIV
+        );
+
+        expect(
+            tabs.map((tab) => {
+                return tab.id;
+            })
+        ).toEqual(['bob', 'ann', 'zoe']);
     });
 });

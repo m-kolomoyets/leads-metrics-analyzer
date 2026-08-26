@@ -1,6 +1,6 @@
 import type { DimensionRollupView } from '@/services/snapshots/types';
 import { describe, expect, it } from 'vitest';
-import { rollupRows } from './rollupRows';
+import { rollupRows } from './rows';
 
 const view = (key: string, counts: Partial<Omit<DimensionRollupView, 'dimension' | 'key'>>): DimensionRollupView => {
     return {

@@ -1,3 +1,4 @@
+import type { RollupDimension } from '@/lib/auth/dimensionRollup';
 import type { UserRole } from '@/lib/constants';
 
 // Wire shapes for the Dynamics page (ADR-0010, ADR-0017). The day read returns the domain's own
@@ -21,4 +22,33 @@ export type DynamicsRosterUser = {
     // untagged revenue (ADR-0003), so §4.4's "excluded traffic" caveat does not apply here. Null when
     // there is no push today, or when the push froze no rollup: no total to colour, not a zero.
     totalProfit: number | null;
+};
+
+// The dollar-free half of the roster, for the Designer/BDM frames (#10). Structurally the tab row
+// minus its one money field: those roles hold no dollar dimension, so no total is selected for them
+// server-side either — the field does not exist rather than arriving null.
+export type DynamicsDimensionRosterUser = Omit<DynamicsRosterUser, 'totalProfit'>;
+
+// One row of a dollar-free day table: the viewer's single dimension, in one market, with the funnel
+// counts that dimension earned. No Spend, no Revenue, no cost-per — the read never selects them.
+export type DynamicsDimensionRow = {
+    geo: string;
+    key: string;
+    linkClicks: number;
+    installs: number;
+    regs: number;
+    sales: number;
+};
+
+// One buyer's day as a Designer or BDM reads it: WHOSE it is and WHEN it was pushed, which is the
+// substance of the decision rather than metadata around it, plus the rows themselves.
+//
+// The rows come from the LATEST active push of the day and nothing is summed across pushes: a
+// Snapshot restates the day so far (ADR-0017), so adding two pushes would double-count the day.
+export type DynamicsDimensionDay = {
+    dimension: RollupDimension;
+    buyerNickname: string;
+    // Null when the buyer has not pushed for this day at all — no rows, and nothing to date.
+    takenAt: string | null;
+    rows: DynamicsDimensionRow[];
 };

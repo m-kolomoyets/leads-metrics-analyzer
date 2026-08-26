@@ -2,20 +2,26 @@ import type { SQL } from 'drizzle-orm';
 import type { Viewer } from '@/lib/auth/scope';
 import type { DynamicsSnapshot } from '@/lib/domain/dynamics';
 import type { MeData } from '@/services/auth/types';
-import type { DynamicsRosterUser } from './types';
+import type {
+    DynamicsDimensionDay,
+    DynamicsDimensionRosterUser,
+    DynamicsDimensionRow,
+    DynamicsRosterUser,
+} from './types';
 import { createServerFn } from '@tanstack/react-start';
-import { and, eq, inArray, isNotNull, sum } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, sum } from 'drizzle-orm';
 import { assertDimension } from '@/lib/auth/denial';
+import { assertRollupRead, ROLLUP_ONLY, rollupDimensionFor } from '@/lib/auth/dimensionRollup';
 import { requireUser } from '@/lib/auth/guards';
 import { scopeFor } from '@/lib/auth/scope';
 import { USER_ROLES } from '@/lib/constants';
 import { db } from '@/lib/db';
-import { appliedRulesetGeo, snapshot, snapshotGeo, team, user } from '@/lib/db/schema';
+import { appliedRulesetGeo, snapshot, snapshotFact, snapshotGeo, team, user } from '@/lib/db/schema';
 import { SNAPSHOT_NOT_FOUND } from '@/services/snapshots/constants';
 import { matchesNoRows, userRowFilter } from '@/services/snapshots/visibility';
-import { dynamicsDayInputSchema, dynamicsRosterInputSchema } from './schemas';
+import { dynamicsDayInputSchema, dynamicsDimensionDayInputSchema, dynamicsRosterInputSchema } from './schemas';
 import { toDynamicsSnapshots } from './toDay';
-import { toRoster } from './toRoster';
+import { toDimensionRoster, toRoster } from './toRoster';
 import { dynamicsDayFilter, dynamicsDayTotalsFilter, dynamicsReplacedFilter, visibleBuyerFilter } from './visibility';
 
 // The two reads behind the Dynamics page (ADR-0010, ADR-0017). Both go through `scopeFor(viewer)`
@@ -214,4 +220,132 @@ export const listDayRosterFn = createServerFn({ method: 'GET' })
                 return { ...row, totalProfit: row.totalProfit === null ? null : Number(row.totalProfit) };
             })
         );
+    });
+
+// The two reads behind the Designer and BDM frames (#10). Same Team → Buyer → Geo frame, one table
+// instead of a trajectory, and not one dollar column selected anywhere on the path: `snapshot_fact`
+// carries Spend and Revenue, and neither is named in the projection below, so the figure does not
+// exist server-side for these viewers rather than being hidden client-side.
+//
+// Which branch a viewer is on is `rollupDimensionFor` — a `scopeFor` read (ADR-0007), never a role
+// literal — and which table they asked for is checked against their scope, so a Designer asking for
+// offers is REFUSED (`assertRollupRead`) rather than handed an empty array that would read as "this
+// buyer ran none".
+
+// The dollar-free tab row. The same people, the same missing/stale rules, minus the day's total:
+// there is no money dimension to colour a tab with, so none is summed.
+export const listDimensionRosterFn = createServerFn({ method: 'GET' })
+    .inputValidator(dynamicsRosterInputSchema)
+    .handler(async ({ data }): Promise<DynamicsDimensionRosterUser[]> => {
+        const me = await requireUser();
+        const viewer = viewerFrom(me);
+        const scope = scopeFor(viewer);
+
+        if (rollupDimensionFor(viewer) === null) {
+            throw new Error(ROLLUP_ONLY);
+        }
+
+        if (matchesNoRows(scope)) {
+            return [];
+        }
+
+        const [users, pushes] = await Promise.all([
+            db
+                .select({
+                    id: user.id,
+                    nickname: user.nickname,
+                    role: user.role,
+                    teamId: user.teamId,
+                    teamName: team.name,
+                })
+                .from(user)
+                .leftJoin(team, eq(team.id, user.teamId))
+                .where(and(eq(user.status, 'active'), inArray(user.role, CAMPAIGN_ROLES), userRowFilter(scope)))
+                .orderBy(user.nickname),
+            db
+                .select({ createdByUserId: snapshot.createdByUserId, takenAt: snapshot.takenAt })
+                .from(snapshot)
+                .where(dynamicsDayTotalsFilter(scope, data.reportDate)),
+        ]);
+
+        return toDimensionRoster(users, pushes);
+    });
+
+// One buyer's day, keyed by the viewer's single dimension. The rows come from the LATEST active push
+// of that day and nothing is summed across pushes: a Snapshot restates the day so far (ADR-0017), so
+// adding two of them would double-count it. Grouped by Geo as well as by the dimension, because the
+// frame's third level is still the market — the client splits the rows, at no extra round trip.
+//
+// There is no cross-buyer aggregate here or anywhere: the read is always narrowed to one person, and
+// a creative is buyer-specific (#10).
+export const listDimensionDayFn = createServerFn({ method: 'GET' })
+    .inputValidator(dynamicsDimensionDayInputSchema)
+    .handler(async ({ data }): Promise<DynamicsDimensionDay> => {
+        const me = await requireUser();
+        const viewer = viewerFrom(me);
+        const scope = scopeFor(viewer);
+
+        const dimension = assertRollupRead(viewer, data.dimension);
+
+        if (matchesNoRows(scope)) {
+            throw new Error(SNAPSHOT_NOT_FOUND);
+        }
+
+        // The buyer is resolved under row-scope first, and a miss is not-found rather than forbidden
+        // — the same verdict, for the same reason, as the trajectory read above.
+        const [buyer] = await db
+            .select({ id: user.id, nickname: user.nickname })
+            .from(user)
+            .where(visibleBuyerFilter(scope, data.buyerId))
+            .limit(1);
+
+        if (!buyer) {
+            throw new Error(SNAPSHOT_NOT_FOUND);
+        }
+
+        const [latest] = await db
+            .select({ id: snapshot.id, takenAt: snapshot.takenAt })
+            .from(snapshot)
+            .where(dynamicsDayFilter(scope, buyer.id, data.reportDate))
+            // The id is a tie-break, not a second opinion: two pushes stamped the same second must
+            // resolve to the SAME one on every read, or the table flips between refreshes.
+            .orderBy(desc(snapshot.takenAt), desc(snapshot.id))
+            .limit(1);
+
+        if (!latest) {
+            return { dimension, buyerNickname: buyer.nickname, takenAt: null, rows: [] };
+        }
+
+        const keyColumn = dimension === 'creative' ? snapshotFact.creative : snapshotFact.offer;
+
+        const rows = await db
+            .select({
+                geo: snapshotFact.geo,
+                key: keyColumn,
+                // Funnel counts only. Spend / Spend⁺ / Revenue are deliberately absent (ADR-0009).
+                linkClicks: sum(snapshotFact.linkClicks).mapWith(Number),
+                installs: sum(snapshotFact.installs).mapWith(Number),
+                regs: sum(snapshotFact.regs).mapWith(Number),
+                sales: sum(snapshotFact.sales).mapWith(Number),
+            })
+            .from(snapshotFact)
+            .where(eq(snapshotFact.snapshotId, latest.id))
+            .groupBy(snapshotFact.geo, keyColumn)
+            .orderBy(asc(snapshotFact.geo), asc(keyColumn));
+
+        return {
+            dimension,
+            buyerNickname: buyer.nickname,
+            takenAt: latest.takenAt.toISOString(),
+            rows: rows.map((row): DynamicsDimensionRow => {
+                return {
+                    geo: row.geo,
+                    key: row.key,
+                    linkClicks: row.linkClicks ?? 0,
+                    installs: row.installs ?? 0,
+                    regs: row.regs ?? 0,
+                    sales: row.sales ?? 0,
+                };
+            }),
+        };
     });

@@ -30,7 +30,7 @@ export const SIDEBAR_NAVIGATION_LINK_LIST: SidebarNavigationLinkItem[] = [
         linkProps: {
             to: '/dashboard/dynamics',
         },
-        rolePermissionKey: 'report.view',
+        rolePermissionKey: 'dynamics.view',
     },
     {
         label: 'Analyze',

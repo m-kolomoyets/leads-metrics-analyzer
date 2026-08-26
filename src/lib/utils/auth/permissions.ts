@@ -31,6 +31,13 @@ export const ROLES_PERMISSIONS = {
     report: {
         view: [ROLES_IDS.head, ROLES_IDS.teamLead, ROLES_IDS.buyer],
     },
+    // The Dynamics page (spec 0004). One route for all five roles, the way `/analyze` already
+    // branches (ADR-0009): dollar roles get the trajectory, Designer/BDM their own dollar-free frame
+    // (#10). Which branch renders is decided by `scopeFor`, not by this list — this gate only says
+    // who may open the route at all, and the server still refuses each read on its own.
+    dynamics: {
+        view: [ROLES_IDS.head, ROLES_IDS.teamLead, ROLES_IDS.buyer, ROLES_IDS.designer, ROLES_IDS.bdm],
+    },
     // Presets manager (#30 follow-up). Dollar roles only; server row-scope still narrows the rows
     // each one actually sees (Head all / Team Lead team / Buyer own).
     presets: {

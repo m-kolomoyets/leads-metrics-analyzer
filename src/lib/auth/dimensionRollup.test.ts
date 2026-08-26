@@ -1,5 +1,6 @@
 import type { Viewer } from './scope';
-import { rollupDimensionFor } from './dimensionRollup';
+import { DIMENSION_DENIED } from './denial';
+import { assertRollupRead, ROLLUP_ONLY, rollupDimensionFor } from './dimensionRollup';
 
 // External-behavior tests (ADR-0005/0007) for the T7 (#9) dimension-scoping seam. Designer and BDM
 // are barred from every dollar table (campaign/account/geo) and instead read a single company-wide
@@ -38,5 +39,43 @@ describe('rollupDimensionFor', () => {
 
     it.each(cases)('$name', ({ viewer, expected }) => {
         expect(rollupDimensionFor(viewer)).toBe(expected);
+    });
+});
+
+// The per-buyer dimension reads behind the Dynamics page's dollar-free frames (#10). Both refusals
+// are external behavior: a Designer who asks for offers must be REFUSED, never handed an empty table
+// that reads as "this buyer ran none".
+describe('assertRollupRead', () => {
+    const designer: Viewer = { id: 'u-des', role: 'designer' };
+    const bdm: Viewer = { id: 'u-bdm', role: 'bdm' };
+
+    it('lets a designer read creatives', () => {
+        expect(assertRollupRead(designer, 'creative')).toBe('creative');
+    });
+
+    it('lets a bdm read offers', () => {
+        expect(assertRollupRead(bdm, 'offer')).toBe('offer');
+    });
+
+    it('denies a designer asking for offers', () => {
+        expect(() => {
+            return assertRollupRead(designer, 'offer');
+        }).toThrow(DIMENSION_DENIED);
+    });
+
+    it('denies a bdm asking for creatives', () => {
+        expect(() => {
+            return assertRollupRead(bdm, 'creative');
+        }).toThrow(DIMENSION_DENIED);
+    });
+
+    it.each([
+        { name: 'head', viewer: { id: 'u-head', role: 'head' } as Viewer },
+        { name: 'team_lead', viewer: { id: 'u-tl', role: 'team_lead', teamId: 't-1' } as Viewer },
+        { name: 'buyer', viewer: { id: 'u-buyer', role: 'buyer' } as Viewer },
+    ])('sends a $name back to the fact path', ({ viewer }) => {
+        expect(() => {
+            return assertRollupRead(viewer, 'offer');
+        }).toThrow(ROLLUP_ONLY);
     });
 });

@@ -1,8 +1,8 @@
 import type { RollupDimension } from '@/lib/auth/dimensionRollup';
-import type { RollupRow } from '../../utils/rollupRows';
+import type { RollupRow } from './utils/rows';
 import { cn } from '@/lib/utils/cn';
 import { int, ratioPct } from '@/components/report/utils/format';
-import { DIMENSION_LABEL, RATE_COLUMNS, STAGE_COLUMNS } from '../../constants';
+import { DIMENSION_LABEL, RATE_COLUMNS, STAGE_COLUMNS } from './constants';
 
 type RollupTableProps = {
     dimension: RollupDimension;
@@ -31,9 +31,10 @@ function RowCells({ row }: { row: RollupRow }) {
     );
 }
 
-// The one table of the dollar-free branch: every saved Snapshot's facts summed by the viewer's single
-// dimension (Creative for a Designer, Offer for a BDM). Rows are ordered by Sales, so the creatives /
-// offers that earn lead. The footer restates the company-wide funnel, hidden for a single row where it
+// The one table of every dollar-free surface: facts summed by the viewer's single dimension (Creative
+// for a Designer, Offer for a BDM). It is fed by two reads — the company-wide roll-up on `/analyze`
+// and one buyer's day on Dynamics (#10) — and knows about neither. Rows are ordered by Sales, so the
+// creatives / offers that earn lead. The footer restates the funnel, hidden for a single row where it
 // would just repeat it.
 function RollupTable({ dimension, rows, totals }: RollupTableProps) {
     const showFooter = rows.length > 1;

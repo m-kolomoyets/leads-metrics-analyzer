@@ -1,4 +1,4 @@
-import type { DynamicsDayInput, DynamicsRosterInput } from './schemas';
+import type { DynamicsDayInput, DynamicsDimensionDayInput, DynamicsRosterInput } from './schemas';
 
 export const dynamicsKeys = {
     all: ['dynamics'] as const,
@@ -9,5 +9,13 @@ export const dynamicsKeys = {
     },
     rosterQueryKey(input: DynamicsRosterInput) {
         return [...dynamicsKeys.all, 'roster', input.reportDate] as const;
+    },
+    // The dollar-free frames are keyed apart from the trajectory reads: they answer a different
+    // question over the same day, and the dimension is part of what was asked for.
+    dimensionRosterQueryKey(input: DynamicsRosterInput) {
+        return [...dynamicsKeys.all, 'dimension-roster', input.reportDate] as const;
+    },
+    dimensionDayQueryKey(input: DynamicsDimensionDayInput) {
+        return [...dynamicsKeys.all, 'dimension-day', input.dimension, input.buyerId, input.reportDate] as const;
     },
 };

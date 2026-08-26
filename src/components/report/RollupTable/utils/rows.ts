@@ -1,5 +1,3 @@
-import type { DimensionRollupView } from '@/services/snapshots/types';
-
 // The rollup branch's derive step (spec 0002 S6). Deliberately does NOT reuse `aggregate.metricsFor`:
 // that shape carries Spend⁺ / Revenue / ROI, and a dollar-barred viewer must have no code path that
 // could render one (ADR-0009). Counts in, funnel rates out.
@@ -19,6 +17,13 @@ export type RollupRow = {
 };
 
 type Counts = Pick<RollupRow, 'linkClicks' | 'installs' | 'regs' | 'sales'>;
+
+// What this derive step needs of its input, and no more: a key and four counts. Structural rather
+// than tied to `DimensionRollupView`, because the same rows arrive from two reads now — the
+// company-wide roll-up and the Dynamics page's per-buyer day (#10).
+export type RollupCounts = Counts & {
+    key: string;
+};
 
 function ratePct(numerator: number, denominator: number): number | null {
     if (denominator === 0) {
@@ -50,7 +55,7 @@ function byImpact(a: Counts, b: Counts, aKey: string, bKey: string): number {
 
 // Sorted rows plus the summed footer. The footer's rates are re-derived from the summed counts, not
 // averaged — the same arithmetic the dollar tables use for their totals row.
-export function rollupRows(views: DimensionRollupView[]): { rows: RollupRow[]; totals: RollupRow } {
+export function rollupRows(views: RollupCounts[]): { rows: RollupRow[]; totals: RollupRow } {
     const rows = [...views]
         .sort((a, b) => {
             return byImpact(a, b, a.key, b.key);

@@ -4,10 +4,11 @@ import { LayersIcon } from 'lucide-react';
 import { rollupDimensionFor } from '@/lib/auth/dimensionRollup';
 import { dimensionRollupQueryOptions } from '@/services/snapshots/queries';
 import { MainLayoutHeader } from '@/components/layouts/MainLayoutHeader';
+import { RollupTable } from '@/components/report/RollupTable';
+import { DIMENSION_LABEL } from '@/components/report/RollupTable/constants';
+import { rollupRows } from '@/components/report/RollupTable/utils/rows';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/Empty';
-import { DIMENSION_LABEL, DIMENSION_TITLE } from './constants';
-import { rollupRows } from './utils/rollupRows';
-import { RollupTable } from './components/RollupTable';
+import { DIMENSION_TITLE } from './constants';
 
 const routeApi = getRouteApi('/_authenticated');
 
