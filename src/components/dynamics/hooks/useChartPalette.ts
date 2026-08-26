@@ -11,21 +11,21 @@ import { useSyncExternalStore } from 'react';
 // where there is no computed style at all). This is what the first paint uses, so it is kept honest
 // against `src/styles/index.css` rather than left at whatever it once was.
 const FALLBACK: ChartPalette = {
-    zone: { green: '#26a69a', yellow: '#e0a33e', red: '#ef5350', neutral: '#8f8f8f' },
-    accent: '#2196f3',
-    background: '#101010',
-    surface: '#1e1e1e',
-    muted: '#8f8f8f',
-    border: '#2b2b2b',
-    text: '#e8e8e8',
+    zone: { green: '#26a69a', yellow: '#e0a33e', red: '#ef5350', neutral: '#9b9b9b' },
+    accent: '#4c82f7',
+    background: '#000000',
+    surface: '#212121',
+    muted: '#9b9b9b',
+    border: '#262626',
+    text: '#f2f2f2',
     guide: 'rgb(255 255 255 / 0.35)',
     fontFamily: '"Inter", sans-serif',
-    fontSize: 12,
+    fontSize: 13,
 };
 
-// Chart axes are the 12px label step from the type scale. It is a number, not a colour, so it has no
+// Chart axes are the 13px label step from the type scale. It is a number, not a colour, so it has no
 // custom property to read — the scale lives in `docs/design-system.md` and this is its canvas copy.
-const AXIS_FONT_SIZE = 12;
+const AXIS_FONT_SIZE = 13;
 
 function tokenOf(styles: CSSStyleDeclaration, name: string, fallback: string): string {
     const value = styles.getPropertyValue(name).trim();

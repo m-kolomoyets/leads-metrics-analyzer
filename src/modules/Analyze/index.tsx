@@ -245,7 +245,7 @@ function Analyze() {
     const zoneHeader = activeGeo && (
         <>
             <AccordionHeader>
-                <AccordionTrigger className="text-sm font-normal tracking-widest uppercase">
+                <AccordionTrigger className="text-sm font-semibold tracking-widest uppercase">
                     {ui('zoneMetrics', locale)} · {activeGeo}
                 </AccordionTrigger>
             </AccordionHeader>

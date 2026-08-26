@@ -7,8 +7,14 @@ Depth in this app is spoken in exactly two levels:
 - **Overlay** — things that genuinely float over the page: `Popover`, `DropdownMenu`, `Dialog`,
   `Sheet`, `Tooltip`, `Toast`. Hairline border, a background step, and one flat neutral shadow token.
 
-There is no third level, and there is one shadow token. A component asking for a shadow while sitting
-inline is a design smell to push back on, not a token to add.
+There is no third level, and there is one neutral shadow token. A component asking for a shadow while
+sitting inline is a design smell to push back on, not a token to add.
+
+The single amendment: a **zone glow** (`glow-zone-green` / `-yellow` / `-red`, and `glow-sales`) — a
+28px bleed of the block's own zone colour. It is not a third depth level, because it does not signal
+depth: it may only be worn by a block that already carries that colour's hairline, it is always that
+same colour, and it never touches chrome. A glowing block is not floating, it is graded. Neutral gets
+no glow, which is what keeps the graded ones legible as signal.
 
 ## Why
 
@@ -32,5 +38,8 @@ number that still answers "is this on the page or over it".
   every `backdrop-filter` are deleted rather than reskinned. They encode a depth model that no longer
   exists.
 - Elevation is not a scale. There is no `--shadow-sm`/`md`/`lg`; there is `--shadow-overlay`.
+- The zone glow is not elevation either — its strength lives in `--glow-rest`/`--glow-peak` (lower in
+  light mode, where a halo on white smudges), and its use is gated by ADR-0019, not by a depth
+  decision. It breathes between the two on the same 4.8s clock as the problem-account border pulse.
 - Nesting an inline surface inside another gives two hairlines and one lightness step, which is the
   intended reading — a subsection, not a new plane.

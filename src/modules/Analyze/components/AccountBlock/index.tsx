@@ -4,7 +4,7 @@ import type { GeoThresholds, ThresholdPair } from '@/lib/domain/types';
 import { useState } from 'react';
 import { zoneFor } from '@/lib/domain/verdict';
 import { cn } from '@/lib/utils/cn';
-import { BUCKET_ZONES, SALES_TEXT_CLASS, ZONE_TEXT_CLASS } from '@/components/report/constants';
+import { BUCKET_ZONES, SALES_PANEL_CLASS, SALES_TEXT_CLASS, ZONE_TEXT_CLASS } from '@/components/report/constants';
 import { cost, pct, usd, usdRound, usdSigned } from '@/components/report/utils/format';
 import { problemReason, ui } from '@/components/report/utils/i18n';
 import { Button } from '@/components/ui/Button';
@@ -76,7 +76,7 @@ function AccountBlock({
             id={`acc-${account.account}`}
             className={cn(
                 'bg-surface scroll-mt-4 rounded-md border p-4 motion-safe:transition-opacity',
-                problem ? 'border-zone-red' : 'border-border',
+                problem ? 'border-zone-red glow-zone-red' : 'border-border',
                 // The pulse is a call to act, so reviewing silences it — the red frame and chip stay,
                 // since the account is still Problem, only no longer unhandled.
                 problem && !reviewed && 'pulse-red',
@@ -209,8 +209,10 @@ function AccountBlock({
                     </div>
 
                     {account.salesCampaigns.length > 0 && (
-                        <div className="border-border flex flex-col gap-2 rounded-md border p-3">
-                            <span className="text-sm font-medium">{ui('salesCampaigns', locale)}</span>
+                        <div className={cn('flex flex-col gap-2 rounded-md border p-3', SALES_PANEL_CLASS)}>
+                            <span className={cn('text-sm font-medium', SALES_TEXT_CLASS)}>
+                                {ui('salesCampaigns', locale)}
+                            </span>
                             <AccountCampaigns
                                 campaigns={account.salesCampaigns}
                                 thresholds={thresholds}

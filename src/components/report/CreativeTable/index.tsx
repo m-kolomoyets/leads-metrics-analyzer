@@ -172,7 +172,7 @@ function CreativeTable({ rows, thresholds, locale, geo, previous }: CreativeTabl
 
     return (
         <div className="flex flex-col gap-2">
-            <h3 className="text-muted-foreground text-xs font-medium tracking-widest uppercase">
+            <h3 className="text-foreground text-xs font-semibold tracking-widest uppercase">
                 {ui('creatives', locale)} · {geo}
             </h3>
             <Table density="compact" className="text-xs">

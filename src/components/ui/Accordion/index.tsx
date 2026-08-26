@@ -32,13 +32,13 @@ function AccordionTrigger({ className, children, ...props }: AccordionTriggerPro
         <AccordionPrimitive.Trigger
             data-slot="accordion-trigger"
             className={cn(
-                'text-muted-foreground hover:text-foreground group flex cursor-pointer items-center gap-2 rounded-sm motion-safe:transition-colors motion-safe:duration-150',
+                'text-foreground group flex cursor-pointer items-center gap-2 rounded-sm font-medium motion-safe:transition-colors motion-safe:duration-150',
                 className
             )}
             {...props}
         >
             {/* `data-panel-open` sits on the trigger, so the icon reads it through the group. */}
-            <ChevronDownIcon className="size-4 shrink-0 duration-150 ease-out group-data-[panel-open]:rotate-180 motion-safe:transition-transform" />
+            <ChevronDownIcon className="text-muted-foreground group-hover:text-foreground size-4 shrink-0 duration-150 ease-out group-data-[panel-open]:rotate-180 motion-safe:transition-transform" />
             {children}
         </AccordionPrimitive.Trigger>
     );

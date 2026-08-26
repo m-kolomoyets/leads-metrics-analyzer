@@ -22,7 +22,7 @@ function SectionCard({ title, label, actions, className, children }: SectionCard
             {(title || actions) && (
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                     {title && (
-                        <h3 className="text-muted-foreground text-xs font-medium tracking-widest uppercase">{title}</h3>
+                        <h3 className="text-foreground text-xs font-semibold tracking-widest uppercase">{title}</h3>
                     )}
                     {actions}
                 </div>

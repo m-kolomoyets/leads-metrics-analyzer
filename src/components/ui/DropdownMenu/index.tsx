@@ -72,7 +72,7 @@ function DropdownMenuItem({ className, inset, variant = 'default', ...props }: D
             data-inset={inset}
             data-variant={variant}
             className={cn(
-                `focus:bg-accent focus:text-accent-foreground data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 dark:data-[variant=destructive]:focus:bg-destructive/20 data-[variant=destructive]:focus:text-destructive data-[variant=destructive]:*:[svg]:text-destructive not-data-[variant=destructive]:focus:**:text-accent-foreground gap-1.5 rounded-sm px-1.5 py-1 text-sm data-inset:pl-7 [&_svg:not([class*='size-'])]:size-4 group/dropdown-menu-item relative flex cursor-default items-center outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0`,
+                `focus:bg-hover data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 dark:data-[variant=destructive]:focus:bg-destructive/20 data-[variant=destructive]:focus:text-destructive data-[variant=destructive]:*:[svg]:text-destructive gap-1.5 rounded-sm px-1.5 py-1 text-sm data-inset:pl-7 [&_svg:not([class*='size-'])]:size-4 group/dropdown-menu-item relative flex cursor-default items-center outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0`,
                 className
             )}
             {...props}
@@ -86,7 +86,7 @@ function DropdownMenuCheckboxItem({ className, children, inset, checked, ...prop
             data-slot="dropdown-menu-checkbox-item"
             data-inset={inset}
             className={cn(
-                `focus:bg-accent focus:text-accent-foreground focus:**:text-accent-foreground gap-1.5 rounded-sm py-1 pr-8 pl-1.5 text-sm data-inset:pl-7 [&_svg:not([class*='size-'])]:size-4 relative flex cursor-default items-center outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0`,
+                `focus:bg-hover gap-1.5 rounded-sm py-1 pr-8 pl-1.5 text-sm data-inset:pl-7 [&_svg:not([class*='size-'])]:size-4 relative flex cursor-default items-center outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0`,
                 className
             )}
             checked={checked}
@@ -112,7 +112,7 @@ function DropdownMenuRadioItem({ className, children, inset, ...props }: Dropdow
             data-slot="dropdown-menu-radio-item"
             data-inset={inset}
             className={cn(
-                `focus:bg-accent focus:text-accent-foreground focus:**:text-accent-foreground gap-1.5 rounded-sm py-1 pr-8 pl-1.5 text-sm data-inset:pl-7 [&_svg:not([class*='size-'])]:size-4 relative flex cursor-default items-center outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0`,
+                `focus:bg-hover gap-1.5 rounded-sm py-1 pr-8 pl-1.5 text-sm data-inset:pl-7 [&_svg:not([class*='size-'])]:size-4 relative flex cursor-default items-center outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0`,
                 className
             )}
             {...props}
@@ -152,10 +152,7 @@ function DropdownMenuShortcut({ className, ...props }: DropdownMenuShortcutProps
     return (
         <span
             data-slot="dropdown-menu-shortcut"
-            className={cn(
-                'text-muted-foreground group-focus/dropdown-menu-item:text-accent-foreground ml-auto text-xs tracking-widest',
-                className
-            )}
+            className={cn('text-muted-foreground ml-auto text-xs tracking-widest', className)}
             {...props}
         />
     );
@@ -171,7 +168,7 @@ function DropdownMenuSubTrigger({ className, inset, children, ...props }: Dropdo
             data-slot="dropdown-menu-sub-trigger"
             data-inset={inset}
             className={cn(
-                `focus:bg-accent focus:text-accent-foreground data-open:bg-accent data-open:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground gap-1.5 rounded-sm px-1.5 py-1 text-sm data-inset:pl-7 [&_svg:not([class*='size-'])]:size-4 flex cursor-default items-center outline-hidden select-none data-popup-open:bg-accent data-popup-open:text-accent-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0`,
+                `focus:bg-hover data-open:bg-hover gap-1.5 rounded-sm px-1.5 py-1 text-sm data-inset:pl-7 [&_svg:not([class*='size-'])]:size-4 flex cursor-default items-center outline-hidden select-none data-popup-open:bg-hover [&_svg]:pointer-events-none [&_svg]:shrink-0`,
                 className
             )}
             {...props}

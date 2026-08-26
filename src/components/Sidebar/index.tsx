@@ -366,10 +366,10 @@ function SidebarMenuSkeleton({ className, showIcon = false, ...props }: SidebarM
         <div
             data-slot="sidebar-menu-skeleton"
             data-sidebar="menu-skeleton"
-            className={cn('h-8 group-data-[state=expanded]:gap-2 rounded-md px-2 flex items-center', className)}
+            className={cn('h-9 group-data-[state=expanded]:gap-2 rounded-md px-2 flex items-center', className)}
             {...props}
         >
-            {showIcon && <Skeleton className="size-4 rounded-md" data-sidebar="menu-skeleton-icon" />}
+            {showIcon && <Skeleton className="size-5 rounded-md" data-sidebar="menu-skeleton-icon" />}
             <Skeleton
                 className="h-4 flex-1 max-w-(--skeleton-width)"
                 data-sidebar="menu-skeleton-text"

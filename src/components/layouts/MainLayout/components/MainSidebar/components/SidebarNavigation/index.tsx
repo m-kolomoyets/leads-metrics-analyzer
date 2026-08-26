@@ -1,13 +1,15 @@
+import type { SidebarNavigationProps } from './types';
 import { getRouteApi } from '@tanstack/react-router';
 import { hasPermissions } from '@/lib/utils/auth/permissions';
 import { SidebarGroup, SidebarMenu, SidebarMenuItem } from '@/components/Sidebar';
 import { useSidebarContext } from '@/components/Sidebar/context/SidebarContext';
-import { SIDEBAR_NAVIGATION_LINK_LIST } from './constants';
 import { SidebarNavigationLink } from './components/SidebarNavigationLink';
 
 const routeApi = getRouteApi('/_authenticated');
 
-function SidebarNavigation() {
+// The rows themselves come from the caller: the main group in <SidebarContent>, the Admin row in
+// <SidebarFooter>. Same permission filter either way — a role that cannot open a route never sees it.
+function SidebarNavigation({ items, className }: SidebarNavigationProps) {
     const { setOpenMobile } = useSidebarContext();
     const role = routeApi.useRouteContext({
         select(context) {
@@ -15,14 +17,20 @@ function SidebarNavigation() {
         },
     });
 
-    return (
-        <SidebarGroup>
-            <SidebarMenu>
-                {SIDEBAR_NAVIGATION_LINK_LIST.map((item) => {
-                    if (item?.rolePermissionKey && !hasPermissions(item.rolePermissionKey, role)) {
-                        return null;
-                    }
+    const visible = items.filter((item) => {
+        return !item.rolePermissionKey || hasPermissions(item.rolePermissionKey, role);
+    });
 
+    // Filtered rather than skipped per row so a group nobody may open renders nothing at all — an
+    // empty <SidebarGroup> still takes its parent's gap, and the Admin group is empty for most roles.
+    if (visible.length === 0) {
+        return null;
+    }
+
+    return (
+        <SidebarGroup className={className}>
+            <SidebarMenu>
+                {visible.map((item) => {
                     return (
                         <SidebarMenuItem
                             key={item.label}
@@ -31,7 +39,7 @@ function SidebarNavigation() {
                             }}
                         >
                             <SidebarNavigationLink tooltipText={item.label} {...item.linkProps}>
-                                <item.Icon className="size-4" />
+                                <item.Icon className="size-5" />
                                 {item.label}
                             </SidebarNavigationLink>
                         </SidebarMenuItem>

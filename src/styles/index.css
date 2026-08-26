@@ -31,22 +31,41 @@
     --muted-foreground: #5f5f5f;
     --faint: #8a8a8a;
 
-    /* Accent — focus ring, active nav, selected tab, chosen metric, checked control, link. */
-    --accent: #1976d2;
+    /* Accent — focus ring, selected tab, chosen metric, checked control, link. One blue across both
+       themes: the dark accent darkened until it carries white ink, rather than a second hue picked
+       for light mode. 5.82:1 on --surface, and 5.82:1 the other way for white on the fill. */
+    --accent: #1f5fd0;
     --accent-foreground: #ffffff;
 
     /* Zone — the only other colour. `green` renders teal, `yellow` renders amber; the names are
        the DB enum, not the paint. Measured against --surface, not eyeballed: 5.32 / 4.85 / 8.15. */
-    --zone-green: #00796b;
-    --zone-yellow: #ab5e00;
-    --zone-red: #9b1c1c;
+    --zone-green: #008275;
+    --zone-yellow: #ad6200;
+    --zone-red: #a82727;
     --zone-neutral: #5f5f5f;
 
-    /* Elevation — the only shadow in the app, worn by overlays alone. */
+    /* Sales — outside the Zone scale on purpose. A sale is a fact, not a judgement, so it may not
+       borrow green; violet is the one hue reserved for it and appears nowhere else. */
+    --sales: #6d28d9;
+    --sales-tint: rgb(109 40 217 / 0.08);
+
+    /* Interaction wash — the one hover/selected surface in the app. Semi-transparent so it reads the
+       same over --surface, --popover and the sidebar without a token per surface. */
+    --hover: rgb(90 90 90 / 0.1);
+    --hover-strong: rgb(90 90 90 / 0.16);
+
+    /* Elevation — the only neutral shadow in the app, worn by overlays alone. */
     --shadow-overlay: 0 4px 12px rgb(0 0 0 / 0.12);
 
+    /* Zone glow — how much of the zone colour a zone-bordered block bleeds around itself, and the
+       peak the slow pulse breathes up to. Lower in light mode: a coloured halo on white reads as a
+       smudge long before it reads as a signal. */
+    --glow-rest: 32%;
+    --glow-peak: 46%;
+    --glow-strength: var(--glow-rest);
+
     /* Radius — three steps, nothing above. */
-    --radius: 0.25rem;
+    --radius: 0.5rem;
 
     /* shadcn primitives read these names; they are aliases onto the chrome above, not a second
        palette. `--muted` and `--secondary` are the resting surface, never a wash. */
@@ -68,45 +87,73 @@
     --sidebar-primary: var(--accent);
     --sidebar-primary-foreground: var(--accent-foreground);
 
-    /* The sidebar's resting and hover state is achromatic — one surface step, not a wash. The
-       accent is reserved for the row that is actually selected, which reads it through
-       `--sidebar-primary`. */
-    --sidebar-accent: var(--background);
+    /* The sidebar's hover state is the same achromatic wash every other control uses. The accent is
+       not spent on navigation at all any more — the selected row reads `--hover-strong`, one step up
+       from hover, so "where I am" and "what I am pointing at" differ in weight rather than in hue. */
+    --sidebar-accent: var(--hover);
     --sidebar-accent-foreground: var(--foreground);
     --sidebar-border: var(--border);
     --sidebar-ring: var(--accent);
 }
 
 .dark {
-    --background: #101010;
-    --surface: #171717;
-    --surface-overlay: #1e1e1e;
-    --border: #2b2b2b;
-    --border-strong: #3d3d3d;
-    --foreground: #e8e8e8;
-    --muted-foreground: #8f8f8f;
-    --faint: #5c5c5c;
+    /* Chrome — true black page, two grey surfaces above it. The page itself is #000, so a card is
+       read by its own lightness rather than by a border, and an overlay steps up once more. */
+    --background: #000000;
+    --surface: #161616;
+    --surface-overlay: #212121;
+    --border: #262626;
+    --border-strong: #3a3a3a;
+    --foreground: #f2f2f2;
+    --muted-foreground: #9b9b9b;
+    --faint: #6b6b6b;
 
-    /* Accent. Ink, not white, on the fill: white on #2196f3 measures 3.12:1. */
-    --accent: #2196f3;
-    --accent-foreground: #101010;
+    /* Accent — full-chroma blue; on a black chrome a de-saturated accent reads as another grey.
+       5.04:1 on --surface, 5.84:1 on --background. Ink, not white, on the fill: black is 5.84:1
+       there where white is only 3.59:1. */
+    --accent: #4c82f7;
+    --accent-foreground: #000000;
 
-    /* Measured against --surface: 5.98 / 8.09 / 5.14. */
+    /* Measured against --surface: 6.04 / 8.17 / 5.19. */
     --zone-green: #26a69a;
     --zone-yellow: #e0a33e;
     --zone-red: #ef5350;
-    --zone-neutral: #8f8f8f;
+    --zone-neutral: #9b9b9b;
 
-    /* Elevation. */
-    --shadow-overlay: 0 4px 12px rgb(0 0 0 / 0.45);
+    /* Sales — measured against --surface: 6.65. */
+    --sales: #a78bfa;
+    --sales-tint: rgb(167 139 250 / 0.12);
+
+    /* Interaction wash. */
+    --hover: rgb(255 255 255 / 0.08);
+    --hover-strong: rgb(255 255 255 / 0.14);
+
+    /* Elevation — deeper than in light mode, because the drop has black to fall onto. */
+    --shadow-overlay: 0 4px 16px rgb(0 0 0 / 0.6);
+
+    /* On true black the halo has room to spread before it touches anything. */
+    --glow-rest: 65%;
+    --glow-peak: 88%;
+    --glow-strength: var(--glow-rest);
 
     /* The shadcn aliases inherit from :root; only this one differs — white on #ef5350 is 3.49:1. */
-    --destructive-foreground: #101010;
+    --destructive-foreground: #000000;
 }
 
 @theme inline {
     /* One webfont. Aligned digits come from `tabular-nums`, not from a mono face. */
     --font-sans: "Inter", sans-serif;
+
+    /* One step up on every rung of Tailwind's type scale (~+8%). Declared here rather than by
+       resizing the root, so spacing and radius — both rem-based — stay exactly where they were. The
+       paired `--text-*--line-height` defaults are unitless ratios, so they follow on their own. */
+    --text-xs: 0.8125rem;
+    --text-sm: 0.9375rem;
+    --text-base: 1.0625rem;
+    --text-lg: 1.1875rem;
+    --text-xl: 1.375rem;
+    --text-2xl: 1.625rem;
+    --text-3xl: 2rem;
 
     /* Ours are the only three steps. Tailwind ships its own scale, so the namespace is cleared
        first or its larger steps keep working. `rounded-full` is unaffected; it is a literal. */
@@ -123,6 +170,10 @@
     --color-zone-yellow: var(--zone-yellow);
     --color-zone-red: var(--zone-red);
     --color-zone-neutral: var(--zone-neutral);
+    --color-sales: var(--sales);
+    --color-sales-tint: var(--sales-tint);
+    --color-hover: var(--hover);
+    --color-hover-strong: var(--hover-strong);
     --color-card: var(--card);
     --color-card-foreground: var(--card-foreground);
     --color-popover: var(--popover);
@@ -156,6 +207,67 @@
     --shadow-overlay: var(--shadow-overlay);
 }
 
+/* Zone glow — the only inline shadow in the app, and an amendment to ADR-0021 rather than a hole in
+   it: it is worn *exclusively* by a block that already carries a zone (or sales) hairline, it is
+   painted in that same colour, and it never appears on chrome. So it says nothing about depth — a
+   glowing block is not floating, it is judged. Geometry is one line for every zone; only the hue and
+   `--glow-rest` change, so the four zones cannot drift apart. Neutral has no glow at all: an
+   ungraded block stays a hairline, which is what makes the coloured ones read as a signal.
+
+   The strength is a *registered* property so it can be interpolated: an unregistered custom property
+   is a token string to the animation engine and would snap between keyframes instead of breathing.
+   It is the *animated* name and reads its resting value from `--glow-rest`, which the keyframes read
+   too — a block animating a property it also derives its own resting value from is a cycle, and
+   resolves to the initial 0%, i.e. no glow at all. */
+@property --glow-strength {
+    syntax: "<percentage>";
+    inherits: true;
+    initial-value: 0%;
+}
+
+/* The glow breathes between its resting strength and `--glow-peak` — strength only, never geometry,
+   so nothing reflows and no edge moves. Same 4.8s as `pulse-red`, because two ambient rhythms at
+   different tempos read as a busy page rather than a quiet one. */
+@keyframes zone-glow-pulse {
+    0%,
+    100% {
+        --glow-strength: var(--glow-rest);
+    }
+
+    50% {
+        --glow-strength: var(--glow-peak);
+    }
+}
+
+@utility glow-zone-green {
+    box-shadow: 0 0 28px -4px color-mix(in srgb, var(--zone-green) var(--glow-strength), transparent);
+    animation: zone-glow-pulse 4.8s ease-in-out infinite;
+}
+
+@utility glow-zone-yellow {
+    box-shadow: 0 0 28px -4px color-mix(in srgb, var(--zone-yellow) var(--glow-strength), transparent);
+    animation: zone-glow-pulse 4.8s ease-in-out infinite;
+}
+
+@utility glow-zone-red {
+    box-shadow: 0 0 28px -4px color-mix(in srgb, var(--zone-red) var(--glow-strength), transparent);
+    animation: zone-glow-pulse 4.8s ease-in-out infinite;
+}
+
+@utility glow-sales {
+    box-shadow: 0 0 28px -4px color-mix(in srgb, var(--sales) var(--glow-strength), transparent);
+    animation: zone-glow-pulse 4.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .glow-zone-green,
+    .glow-zone-yellow,
+    .glow-zone-red,
+    .glow-sales {
+        animation: none;
+    }
+}
+
 /* The one ambient animation in the app: an unreviewed problem account pulses its border. Border
    opacity only — no glow, low amplitude, slow — so it reads as a nag, not as decoration. */
 @keyframes pulse-red-border {
@@ -169,9 +281,13 @@
     }
 }
 
+/* An unreviewed problem account wears `glow-zone-red` too, and this rule is unlayered — it would
+   otherwise replace the glow's animation outright and leave the halo frozen. Both, on one clock. */
 .pulse-red {
     border-color: var(--zone-red);
-    animation: pulse-red-border 4.8s ease-in-out infinite;
+    animation:
+        pulse-red-border 4.8s ease-in-out infinite,
+        zone-glow-pulse 4.8s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {

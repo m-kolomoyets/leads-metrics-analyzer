@@ -291,6 +291,9 @@ function TrajectoryChart({ points, mode }: TrajectoryChartProps) {
                     // colour per segment from the zones at its ends.
                     flatColor: graded ? null : palette.accent,
                     dash: graded ? COST_DASH[metric] : [],
+                    // The wash belongs to the money line and to it alone: it is the one flat-coloured
+                    // stroke here, and three dashed cost lines each carrying a fill would be mud.
+                    areaOpacity: graded ? 0 : 0.14,
                     width: 2,
                     points: 'all',
                     pointRadius: 4.5,
@@ -452,7 +455,9 @@ function TrajectoryChart({ points, mode }: TrajectoryChartProps) {
             >
                 <AccordionItem value="trajectory">
                     <AccordionHeader>
-                        <AccordionTrigger className="text-sm tracking-widest uppercase">Trajectory</AccordionTrigger>
+                        <AccordionTrigger className="text-sm font-semibold tracking-widest uppercase">
+                            Trajectory
+                        </AccordionTrigger>
                     </AccordionHeader>
 
                     <AccordionPanel>

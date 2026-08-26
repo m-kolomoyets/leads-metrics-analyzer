@@ -1,8 +1,9 @@
 import type { Locale, ThresholdMetric } from '@/components/report/utils/i18n';
 import type { PresetThresholds } from '@/services/presets/types';
-import { metricLabel, THRESHOLD_METRICS, ui } from '@/components/report/utils/i18n';
-import { Input } from '@/components/ui/Input';
+import { metricLabel, THRESHOLD_METRICS, ui, zoneLabel } from '@/components/report/utils/i18n';
 import { Label } from '@/components/ui/Label';
+import { clampBound } from '../../utils/zoneBounds';
+import { ZoneRangeInput } from '../ZoneRangeInput';
 
 // One draft threshold pair, held as strings so a half-typed / empty field survives without collapsing
 // to NaN. Shared by the inline editor (edit a version) and the creator (mint v1).
@@ -58,9 +59,25 @@ type ThresholdFieldsProps = {
     onChange: (metric: ThresholdMetric, bound: 'gy' | 'yr', value: string) => void;
 };
 
-// The five green→yellow / yellow→red pairs as a labelled grid. Presentation only — draft state and
-// save live in the parent (ThresholdEditor edits a version, PresetCreator mints v1).
+// The five green→yellow / yellow→red bands as a labelled grid, one row per metric. Presentation
+// only — draft state and save live in the parent (ThresholdEditor edits a version, PresetCreator
+// mints v1).
+//
+// No meter under these rows. A meter earns its place where it shows how much room a bound leaves on
+// a rail the reader knows the length of; these metrics are costs with no ceiling, so every rail here
+// would have to invent its own end and five invented ends stacked at equal width invite exactly the
+// comparison they cannot support. The tolerated-loss band keeps its meter — that one runs 0–100.
 function ThresholdFields({ draft, idPrefix, disabled, locale, onChange }: ThresholdFieldsProps) {
+    // A bound that was typed past its neighbour is pulled back to it once the field is left.
+    function commitBound(metric: ThresholdMetric, bound: 'gy' | 'yr') {
+        const pair = draft[metric];
+        const clamped = clampBound(bound, pair[bound], bound === 'gy' ? pair.yr : pair.gy);
+
+        if (clamped !== pair[bound]) {
+            onChange(metric, bound, clamped);
+        }
+    }
+
     return (
         <div className="flex flex-col gap-2">
             {THRESHOLD_METRICS.map((metric) => {
@@ -69,32 +86,23 @@ function ThresholdFields({ draft, idPrefix, disabled, locale, onChange }: Thresh
                         <Label htmlFor={`${idPrefix}-${metric}-gy`} className="w-24 text-sm font-normal">
                             {metricLabel(metric, locale)}
                         </Label>
-                        <span className="text-zone-green text-xs">{ui('zGreen', locale)}</span>
-                        <Input
-                            id={`${idPrefix}-${metric}-gy`}
-                            type="number"
-                            inputMode="decimal"
-                            className="h-8 w-16 text-sm tabular-nums"
+                        <ZoneRangeInput
+                            idPrefix={`${idPrefix}-${metric}`}
+                            green={draft[metric].gy}
+                            yellow={draft[metric].yr}
+                            greenLabel={zoneLabel('green', locale)}
+                            yellowLabel={zoneLabel('yellow', locale)}
+                            redLabel={zoneLabel('red', locale)}
+                            greenAriaLabel={`${metricLabel(metric, locale)} ${ui('gy', locale)}`}
+                            yellowAriaLabel={`${metricLabel(metric, locale)} ${ui('yr', locale)}`}
                             disabled={disabled}
-                            value={draft[metric].gy}
-                            onChange={(event) => {
-                                onChange(metric, 'gy', event.target.value);
+                            onChange={(bound, value) => {
+                                onChange(metric, bound, value);
+                            }}
+                            onCommit={(bound) => {
+                                commitBound(metric, bound);
                             }}
                         />
-                        <span className="text-warning text-xs">{ui('zYellow', locale)}</span>
-                        <Input
-                            id={`${idPrefix}-${metric}-yr`}
-                            type="number"
-                            inputMode="decimal"
-                            className="h-8 w-16 text-sm tabular-nums"
-                            aria-label={`${metricLabel(metric, locale)} ${ui('yr', locale)}`}
-                            disabled={disabled}
-                            value={draft[metric].yr}
-                            onChange={(event) => {
-                                onChange(metric, 'yr', event.target.value);
-                            }}
-                        />
-                        <span className="text-zone-red text-xs">{ui('zRed', locale)}</span>
                     </div>
                 );
             })}

@@ -220,6 +220,11 @@ player lifetime value mean Revenue understates what a Sale is ultimately worth.
 A traffic-light grade — `green`, `yellow`, `red`, or `neutral`. Applied to a cost metric by
 comparing it against a Threshold Pair.
 
+> **The names are the grades, not the paint.** `green` renders as teal and `yellow` as a muted
+> amber; only `red` is the colour it is named after. The names mirror the `fact_zone` DB enum and
+> are never renamed for a repaint — the mapping from Zone to colour lives entirely in the frontend.
+> Zone is also the *only* thing colour is ever spent on (ADR-0019).
+
 **Threshold Pair**:
 The `{gy, yr}` boundaries grading one metric: below `gy` is green, `gy`–`yr` inclusive is yellow,
 above `yr` is red. Lower cost is always better.

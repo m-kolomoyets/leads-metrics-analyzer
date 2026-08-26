@@ -11,27 +11,29 @@ numbers currently satisfying them.
 
 ## Chrome — achromatic
 
-Two surfaces, two borders. Neutral greys, no cast.
+Two surfaces, two borders. Neutral greys, no cast. Dark mode's page is true black, so a card is
+read by its own lightness before its border is read at all.
 
 | token | dark | light | used for |
 | --- | --- | --- | --- |
-| `--background` | `#101010` | `#fafafa` | the page |
-| `--surface` | `#171717` | `#ffffff` | inline: cards, panels, tables, sidebar |
-| `--surface-overlay` | `#1e1e1e` | `#ffffff` | floating: popover, menu, dialog, sheet, tooltip, toast |
-| `--border` | `#2b2b2b` | `#e4e4e4` | hairlines, table rules, dividers |
-| `--border-strong` | `#3d3d3d` | `#d0d0d0` | input borders, header/total rules |
-| `--foreground` | `#e8e8e8` | `#131313` | body text, figures |
-| `--muted-foreground` | `#8f8f8f` | `#5f5f5f` | labels, column heads, secondary figures |
-| `--faint` | `#5c5c5c` | `#8a8a8a` | disabled, placeholder |
+| `--background` | `#000000` | `#fafafa` | the page |
+| `--surface` | `#161616` | `#ffffff` | inline: cards, panels, tables, sidebar |
+| `--surface-overlay` | `#212121` | `#ffffff` | floating: popover, menu, dialog, sheet, tooltip, toast |
+| `--border` | `#262626` | `#e4e4e4` | hairlines, table rules, dividers |
+| `--border-strong` | `#3a3a3a` | `#d0d0d0` | input borders, header/total rules |
+| `--foreground` | `#f2f2f2` | `#131313` | body text, figures |
+| `--muted-foreground` | `#9b9b9b` | `#5f5f5f` | labels, column heads, secondary figures |
+| `--faint` | `#6b6b6b` | `#8a8a8a` | disabled, placeholder |
 
 ## Accent — interactive and selected only
 
 | token | dark | light |
 | --- | --- | --- |
-| `--accent` | `#2196f3` | `#1976d2` |
+| `--accent` | `#4c82f7` | `#1f5fd0` |
 
-On a filled accent (a primary button) the ink is `--accent-foreground`: white in light mode, `#101010`
-in dark, because white on `#2196f3` measures 3.12:1. The same holds for `--destructive-foreground`.
+One blue in both themes — the dark accent darkened for light mode, not a second hue. On a filled
+accent (a primary button) the ink is `--accent-foreground`: white in light mode (5.82:1), `#000000`
+in dark (5.84:1, where white would be 3.59:1). The same holds for `--destructive-foreground`.
 
 Legitimate uses, exhaustively: focus ring, active nav item, selected tab, chosen metric, checked
 control, link. Never a background wash, never a border on a resting element, never decoration.
@@ -42,10 +44,10 @@ control, link. Never a background wash, never a border on a resting element, nev
 
 | Zone | dark | light |
 | --- | --- | --- |
-| `green` | `#26a69a` | `#00796b` |
-| `yellow` | `#e0a33e` | `#ab5e00` |
-| `red` | `#ef5350` | `#9b1c1c` |
-| `neutral` | `#8f8f8f` | `#5f5f5f` |
+| `green` | `#26a69a` | `#008275` |
+| `yellow` | `#e0a33e` | `#ad6200` |
+| `red` | `#ef5350` | `#a82727` |
+| `neutral` | `#9b9b9b` | `#5f5f5f` |
 
 Tokens are `--zone-green`, `--zone-yellow`, `--zone-red`, `--zone-neutral`.
 
@@ -57,31 +59,49 @@ Measured (contrast against `--surface`; ΔE is a Viénot deuteranopia simulation
 
 | theme | teal | amber | red | ΔE amber–red | ΔE amber–teal |
 | --- | --- | --- | --- | --- | --- |
-| dark | 5.98 | 8.09 | 5.14 | 22.7 | 71.5 |
-| light | 5.32 | 4.85 | 8.15 | 19.8 | 60.2 |
+| dark | 6.04 | 8.17 | 5.19 | 22.7 | 71.5 |
+| light | 4.72 | 4.64 | 7.04 | 20.0 | 62.3 |
 
 Light mode is where the constraint bites: amber cannot be both ≥4.5:1 on white and lighter than a
-mid red, so the light red is darkened to `#9b1c1c` and the separation is bought in lightness rather
-than hue. The first-attempt light triad (`#00897b`/`#a97400`/`#d32f2f`) measured 4.32 / 4.05 / 4.98
-with an amber–red ΔE of 11 — it failed on two counts and is why these numbers are recorded.
+mid red, so the light red stays the darkest of the three and the separation is bought in lightness
+rather than hue. The first-attempt light triad (`#00897b`/`#a97400`/`#d32f2f`) measured 4.32 / 4.05
+/ 4.98 with an amber–red ΔE of 11 — it failed on two counts and is why these numbers are recorded.
+The current triad was lightened to the 4.5:1 floor on teal and amber; red followed only as far as
+`#a82727`, because every step lighter than that eats the amber–red ΔE (at `#c62828` it collapses to
+9.1, worse than the failed first attempt).
+
+`--sales` — `#a78bfa` dark, `#6d28d9` light — sits outside this scale. A sale is a fact, not a
+judgement, so the sales block may not borrow Zone green; violet is reserved for it and used nowhere
+else.
 
 ## Elevation
 
 | token | dark | light |
 | --- | --- | --- |
-| `--shadow-overlay` | `0 4px 12px rgb(0 0 0 / 0.45)` | `0 4px 12px rgb(0 0 0 / 0.12)` |
+| `--shadow-overlay` | `0 4px 16px rgb(0 0 0 / 0.6)` | `0 4px 12px rgb(0 0 0 / 0.12)` |
+| `--glow-rest` | `65%` | `32%` |
+| `--glow-peak` | `88%` | `46%` |
 
-The only shadow in the app. Inline surfaces get `1px solid var(--border)` and a lightness step.
+The only *neutral* shadow in the app. Inline surfaces get `1px solid var(--border)` and a lightness
+step.
+
+The one other `box-shadow` is the **zone glow**: `glow-zone-green` / `-yellow` / `-red` / `glow-sales`,
+each `0 0 28px -4px` of its own colour at `--glow-strength`, which breathes between `--glow-rest` and
+`--glow-peak` on a 4.8s clock. It is not an elevation step — it may only
+be worn by a block that already carries that colour's hairline, so a glowing block is judged, not
+floating ([ADR-0021](adr/0021-two-surface-levels.md)). Neutral has no glow: that is what makes a graded
+block read as a signal. Light mode runs at less than half the strength — a coloured halo on white
+becomes a smudge long before it becomes a signal.
 
 ## Radius
 
-`--radius: 0.25rem`. Three steps, nothing above.
+`--radius: 0.5rem`. Three steps, nothing above.
 
 | step | value |
 | --- | --- |
-| `sm` | 2px |
-| `md` | 4px |
-| `lg` | 6px |
+| `sm` | 4px |
+| `md` | 8px |
+| `lg` | 12px |
 
 `rounded-full` is for avatars. `xl`, `2xl`, `3xl`, `4xl` are removed from the theme so they cannot
 creep back.
@@ -93,16 +113,37 @@ tabular-nums` gives aligned digits without the terminal-code look.
 
 | role | size | weight |
 | --- | --- | --- |
-| labels, column heads, chart axes | 12px | 400/500 |
-| body, table cells | 14px | 400 |
-| section headings | 16px | 600 |
-| headline figures | 20px max | 600 |
+| labels, column heads, chart axes | 13px | 400/500 |
+| body, table cells | 15px | 400 |
+| section headings | 17px | 600 |
+| headline figures | 22px max | 600 |
 
 Weights are **400 / 500 / 600**. 700 is not in the vocabulary — emphasis comes from weight, Zone
 colour and alignment, not size.
 
-Chart `layout.fontFamily` is set to Inter and `layout.fontSize` to 12, so canvas text matches the
+The scale is Tailwind's own, moved one step up (~+8%) by redeclaring `--text-xs` … `--text-3xl` in
+`@theme`. Declared there rather than by resizing the root, so spacing and radius — both rem-based —
+stay exactly where they were.
+
+Chart `layout.fontFamily` is set to Inter and `layout.fontSize` to 13, so canvas text matches the
 DOM text beside it.
+
+## Interaction
+
+| token | dark | light |
+| --- | --- | --- |
+| `--hover` | `rgb(255 255 255 / 0.08)` | `rgb(90 90 90 / 0.1)` |
+| `--hover-strong` | `rgb(255 255 255 / 0.14)` | `rgb(90 90 90 / 0.16)` |
+
+One wash for every hover — button, menu item, select option, sidebar row — and one step up for the
+row that is actually selected. Translucent on purpose: it reads the same over `--surface`,
+`--surface-overlay` and the sidebar, so no surface needs a hover token of its own. `--muted` is an
+alias of `--surface` and is therefore **not** a hover: a secondary button hovering onto it changed
+nothing at all, which is the bug these two tokens exist to fix.
+
+Navigation and menus spend no accent. The accent is the focus ring, a chosen metric and a link — a
+selected sidebar row reads `--hover-strong`, so "where I am" and "what I am pointing at" differ in
+weight rather than in hue.
 
 ## Icons
 
@@ -128,9 +169,41 @@ two numbers.
 
 ## Motion
 
-State changes only, 120–160ms. No ambient animation, with one exception: an unreviewed problem
-account pulses its border opacity — no glow, low amplitude, slow. Everything respects
-`prefers-reduced-motion`.
+State changes only, 120–160ms. Two ambient exceptions, both slow, low-amplitude and on the same 4.8s
+clock so the page has one rhythm rather than two: an unreviewed problem account pulses its border
+opacity, and a zone glow breathes between `--glow-rest` and `--glow-peak`. Strength only — no
+geometry moves, so nothing reflows. Everything respects `prefers-reduced-motion`.
+
+## Rows of choices
+
+Geo tabs, buyer tabs, team tabs and the chart's mode toggle are one primitive, `ui/Segmented`. A
+resting item is flat text in `--muted-foreground`; the chosen one wears `--hover-strong` and
+`--foreground` — the same "where I am" wash the selected sidebar row wears, one step up from the
+`--hover` every item shares. No tray, no border, no accent fill: the accent here is the focus ring
+and nothing else. `mode="toggle"` swaps `role="tab"`/`aria-selected` for `aria-pressed` and changes
+nothing about the paint.
+
+A caller with something to say about an option says it in the item's own text — a buyer tab's Zone,
+a geo's Spend⁺. Never in a fill: eight coloured fills is a row of eight alarms, and the selected
+state would then have nothing left to be.
+
+## Figures
+
+Every headline readout is `components/Figure`, three lines:
+
+| line | size | ink |
+| --- | --- | --- |
+| label | 13px, uppercase, tracked | `--muted-foreground` |
+| value (+ unit beside it) | 17px (`md`) / 22px (`lg`), tabular | `--foreground`, or the Zone |
+| meta — delta, threshold pair, share | 13px, tabular | `--muted-foreground` |
+
+The unit is demoted, never baked into the figure: `$1,204.55` is the figure and `USD` is 13px beside
+it, because "$1,204.55 spend" set as one line reads as one 22px shout.
+
+A figure is painted only where it **is** a Zone judgement — ROI, a cost against its band, waste
+against its band. An ungraded fact stays `--foreground`: Spend, a Geo Total, a count. `neutral` is
+the absence of a grade, not a grade to paint, so it takes no colour either. A green revenue says
+"good" about a number with no opinion attached to it, which is the rule ADR-0019 exists to hold.
 
 ## Tables
 
@@ -139,6 +212,14 @@ zebra** (striping is a workaround for rows too tall to track across, and at this
 does the same job), figures right-aligned and `tabular-nums` through the `isNumeric` prop, column
 heads at 12px in `--muted-foreground`, an optional sticky header, and a total row in `<tfoot>` under
 one `--border-strong` rule. Two densities, `default` and `compact`.
+
+## Charts
+
+Beyond the palette bridge: no vertical grid (the crosshair answers "which push"), horizontal grid
+hairline-dotted, no scale borders — the card's own edge is the rule. The one flat-coloured line on a
+chart (money / ROI, which takes no verdict) carries a wash under it at `0.14` alpha, fading to
+nothing at the foot of the pane; a zone-graded stroke gets none, because it has no single hue to
+fade, and neither do the dashed cost lines, where several fills at once would be mud.
 
 ## The workbench
 
@@ -155,4 +236,5 @@ tooltip wears the app's own theme — check the second one with the theme switch
 
 `surface-glass`, `glass-tint`, `tint-*`, `surface-accent`, `pill`, `pill-*`, `glow-soft`,
 `glow-fade`, every `backdrop-filter`, `BackgroundCanvas`, `BackgroundContext`. If a diff reintroduces
-one of these, it is a regression.
+one of these, it is a regression. `glow-zone-*` is not one of them: the deleted glows were ambient
+decoration on chrome, this one is a zone report and appears nowhere a zone is not already declared.

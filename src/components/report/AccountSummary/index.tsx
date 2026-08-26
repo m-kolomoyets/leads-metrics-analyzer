@@ -180,7 +180,7 @@ function AccountSummary({ accounts, thresholds, locale, isReviewed, onJump }: Ac
 
     return (
         <section className="bg-surface border-border flex flex-col gap-2 rounded-md border p-4">
-            <h3 className="text-muted-foreground text-xs font-medium tracking-widest uppercase">
+            <h3 className="text-foreground text-xs font-semibold tracking-widest uppercase">
                 {ui('accountSummary', locale)} <span className="normal-case">· {ui('summaryHint', locale)}</span>
             </h3>
             <Table density="compact" className="text-xs">

@@ -1,5 +1,6 @@
 import { FileSearchIcon } from 'lucide-react';
 import { noop } from '@/lib/utils/noop';
+import { Figure } from '@/components/Figure';
 import { Accordion, AccordionHeader, AccordionItem, AccordionPanel, AccordionTrigger } from '@/components/ui/Accordion';
 import {
     Avatar,
@@ -25,6 +26,19 @@ const SAMPLE_DAY = new Date(2026, 7, 3);
 function ContentPrimitives() {
     return (
         <>
+            <Specimen label="Figure — the three-line readout: label, figure + demoted unit, meta">
+                <Figure label="Spend" value="$12,480.55" unit="USD" size="lg" />
+                <Figure label="ROI" value="+42.1 %" size="lg" className="text-zone-green" />
+                <Figure
+                    label="CPI"
+                    value="1.84"
+                    size="lg"
+                    className="text-zone-yellow"
+                    meta="green < 1.20 · red > 2.00"
+                />
+                <Figure label="Installs" value="6,204" size="md" />
+            </Specimen>
+
             <Specimen label="Accordion — one panel open, one closed, one disabled">
                 <Accordion defaultValue={['open']} className="w-full max-w-md gap-2">
                     <AccordionItem value="open" className="border-border rounded-md border p-2">

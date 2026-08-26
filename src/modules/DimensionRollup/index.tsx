@@ -53,7 +53,7 @@ function DimensionRollup() {
                 </Empty>
             ) : (
                 <section className="bg-surface border-border rounded-md border p-4">
-                    <h3 className="text-muted-foreground mb-3 text-sm font-normal tracking-widest uppercase">
+                    <h3 className="text-foreground mb-3 text-sm font-semibold tracking-widest uppercase">
                         {DIMENSION_TITLE[dimension]} · all snapshots
                     </h3>
                     <RollupTable dimension={dimension} rows={rows} totals={totals} />

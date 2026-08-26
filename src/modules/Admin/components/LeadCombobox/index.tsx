@@ -72,7 +72,7 @@ function LeadCombobox({ value, options, onChange, disabled }: LeadComboboxProps)
                                     <Combobox.Item
                                         key={item.value}
                                         value={item}
-                                        className="data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground relative flex w-full cursor-default select-none items-center gap-2 rounded-md py-1.5 pl-2 pr-8 text-sm outline-none"
+                                        className="data-[highlighted]:bg-hover data-[selected]:bg-hover-strong relative flex w-full cursor-default select-none items-center gap-2 rounded-md py-1.5 pl-2 pr-8 text-sm outline-none"
                                     >
                                         {item.label}
                                         <Combobox.ItemIndicator className="absolute right-2 flex items-center">

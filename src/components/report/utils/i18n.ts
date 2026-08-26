@@ -44,9 +44,6 @@ const UI: Record<Locale, Record<string, string>> = {
         thresholds: 'Пороги',
         gy: 'зел→жовт',
         yr: 'жовт→черв',
-        zGreen: 'зел <',
-        zYellow: 'жовт ≤',
-        zRed: '< черв',
         zoneMetrics: 'Метрики зон',
         save: 'Зберегти',
         saving: 'Збереження…',
@@ -56,6 +53,7 @@ const UI: Record<Locale, Record<string, string>> = {
         defaultCommission: 'Комісія за замовч. (%)',
         reviewMultiplier: 'Коефіцієнт проблемності',
         wasteRange: 'Діапазон допустимих втрат спенду у %',
+        percentScale: 'Шкала 0–100%.',
         sellers: 'Сейлери аккаунтів',
         rate: 'ставка (%)',
         accountIds: 'ID акаунтів (через кому)',
@@ -158,9 +156,6 @@ const UI: Record<Locale, Record<string, string>> = {
         thresholds: 'Thresholds',
         gy: 'green→yellow',
         yr: 'yellow→red',
-        zGreen: 'grn <',
-        zYellow: 'ylw ≤',
-        zRed: '< red',
         zoneMetrics: 'Zone metrics',
         save: 'Save',
         saving: 'Saving…',
@@ -170,6 +165,7 @@ const UI: Record<Locale, Record<string, string>> = {
         defaultCommission: 'Default commission (%)',
         reviewMultiplier: 'Review multiplier',
         wasteRange: 'Tolerated spend loss range, %',
+        percentScale: 'Scale 0\u2013100%.',
         sellers: 'Sellers',
         rate: 'rate (%)',
         accountIds: 'Account IDs (comma-separated)',
@@ -271,6 +267,12 @@ const METRIC_LABEL: Record<Locale, Record<ThresholdMetric, string>> = {
     uk: { installs: 'Інстали', regs: 'Реги', sales: 'Продажі', clicks: 'Кліки' },
     en: { installs: 'Installs', regs: 'Regs', sales: 'Sales', clicks: 'Clicks' },
 };
+
+// The zone as an adjective — "зелена" / "green". Used where a dot stands in for the word and the
+// word itself only survives as the dot's hover title.
+export function zoneLabel(zone: Zone, locale: Locale): string {
+    return ZONE_LABEL[locale][zone];
+}
 
 export function metricLabel(metric: ThresholdMetric, locale: Locale): string {
     return METRIC_LABEL[locale][metric];

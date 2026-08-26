@@ -35,7 +35,7 @@ const THEME_SCRIPT = `
 // (useRemoveInitialStyle).
 const INITIAL_STYLE = `
 :root { --initial-bg: #fafafa; }
-html.dark { --initial-bg: #101010; }
+html.dark { --initial-bg: #000000; }
 html { font-family: "Inter", sans-serif; }
 body { background-color: var(--initial-bg); margin: 0; position: relative; }
 `;
@@ -67,7 +67,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
                 { name: 'viewport', content: 'width=device-width, initial-scale=1.0' },
                 { name: 'color-scheme', content: 'light dark' },
                 { name: 'theme-color', content: '#fafafa', media: '(prefers-color-scheme: light)' },
-                { name: 'theme-color', content: '#101010', media: '(prefers-color-scheme: dark)' },
+                { name: 'theme-color', content: '#000000', media: '(prefers-color-scheme: dark)' },
                 { title: 'Adjoin' },
             ],
             links: [

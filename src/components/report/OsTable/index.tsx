@@ -181,7 +181,7 @@ function OsTable({ title, firstCol, rows, unallocated, thresholds, locale, previ
 
     return (
         <div className="flex flex-col gap-2">
-            <h3 className="text-muted-foreground text-xs font-medium tracking-widest uppercase">{title}</h3>
+            <h3 className="text-foreground text-xs font-semibold tracking-widest uppercase">{title}</h3>
             <Table density="compact" className="text-xs">
                 <TableHeader>
                     <TableRow>

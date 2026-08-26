@@ -26,4 +26,20 @@ describe('meterScale', () => {
     it('reads an unmeasurable figure as no position at all', () => {
         expect(meterScale(null, 8, 14).value).toBe(0);
     });
+
+    it('keeps a percent band on its own 0-100 rail instead of stretching it to fill one', () => {
+        const scale = meterScale(null, 7, 15, 100);
+
+        expect(scale.max).toBe(100);
+        expect(scale.green).toBeCloseTo(7);
+        expect(scale.red).toBeCloseTo(15);
+    });
+
+    it('pins a figure past a fixed end rather than growing the rail to meet it', () => {
+        const scale = meterScale(140, 7, 15, 100);
+
+        expect(scale.max).toBe(100);
+        expect(scale.value).toBe(100);
+        expect(scale.clamped).toBe(true);
+    });
 });

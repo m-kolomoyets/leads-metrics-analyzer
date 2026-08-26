@@ -1,5 +1,5 @@
 import type { DynamicsMode } from '../types';
-import { cn } from '@/lib/utils/cn';
+import { Segmented, SegmentedItem } from '@/components/ui/Segmented';
 
 // The header's chart mode toggle (SPEC §6.4). It affects the chart and nothing else — not the
 // comparison panel, not the sparklines, not the tables — which is why it is a two-state control with
@@ -25,31 +25,23 @@ type ModeToggleProps = {
 
 function ModeToggle({ mode, onSelect }: ModeToggleProps) {
     return (
-        <div className="border-border flex rounded-md border p-0.5" role="group" aria-label="Chart mode">
+        <Segmented label="Chart mode" mode="toggle">
             {MODES.map((option) => {
-                const selected = option.mode === mode;
-
                 return (
-                    <button
+                    <SegmentedItem
                         key={option.mode}
-                        type="button"
-                        aria-pressed={selected}
+                        selected={option.mode === mode}
                         title={option.hint}
-                        className={cn(
-                            'rounded-sm px-3 py-1 text-xs font-medium motion-safe:transition-colors motion-safe:duration-150',
-                            selected
-                                ? 'bg-accent text-accent-foreground'
-                                : 'text-muted-foreground hover:text-foreground'
-                        )}
-                        onClick={() => {
+                        className="text-xs"
+                        onSelect={() => {
                             onSelect(option.mode);
                         }}
                     >
                         {option.label}
-                    </button>
+                    </SegmentedItem>
                 );
             })}
-        </div>
+        </Segmented>
     );
 }
 

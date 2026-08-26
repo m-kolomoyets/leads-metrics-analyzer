@@ -28,6 +28,7 @@ const DEFAULT_OPTIONS: ZoneSeriesOptions = {
     flatColor: null,
     width: 2,
     dash: [],
+    areaOpacity: 0,
     points: 'all',
     pointRadius: 4.5,
     pointRing: '#000000',
@@ -37,6 +38,19 @@ const DEFAULT_OPTIONS: ZoneSeriesOptions = {
     guideColor: '#94a3b8',
     chromeColor: '#94a3b8',
 };
+
+// `#rrggbb` → `rgb(r g b / a)`. The area needs the line's colour at two alphas, and a gradient that
+// ends at the keyword `transparent` fades through transparent BLACK — visibly grey over a light
+// surface. Anything that is not a six-digit hex gets no wash rather than a wrong one.
+function withAlpha(color: string, alpha: number): string | null {
+    if (!/^#[0-9a-f]{6}$/i.test(color)) {
+        return null;
+    }
+
+    const value = Number.parseInt(color.slice(1), 16);
+
+    return `rgb(${(value >> 16) & 255} ${(value >> 8) & 255} ${value & 255} / ${alpha})`;
+}
 
 type PlacedPoint = {
     // The item's logical index on the time scale — what `activeIndex` is matched against.
@@ -117,6 +131,11 @@ class ZoneSeriesRenderer implements ICustomSeriesPaneRenderer {
             ctx.stroke();
             ctx.restore();
         }
+
+        // The wash under the line, before the line: it is the line's own weight carried down the pane,
+        // so it belongs under every stroke and marker rather than over them. Only a flat-coloured
+        // line takes one — a zone-graded stroke has no single hue to fade.
+        this._fillArea(ctx, placed, paneHeight);
 
         ctx.lineWidth = options.width;
         ctx.lineCap = 'round';
@@ -219,6 +238,42 @@ class ZoneSeriesRenderer implements ICustomSeriesPaneRenderer {
             });
         }
 
+        ctx.restore();
+    }
+
+    _fillArea(ctx: CanvasRenderingContext2D, placed: PlacedPoint[], paneHeight: number): void {
+        const options = this._options;
+
+        if (options === null || options.areaOpacity <= 0 || options.flatColor === null || placed.length < 2) {
+            return;
+        }
+
+        const top = withAlpha(options.flatColor, options.areaOpacity);
+        const foot = withAlpha(options.flatColor, 0);
+
+        if (top === null || foot === null) {
+            return;
+        }
+
+        // Anchored to the pane rather than to the highest point: the fade has to read the same when
+        // the reader pans and the peak leaves the view.
+        const gradient = ctx.createLinearGradient(0, 0, 0, paneHeight);
+
+        gradient.addColorStop(0, top);
+        gradient.addColorStop(1, foot);
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(placed[0].x, paneHeight);
+
+        for (const point of placed) {
+            ctx.lineTo(point.x, point.y);
+        }
+
+        ctx.lineTo(placed[placed.length - 1].x, paneHeight);
+        ctx.closePath();
+        ctx.fillStyle = gradient;
+        ctx.fill();
         ctx.restore();
     }
 

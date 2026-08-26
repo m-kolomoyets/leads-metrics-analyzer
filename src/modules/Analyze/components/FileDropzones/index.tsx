@@ -1,8 +1,10 @@
 import type { FileType } from '@/lib/domain/parse';
 import type { UploadedFile } from '../../types';
 import { useState } from 'react';
+import { FileSpreadsheet, TriangleAlert, Upload, X } from 'lucide-react';
 import { parseFile } from '@/lib/domain/parse';
 import { cn } from '@/lib/utils/cn';
+import { Button } from '@/components/ui/Button';
 
 type FileDropzonesProps = {
     files: UploadedFile[];
@@ -14,12 +16,6 @@ const ZONES: { type: FileType; label: string; hint: string }[] = [
     { type: 'kt-main', label: 'Keitaro — Main', hint: 'Installs / regs / sales (multi-file)' },
     { type: 'kt-clicks', label: 'Keitaro — Clicks', hint: 'Link-click report (multi-file)' },
 ];
-
-const TYPE_LABEL: Record<FileType, string> = {
-    fb: 'FB',
-    'kt-main': 'KT main',
-    'kt-clicks': 'KT clicks',
-};
 
 // Every type stacks: exports are sliced per account/date range and `mergeParsed` concatenating them is
 // what reassembles the period. Caveat for the Keitaro zones — overlapping date ranges double-count
@@ -114,10 +110,38 @@ function zoneHint(hint: string, loaded: number, isDraggedOver: boolean) {
     if (isDraggedOver) {
         return 'Drop to add';
     }
-    if (loaded === 0) {
-        return hint;
-    }
-    return loaded > 1 ? `✓ ${loaded} files` : '✓ loaded';
+    // Once a zone holds files the list below it already states what is loaded, so the slot goes back
+    // to advertising what else it takes.
+    return loaded === 0 ? hint : 'Add more';
+}
+
+// One line per file, everywhere: name, then the two figures that say whether the export is the one
+// you meant — when it was pulled, and how much survived parsing.
+function FileRow({ file, onRemove }: { file: UploadedFile; onRemove: () => void }) {
+    const reason = file.type ? null : unknownReasonOf(file);
+    return (
+        <li className="border-primary/20 hover:bg-primary/5 flex flex-col gap-0.5 px-3 py-2 not-first:border-t motion-safe:transition-colors motion-safe:duration-150">
+            <div className="flex items-center gap-2">
+                <span className="min-w-0 flex-1 truncate text-xs" title={file.name}>
+                    {file.name}
+                </span>
+                <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
+                    {file.type ? `${rowCountOf(file)} rows · ${formatStamp(file.lastModified)}` : 'unreadable'}
+                </span>
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-label={`Remove ${file.name}`}
+                    className="text-muted-foreground hover:bg-primary/15 hover:text-foreground -mr-1 shrink-0"
+                    onClick={onRemove}
+                >
+                    <X />
+                </Button>
+            </div>
+            {reason && <span className="text-zone-red text-xs">{reason}</span>}
+        </li>
+    );
 }
 
 function FileDropzones({ files, onChange }: FileDropzonesProps) {
@@ -145,54 +169,57 @@ function FileDropzones({ files, onChange }: FileDropzonesProps) {
         await addFiles(list);
     }
 
-    function handleDragOver(event: React.DragEvent<HTMLLabelElement>, zone: FileType) {
+    function handleDragOver(event: React.DragEvent<HTMLDivElement>, zone: FileType) {
         // Must preventDefault on dragover too, otherwise the browser navigates to the dropped file.
         event.preventDefault();
         event.dataTransfer.dropEffect = 'copy';
         setDraggedOver(zone);
     }
 
-    function handleDragLeave(event: React.DragEvent<HTMLLabelElement>) {
+    function handleDragLeave(event: React.DragEvent<HTMLDivElement>) {
         if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
             return;
         }
         setDraggedOver(null);
     }
 
-    async function handleDrop(event: React.DragEvent<HTMLLabelElement>) {
+    async function handleDrop(event: React.DragEvent<HTMLDivElement>) {
         event.preventDefault();
         setDraggedOver(null);
         await addFiles(Array.from(event.dataTransfer.files));
     }
 
-    function removeAt(index: number) {
+    // Identity is the dedupe key, not the index: the list is now rendered per zone, so an index into
+    // a filtered slice is not an index into `files`.
+    function remove(target: UploadedFile) {
         onChange(
-            files.filter((_, i) => {
-                return i !== index;
+            files.filter((file) => {
+                return keyOf(file) !== keyOf(target);
             })
         );
     }
 
+    const unknown = files.filter((file) => {
+        return file.type === null;
+    });
+
     return (
-        <section className="bg-surface border-border flex flex-col gap-4 rounded-md border p-4">
-            <h3 className="text-muted-foreground text-xs font-medium tracking-widest uppercase">1 · Files</h3>
+        <section className="bg-surface border-border flex flex-col gap-3 rounded-md border p-4">
+            <h3 className="text-muted-foreground text-xs font-medium tracking-widest uppercase">Files</h3>
             <div className="grid gap-3 sm:grid-cols-3">
                 {ZONES.map((zone) => {
-                    const loaded = files.filter((file) => {
+                    const zoneFiles = files.filter((file) => {
                         return file.type === zone.type;
-                    }).length;
-                    const active = loaded > 0;
+                    });
                     const isDraggedOver = draggedOver === zone.type;
-                    const warnOverlap = loaded > 1 && OVERLAP_WARN_TYPES.includes(zone.type);
+                    const warnOverlap = zoneFiles.length > 1 && OVERLAP_WARN_TYPES.includes(zone.type);
                     return (
-                        <label
+                        <div
                             key={zone.type}
                             className={cn(
-                                'flex cursor-pointer flex-col gap-1 rounded-lg border-[1.5px] border-dashed p-4 text-sm transition-colors',
-                                active
-                                    ? 'border-primary bg-primary/10'
-                                    : 'border-border bg-background/40 hover:bg-accent/40',
-                                isDraggedOver && 'border-primary bg-primary/20'
+                                'bg-primary/5 border-primary/25 flex flex-col overflow-hidden rounded-md border motion-safe:transition-colors motion-safe:duration-150',
+                                zoneFiles.length === 0 ? 'border-dashed' : 'border-primary/40',
+                                isDraggedOver && 'border-primary/70 bg-primary/15 border-solid'
                             )}
                             onDragOver={(event) => {
                                 handleDragOver(event, zone.type);
@@ -202,64 +229,75 @@ function FileDropzones({ files, onChange }: FileDropzonesProps) {
                                 void handleDrop(event);
                             }}
                         >
-                            <span className="font-semibold">{zone.label}</span>
-                            <span className="text-muted-foreground text-xs">
-                                {zoneHint(zone.hint, loaded, isDraggedOver)}
-                            </span>
-                            {warnOverlap && (
-                                <span className="text-warning text-xs">
-                                    ⚠ Date ranges must not overlap — clicks double-count and uniques do not sum.
+                            <label
+                                className={cn(
+                                    'hover:bg-primary/10 active:bg-primary/20 flex cursor-pointer items-center gap-2.5 p-3 motion-safe:transition-colors motion-safe:duration-150',
+                                    'has-[input:focus-visible]:outline-accent has-[input:focus-visible]:-outline-offset-2 has-[input:focus-visible]:outline-2'
+                                )}
+                            >
+                                <span className="border-primary/30 bg-primary/10 text-primary flex size-8 shrink-0 items-center justify-center rounded-sm border">
+                                    {zoneFiles.length > 0 ? <FileSpreadsheet /> : <Upload />}
                                 </span>
+                                <span className="flex min-w-0 flex-col">
+                                    <span className="truncate text-sm font-medium">{zone.label}</span>
+                                    <span className="text-muted-foreground truncate text-xs">
+                                        {zoneHint(zone.hint, zoneFiles.length, isDraggedOver)}
+                                    </span>
+                                </span>
+                                {zoneFiles.length > 0 && (
+                                    <span className="text-primary bg-primary/10 ml-auto shrink-0 rounded-sm px-1.5 py-0.5 text-xs tabular-nums">
+                                        {zoneFiles.length}
+                                    </span>
+                                )}
+                                <input
+                                    type="file"
+                                    accept=".csv,text/csv"
+                                    multiple
+                                    className="sr-only"
+                                    onChange={(event) => {
+                                        void handleInput(event);
+                                    }}
+                                />
+                            </label>
+
+                            {zoneFiles.length > 0 && (
+                                <ul className="border-primary/25 border-t">
+                                    {zoneFiles.map((file) => {
+                                        return (
+                                            <FileRow
+                                                key={keyOf(file)}
+                                                file={file}
+                                                onRemove={() => {
+                                                    remove(file);
+                                                }}
+                                            />
+                                        );
+                                    })}
+                                </ul>
                             )}
-                            <input
-                                type="file"
-                                accept=".csv,text/csv"
-                                multiple
-                                className="mt-2 text-xs"
-                                onChange={(event) => {
-                                    void handleInput(event);
-                                }}
-                            />
-                        </label>
+
+                            {warnOverlap && (
+                                <p className="text-warning border-primary/25 flex items-start gap-1.5 border-t px-3 py-2 text-xs">
+                                    <TriangleAlert className="mt-px size-3 shrink-0" />
+                                    Date ranges must not overlap — clicks double-count and uniques do not sum.
+                                </p>
+                            )}
+                        </div>
                     );
                 })}
             </div>
 
-            {files.length > 0 && (
-                <ul className="flex flex-col gap-1 text-sm">
-                    {files.map((file, index) => {
-                        const reason = file.type ? null : unknownReasonOf(file);
+            {unknown.length > 0 && (
+                <ul className="border-border flex flex-col rounded-md border">
+                    {unknown.map((file) => {
                         return (
-                            <li key={keyOf(file)} className="flex flex-col gap-0.5">
-                                <div className="flex items-center gap-2">
-                                    <span
-                                        className={cn(
-                                            'rounded px-1.5 py-0.5 text-xs',
-                                            file.type ? 'bg-accent' : 'text-zone-red border-zone-red border'
-                                        )}
-                                    >
-                                        {file.type ? TYPE_LABEL[file.type] : 'unknown'}
-                                    </span>
-                                    <span className="truncate">
-                                        {file.name} ({formatStamp(file.lastModified)})
-                                    </span>
-                                    {file.type && (
-                                        <span className="text-muted-foreground shrink-0 text-xs">
-                                            {rowCountOf(file)} rows
-                                        </span>
-                                    )}
-                                    <button
-                                        type="button"
-                                        className="text-muted-foreground text-xs hover:underline"
-                                        onClick={() => {
-                                            removeAt(index);
-                                        }}
-                                    >
-                                        remove
-                                    </button>
-                                </div>
-                                {reason && <span className="text-zone-red pl-1 text-xs">{reason}</span>}
-                            </li>
+                            <FileRow
+                                key={keyOf(file)}
+                                file={file}
+                                onRemove={() => {
+                                    remove(file);
+                                }}
+                            />
                         );
                     })}
                 </ul>

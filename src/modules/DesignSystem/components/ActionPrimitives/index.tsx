@@ -1,6 +1,8 @@
 import { PlusIcon, TrashIcon } from 'lucide-react';
+import { noop } from '@/lib/utils/noop';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { Segmented, SegmentedItem } from '@/components/ui/Segmented';
 import { Toggle, ToggleGroup } from '@/components/ui/ToggleGroup';
 import { Specimen } from '../Specimen';
 
@@ -20,8 +22,9 @@ const BADGE_VARIANTS = [
     'link',
 ] as const;
 
-// Button, Badge and the toggle tray. Hover and focus-visible are the two states no static render can
-// show — reach for them with the pointer and the Tab key; everything else is on the page.
+// Button, Badge, the toggle tray and the row-of-choices control. Hover and focus-visible are the two
+// states no static render can show — reach for them with the pointer and the Tab key; everything else
+// is on the page.
 function ActionPrimitives() {
     return (
         <>
@@ -113,6 +116,46 @@ function ActionPrimitives() {
                         CPC
                     </Toggle>
                 </ToggleGroup>
+            </Specimen>
+
+            <Specimen label="Segmented — tabs, second selected">
+                <Segmented label="Geo">
+                    <SegmentedItem selected={false} onSelect={noop}>
+                        🇺🇦 UA
+                    </SegmentedItem>
+                    <SegmentedItem selected={true} onSelect={noop}>
+                        🇩🇪 DE
+                    </SegmentedItem>
+                    <SegmentedItem selected={false} onSelect={noop}>
+                        🇵🇱 PL
+                        <span className="text-muted-foreground text-xs tabular-nums">$1.2k</span>
+                    </SegmentedItem>
+                </Segmented>
+            </Specimen>
+
+            <Specimen label="Segmented — tabs carrying a Zone in their own text">
+                <Segmented label="Buyer">
+                    <SegmentedItem selected={true} onSelect={noop} className="text-zone-red">
+                        kolya <span className="text-xs tabular-nums opacity-80">−$412</span>
+                    </SegmentedItem>
+                    <SegmentedItem selected={false} onSelect={noop} className="text-zone-green">
+                        dima <span className="text-xs tabular-nums opacity-80">+$1,204</span>
+                    </SegmentedItem>
+                    <SegmentedItem selected={false} onSelect={noop} className="text-zone-yellow">
+                        ⚠ sasha
+                    </SegmentedItem>
+                </Segmented>
+            </Specimen>
+
+            <Specimen label="Segmented — toggle (aria-pressed), first pressed">
+                <Segmented label="Chart mode" mode="toggle">
+                    <SegmentedItem selected={true} onSelect={noop} className="text-xs">
+                        Cumulative
+                    </SegmentedItem>
+                    <SegmentedItem selected={false} onSelect={noop} className="text-xs">
+                        Between reports
+                    </SegmentedItem>
+                </Segmented>
             </Specimen>
 
             <Specimen label="ToggleGroup — whole group disabled">

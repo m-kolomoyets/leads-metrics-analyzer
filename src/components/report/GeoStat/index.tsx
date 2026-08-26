@@ -4,10 +4,12 @@ import type { GeoRollup } from '@/lib/domain';
 import type { GeoThresholds, ThresholdPair, Zone } from '@/lib/domain/types';
 import { zoneFor } from '@/lib/domain/verdict';
 import { cn } from '@/lib/utils/cn';
+import { Figure } from '@/components/Figure';
 import { ZONE_CARD_CLASS, ZONE_TEXT_CLASS } from '@/components/report/constants';
-import { DASH, flagEmoji, pct, percent, usd, usdSigned } from '@/components/report/utils/format';
+import { DASH, flagEmoji, pct, percent, ratioPct, usd, usdSigned } from '@/components/report/utils/format';
 import { ui } from '@/components/report/utils/i18n';
 import { roiZone } from '@/components/report/utils/zones';
+import { ZoneMeter } from '@/components/ZoneMeter';
 
 type GeoStatProps = {
     geo: string;
@@ -44,27 +46,6 @@ function Metric({ value, pair }: { value: number | null; pair: ThresholdPair | u
         <span className={cn('tabular-nums', graded ? ZONE_TEXT_CLASS[tone] : 'text-muted-foreground')}>
             {value === null ? '—' : usd(value)}
         </span>
-    );
-}
-
-function Stat({
-    label,
-    value,
-    size,
-    className,
-}: {
-    label: string;
-    value: string;
-    size: 'md' | 'lg';
-    className?: string;
-}) {
-    return (
-        <div className="flex flex-col">
-            <span className="text-muted-foreground text-xs tracking-widest uppercase">{label}</span>
-            <span className={cn('font-semibold tabular-nums', size === 'lg' ? 'text-xl' : 'text-base', className)}>
-                {value}
-            </span>
-        </div>
     );
 }
 
@@ -116,22 +97,26 @@ function GeoStat({ geo, rollup, thresholds, waste, wasteZone, action, locale }: 
                     )}
                 >
                     <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
-                        <Stat label="Spend" value={usd(metrics.spendPlus)} size="md" />
-                        <Stat
+                        {/* Spend and the Geo Total are facts, not judgements, so neither is
+                            painted: they read `--foreground` and the currency is demoted beside the
+                            figure rather than folded into it. Profit and ROI are graded, and are the
+                            only two here entitled to a colour. */}
+                        <Figure label="Spend" value={usd(metrics.spendPlus)} unit="USD" size="md" />
+                        <Figure
                             label={ui('geoTotal', locale)}
                             value={hasTotal ? usd(metrics.revenue) : DASH}
+                            unit={hasTotal ? 'USD' : undefined}
                             size="md"
-                            className={
-                                hasTotal && metrics.revenue > 0 ? ZONE_TEXT_CLASS.green : 'text-muted-foreground'
-                            }
+                            className={hasTotal ? undefined : 'text-muted-foreground'}
                         />
-                        <Stat
+                        <Figure
                             label="Profit"
                             value={hasTotal ? usdSigned(metrics.profit) : DASH}
+                            unit={hasTotal ? 'USD' : undefined}
                             size="lg"
                             className={hasTotal ? profitClass : 'text-muted-foreground'}
                         />
-                        <Stat
+                        <Figure
                             label="ROI"
                             value={hasTotal ? pct(metrics.roi) : DASH}
                             size="lg"
@@ -154,34 +139,39 @@ function GeoStat({ geo, rollup, thresholds, waste, wasteZone, action, locale }: 
 
                 <div
                     className={cn(
-                        'flex min-w-64 flex-1 items-center gap-6 rounded-md border px-5 py-4',
+                        'flex min-w-64 flex-1 flex-wrap items-center gap-x-8 gap-y-3 rounded-md border px-5 py-4',
                         ZONE_CARD_CLASS[wasteTone]
                     )}
                 >
-                    <Stat
+                    <Figure
                         label={ui('wasteTitle', locale)}
                         value={waste === null ? DASH : usd(waste)}
+                        unit={waste === null ? undefined : 'USD'}
                         size="lg"
                         className={ZONE_TEXT_CLASS[wasteTone]}
                     />
-                    <Stat
-                        label={ui('wastePctOfSpend', locale)}
-                        value={percent(wastePct)}
-                        size="lg"
-                        className={ZONE_TEXT_CLASS[wasteTone]}
-                    />
-                    <span className="flex-1" />
-                    {wasteZone && (
-                        <div className="text-muted-foreground text-right text-xs leading-relaxed">
-                            {ui('wasteZone', locale)}:
-                            <br />
-                            <span className={ZONE_TEXT_CLASS.green}>&lt;{wasteZone.gy}%</span> ·{' '}
-                            <span className={ZONE_TEXT_CLASS.yellow}>
-                                {wasteZone.gy}–{wasteZone.yr}%
-                            </span>{' '}
-                            · <span className={ZONE_TEXT_CLASS.red}>&gt;{wasteZone.yr}%</span>
-                        </div>
-                    )}
+
+                    {/* The share and its band are one reading, so they occupy one column: the label,
+                        then the same rail the trajectory tooltip draws. The rail's own chip carries the
+                        figure, so printing "0.3 %" above it as well would say it twice. Without a band
+                        (no preset) there is nothing to draw against and the number stands alone. */}
+                    <div className="flex min-w-56 flex-1 flex-col">
+                        <span className="text-muted-foreground text-xs tracking-widest uppercase">
+                            {ui('wastePctOfSpend', locale)}
+                        </span>
+                        {wasteZone ? (
+                            <ZoneMeter
+                                value={wastePct}
+                                greenBelow={wasteZone.gy}
+                                redAbove={wasteZone.yr}
+                                format={ratioPct}
+                            />
+                        ) : (
+                            <span className={cn('text-xl font-semibold tabular-nums', ZONE_TEXT_CLASS[wasteTone])}>
+                                {percent(wastePct)}
+                            </span>
+                        )}
+                    </div>
                 </div>
             </div>
         </section>

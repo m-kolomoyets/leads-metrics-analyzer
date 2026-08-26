@@ -4,6 +4,7 @@ import {
     ACCENT_TOKENS,
     CHROME_TOKENS,
     ICON_SIZES,
+    INTERACTION_TOKENS,
     RADIUS_STEPS,
     SHADOW_BY_THEME,
     SURFACE_BY_THEME,
@@ -31,7 +32,7 @@ const swatchesFor = (tokens: ReadonlyArray<ColourToken>, theme: ThemeName, withR
                 value={token[theme]}
                 usage={token.usage}
                 // Against its own surface, which is the only comparison that means anything: the dark
-                // amber is measured on #171717, the light one on #ffffff.
+                // amber is measured on #161616, the light one on #ffffff.
                 ratio={withRatio ? formatContrastRatio(token[theme], SURFACE_BY_THEME[theme]) : undefined}
             />
         );
@@ -88,6 +89,18 @@ function DesignSystem() {
                 <ThemeSplit className="grid gap-3 sm:grid-cols-2">
                     {(theme) => {
                         return swatchesFor(ZONE_TOKENS, theme, true);
+                    }}
+                </ThemeSplit>
+            </Section>
+
+            <Section
+                id="interaction"
+                title="Colour — interaction"
+                description="One translucent grey wash for every hover, one step up for the selected row. Translucent on purpose: it reads the same over --surface, --popover and the sidebar, so no surface needs a hover token of its own. Nothing in navigation is accented any more."
+            >
+                <ThemeSplit className="grid gap-3 sm:grid-cols-2">
+                    {(theme) => {
+                        return swatchesFor(INTERACTION_TOKENS, theme);
                     }}
                 </ThemeSplit>
             </Section>
@@ -234,7 +247,11 @@ function DesignSystem() {
                 </ThemeSplit>
             </Section>
 
-            <Section id="actions" title="Primitives — actions" description="Button, Badge, Toggle, ToggleGroup.">
+            <Section
+                id="actions"
+                title="Primitives — actions"
+                description="Button, Badge, Toggle, ToggleGroup, Segmented."
+            >
                 <ThemeSplit>
                     {() => {
                         return <ActionPrimitives />;
