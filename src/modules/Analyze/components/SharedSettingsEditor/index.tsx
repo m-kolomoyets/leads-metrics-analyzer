@@ -6,11 +6,15 @@ import { useMutation } from '@tanstack/react-query';
 import { InfoIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { saveSharedSettingsMutationOptions } from '@/services/presets/queries';
-import { ui } from '@/components/report/utils/i18n';
+import { ratioPct } from '@/components/report/utils/format';
+import { ui, zoneLabel } from '@/components/report/utils/i18n';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/Tooltip';
+import { ZoneMeter } from '@/components/ZoneMeter';
+import { clampBound } from '../../utils/zoneBounds';
+import { ZoneRangeInput } from '../ZoneRangeInput';
 
 type SharedSettingsEditorProps = {
     shared: SharedSettingsView | null;
@@ -114,6 +118,24 @@ function SharedSettingsEditor({ shared, canEdit, locale, seed, onSaved }: Shared
         });
     }
 
+    // Same mutual clamp as the preset bounds, plus the band's own ceiling: this one is a share of
+    // Spend⁺, so anything outside 0–100 is not a stricter plan, it is a typo.
+    function commitWasteBound(bound: 'gy' | 'yr') {
+        const clamped = clampBound(
+            bound,
+            draft.wasteZones[bound],
+            bound === 'gy' ? draft.wasteZones.yr : draft.wasteZones.gy,
+            {
+                min: 0,
+                max: 100,
+            }
+        );
+
+        if (clamped !== draft.wasteZones[bound]) {
+            setWasteBound(bound, clamped);
+        }
+    }
+
     function setSeller(index: number, field: keyof SellerDraft, value: string) {
         setDraft((current) => {
             return {
@@ -172,7 +194,7 @@ function SharedSettingsEditor({ shared, canEdit, locale, seed, onSaved }: Shared
     return (
         <section className="flex flex-col gap-3">
             <div className="flex items-center gap-2">
-                <h4 className="text-muted-foreground text-[11px] font-normal tracking-wider uppercase">
+                <h4 className="text-foreground text-xs font-semibold tracking-wider uppercase">
                     {ui('sharedSettings', locale)}
                 </h4>
                 {!canEdit && <span className="text-muted-foreground text-xs">{ui('readonly', locale)}</span>}
@@ -234,38 +256,38 @@ function SharedSettingsEditor({ shared, canEdit, locale, seed, onSaved }: Shared
             {/* Tolerated-loss band (% of Spend⁺). Same green→yellow→red shape as a threshold pair, but a
                 team-global policy, so it saves with the shared settings rather than a preset version. */}
             <div className="border-border/60 flex flex-col gap-2 border-t pt-3">
-                <h5 className="text-muted-foreground text-[11px] font-normal tracking-wider uppercase">
+                <h5 className="text-foreground text-xs font-semibold tracking-wider uppercase">
                     {ui('wasteRange', locale)}
                 </h5>
-                <div className="flex flex-wrap items-center gap-2.5">
-                    <span className="text-success text-[11px]">{ui('zGreen', locale)}</span>
-                    <Input
-                        id="ss-waste-gy"
-                        type="number"
-                        inputMode="decimal"
-                        className="h-8 w-16 font-mono text-[13px]"
-                        aria-label={`${ui('wasteRange', locale)} ${ui('gy', locale)}`}
-                        disabled={!canEdit || isPending}
-                        value={draft.wasteZones.gy}
-                        onChange={(event) => {
-                            setWasteBound('gy', event.target.value);
-                        }}
-                    />
-                    <span className="text-warning text-[11px]">{ui('zYellow', locale)}</span>
-                    <Input
-                        id="ss-waste-yr"
-                        type="number"
-                        inputMode="decimal"
-                        className="h-8 w-16 font-mono text-[13px]"
-                        aria-label={`${ui('wasteRange', locale)} ${ui('yr', locale)}`}
-                        disabled={!canEdit || isPending}
-                        value={draft.wasteZones.yr}
-                        onChange={(event) => {
-                            setWasteBound('yr', event.target.value);
-                        }}
-                    />
-                    <span className="text-danger text-[11px]">{ui('zRed', locale)}</span>
-                </div>
+                <ZoneRangeInput
+                    idPrefix="ss-waste"
+                    green={draft.wasteZones.gy}
+                    yellow={draft.wasteZones.yr}
+                    greenLabel={zoneLabel('green', locale)}
+                    yellowLabel={zoneLabel('yellow', locale)}
+                    redLabel={zoneLabel('red', locale)}
+                    greenAriaLabel={`${ui('wasteRange', locale)} ${ui('gy', locale)}`}
+                    yellowAriaLabel={`${ui('wasteRange', locale)} ${ui('yr', locale)}`}
+                    disabled={!canEdit || isPending}
+                    onChange={setWasteBound}
+                    onCommit={commitWasteBound}
+                />
+
+                {/* Same mirror as the preset thresholds, one difference that matters: this band is a
+                    share of Spend⁺, so the rail has a real end. Fixing it at 100 keeps "7% green" the
+                    sliver it actually is — a threshold-derived end would stretch those seven points
+                    across two thirds of the rail and flatter the plan. */}
+                <ZoneMeter
+                    value={null}
+                    greenBelow={wasteGy ?? 0}
+                    redAbove={wasteYr ?? 0}
+                    max={100}
+                    format={ratioPct}
+                    labels="none"
+                    boundMarks={true}
+                    invalid={wasteGy === null || wasteYr === null}
+                />
+                <p className="text-muted-foreground text-xs">{ui('percentScale', locale)}</p>
             </div>
 
             <div className="flex flex-col gap-2">

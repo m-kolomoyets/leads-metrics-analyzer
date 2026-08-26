@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils/cn';
 import { SALES_TEXT_CLASS, ZONE_TEXT_CLASS } from '@/components/report/constants';
 import { cost, int, pct, usd, usdRound, usdSigned } from '@/components/report/utils/format';
 import { ui } from '@/components/report/utils/i18n';
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
 
 type AccountSummaryProps = {
     accounts: AccountRollup[];
@@ -61,10 +62,18 @@ function CostCell({
     plain?: boolean;
 }) {
     if (value === null) {
-        return <td className={cn('p-2 font-mono', className)}>—</td>;
+        return (
+            <TableCell isNumeric className={className}>
+                —
+            </TableCell>
+        );
     }
     const zone = pair && !plain ? ZONE_TEXT_CLASS[zoneFor(value, pair)] : undefined;
-    return <td className={cn('p-2 font-mono', zone, className)}>{cost(value)}</td>;
+    return (
+        <TableCell isNumeric className={cn(zone, className)}>
+            {cost(value)}
+        </TableCell>
+    );
 }
 
 // The metric cells shared by an account row and the totals footer. `plain` (footer) drops the tints
@@ -89,38 +98,46 @@ function MetricCells({
     const dim = plain ? undefined : 'text-muted-foreground';
     return (
         <>
-            <td className="p-2 font-mono">{int(m.linkClicks)}</td>
-            <td className="p-2 font-mono">{int(m.installs)}</td>
-            <td className="p-2 font-mono">{int(m.regs)}</td>
-            <td className="p-2 font-mono">{int(m.sales)}</td>
-            <td className={cn('p-2 font-mono', dim)}>{cost(m.epc)}</td>
-            <td className={cn('p-2 font-mono', BLOCK_START, !plain && m.revenue > 0 && 'text-success')}>
+            <TableCell isNumeric>{int(m.linkClicks)}</TableCell>
+            <TableCell isNumeric>{int(m.installs)}</TableCell>
+            <TableCell isNumeric>{int(m.regs)}</TableCell>
+            <TableCell isNumeric>{int(m.sales)}</TableCell>
+            <TableCell isNumeric className={dim}>
+                {cost(m.epc)}
+            </TableCell>
+            <TableCell isNumeric className={cn(BLOCK_START, !plain && m.revenue > 0 && ZONE_TEXT_CLASS.green)}>
                 {m.revenue > 0 ? usdRound(m.revenue) : '—'}
-            </td>
-            <td className="p-2 font-mono font-bold">{usd(m.spendPlus)}</td>
-            <td className={cn('p-2 font-mono font-bold', !plain && (m.profit >= 0 ? 'text-success' : 'text-danger'))}>
+            </TableCell>
+            <TableCell isNumeric className="font-medium">
+                {usd(m.spendPlus)}
+            </TableCell>
+            <TableCell
+                isNumeric
+                className={cn('font-medium', !plain && (m.profit >= 0 ? ZONE_TEXT_CLASS.green : ZONE_TEXT_CLASS.red))}
+            >
                 {usdSigned(m.profit)}
-            </td>
-            <td
+            </TableCell>
+            <TableCell
+                isNumeric
                 className={cn(
-                    'p-2 font-mono font-bold',
-                    !plain && m.roi !== null && (m.roi >= 0 ? 'text-success' : 'text-danger')
+                    'font-medium',
+                    !plain && m.roi !== null && (m.roi >= 0 ? ZONE_TEXT_CLASS.green : ZONE_TEXT_CLASS.red)
                 )}
             >
                 {pct(m.roi)}
-            </td>
+            </TableCell>
             <CostCell value={m.cpc} pair={thresholds?.clicks} className={BLOCK_START} plain={plain} />
             <CostCell value={m.cpi} pair={thresholds?.installs} plain={plain} />
             <CostCell value={m.cpr} pair={thresholds?.regs} plain={plain} />
             <CostCell value={m.cps} pair={thresholds?.sales} plain={plain} />
-            <td className={cn('p-2 font-mono', BLOCK_START, waste > 0 && !plain ? 'text-danger' : dim)}>
+            <TableCell isNumeric className={cn(BLOCK_START, waste > 0 && !plain ? ZONE_TEXT_CLASS.red : dim)}>
                 {waste > 0 ? usd(waste) : '—'}
                 {wasteGrain === 'account' && waste > 0 ? (
                     <abbr className="text-muted-foreground ml-0.5 no-underline" title={ui('wasteAccountGrain', locale)}>
                         *
                     </abbr>
                 ) : null}
-            </td>
+            </TableCell>
         </>
     );
 }
@@ -162,143 +179,130 @@ function AccountSummary({ accounts, thresholds, locale, isReviewed, onJump }: Ac
     }
 
     return (
-        <section className="glass-tint tint-blue tint-s5 flex flex-col gap-2 rounded-2xl p-4">
-            <h3 className="text-muted-foreground text-[13px] font-normal tracking-widest uppercase">
+        <section className="bg-surface border-border flex flex-col gap-2 rounded-md border p-4">
+            <h3 className="text-foreground text-xs font-semibold tracking-widest uppercase">
                 {ui('accountSummary', locale)} <span className="normal-case">· {ui('summaryHint', locale)}</span>
             </h3>
-            <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-right text-xs">
-                    <thead>
-                        <tr className="text-muted-foreground border-b">
-                            {showReviewed && (
-                                <th className="w-6 p-2 text-left font-normal">
-                                    <span className="sr-only">{ui('reviewed', locale)}</span>
-                                </th>
-                            )}
-                            <th className="p-2 text-left font-normal whitespace-nowrap">Account ID</th>
-                            {HEAD_COLS.map((col) => {
-                                return (
-                                    <th
-                                        key={col.label}
-                                        className={cn('p-2 font-normal whitespace-nowrap', col.start && BLOCK_START)}
-                                    >
-                                        {col.label}
-                                    </th>
-                                );
-                            })}
-                            <th className={cn('p-2 font-normal whitespace-nowrap', BLOCK_START)}>
-                                {ui('wasteCol', locale)}
-                            </th>
-                            {ZONES.map((zone) => {
-                                return (
-                                    <th
-                                        key={zone}
-                                        className={cn(
-                                            'p-2 font-normal',
-                                            ZONE_TEXT_CLASS[zone],
-                                            zone === 'red' && BLOCK_START
-                                        )}
-                                    >
-                                        {ZONE_EMOJI[zone]}
-                                    </th>
-                                );
-                            })}
-                            <th className={cn('p-2 font-normal', SALES_TEXT_CLASS)}>💰</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {accounts.map((account) => {
-                            const { metrics, counts, problem, waste, wasteGrain } = account;
-                            const reviewed = isReviewed?.(account.account) ?? false;
-                            // Reviewed rows keep full contrast — the figures stay readable so a call can
-                            // be revisited; only the alarm styling (tint, rule, 🚨) is retired.
-                            const alarm = problem !== null && !reviewed;
+            <Table density="compact" className="text-xs">
+                <TableHeader>
+                    <TableRow>
+                        {showReviewed && (
+                            <TableHead className="w-6">
+                                <span className="sr-only">{ui('reviewed', locale)}</span>
+                            </TableHead>
+                        )}
+                        <TableHead>Account ID</TableHead>
+                        {HEAD_COLS.map((col) => {
                             return (
-                                <tr
-                                    key={account.account}
-                                    className={cn(
-                                        'border-b',
-                                        onJump && 'hover:bg-muted/30 cursor-pointer',
-                                        alarm && 'bg-danger/15 border-l-2 border-l-danger'
-                                    )}
-                                    onClick={
-                                        onJump &&
-                                        (() => {
-                                            onJump(account.account);
-                                        })
-                                    }
-                                >
-                                    {showReviewed && (
-                                        <td className="text-success w-6 p-2 text-left">{reviewed && '✓'}</td>
-                                    )}
-                                    <td className={cn('p-2 text-left font-mono', alarm && 'font-bold text-danger')}>
-                                        {account.account} {alarm && '🚨'}
-                                    </td>
-                                    <MetricCells
-                                        m={metrics}
-                                        waste={waste}
-                                        wasteGrain={wasteGrain}
-                                        thresholds={thresholds}
-                                        locale={locale}
-                                    />
-                                    {ZONES.map((zone) => {
-                                        return (
-                                            <td
-                                                key={zone}
-                                                className={cn(
-                                                    'p-2 font-mono',
-                                                    ZONE_TEXT_CLASS[zone],
-                                                    zone === 'red' && BLOCK_START
-                                                )}
-                                            >
-                                                {counts[zone]}
-                                            </td>
-                                        );
-                                    })}
-                                    <td className={cn('p-2 font-mono', SALES_TEXT_CLASS)}>{counts.sales}</td>
-                                </tr>
+                                <TableHead key={col.label} isNumeric className={cn(col.start && BLOCK_START)}>
+                                    {col.label}
+                                </TableHead>
                             );
                         })}
-                    </tbody>
-                    {showFooter && (
-                        <tfoot>
-                            <tr className="border-t-2 font-semibold">
-                                {showReviewed && <td className="w-6 p-2" />}
-                                <td className="text-muted-foreground p-2 text-left whitespace-nowrap">
-                                    {ui('totalAvg', locale)}
-                                </td>
+                        <TableHead isNumeric className={BLOCK_START}>
+                            {ui('wasteCol', locale)}
+                        </TableHead>
+                        {ZONES.map((zone) => {
+                            return (
+                                <TableHead
+                                    key={zone}
+                                    isNumeric
+                                    className={cn(ZONE_TEXT_CLASS[zone], zone === 'red' && BLOCK_START)}
+                                >
+                                    {ZONE_EMOJI[zone]}
+                                </TableHead>
+                            );
+                        })}
+                        <TableHead isNumeric className={SALES_TEXT_CLASS}>
+                            💰
+                        </TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {accounts.map((account) => {
+                        const { metrics, counts, problem, waste, wasteGrain } = account;
+                        const reviewed = isReviewed?.(account.account) ?? false;
+                        // Reviewed rows keep full contrast — the figures stay readable so a call can
+                        // be revisited; only the alarm styling (tint, rule, 🚨) is retired.
+                        const alarm = problem !== null && !reviewed;
+                        return (
+                            <TableRow
+                                key={account.account}
+                                className={cn(
+                                    onJump && 'hover:bg-background cursor-pointer',
+                                    alarm && 'border-l-zone-red border-l-2'
+                                )}
+                                onClick={
+                                    onJump &&
+                                    (() => {
+                                        onJump(account.account);
+                                    })
+                                }
+                            >
+                                {showReviewed && (
+                                    <TableCell className="text-zone-green w-6">{reviewed && '✓'}</TableCell>
+                                )}
+                                <TableCell className={cn('tabular-nums', alarm && 'text-zone-red font-medium')}>
+                                    {account.account} {alarm && '🚨'}
+                                </TableCell>
                                 <MetricCells
-                                    m={totals}
-                                    waste={totalWaste}
-                                    wasteGrain={anyAccountGrain ? 'account' : 'campaign'}
+                                    m={metrics}
+                                    waste={waste}
+                                    wasteGrain={wasteGrain}
                                     thresholds={thresholds}
                                     locale={locale}
-                                    plain
                                 />
                                 {ZONES.map((zone) => {
                                     return (
-                                        <td
+                                        <TableCell
                                             key={zone}
-                                            className={cn(
-                                                'p-2 font-mono',
-                                                ZONE_TEXT_CLASS[zone],
-                                                zone === 'red' && BLOCK_START
-                                            )}
+                                            isNumeric
+                                            className={cn(ZONE_TEXT_CLASS[zone], zone === 'red' && BLOCK_START)}
                                         >
-                                            {totalCounts[zone]}
-                                        </td>
+                                            {counts[zone]}
+                                        </TableCell>
                                     );
                                 })}
-                                <td className={cn('p-2 font-mono', SALES_TEXT_CLASS)}>{totalCounts.sales}</td>
-                            </tr>
-                        </tfoot>
-                    )}
-                </table>
-            </div>
-            <p className="text-muted-foreground text-[10px]">{ui('wasteEstimate', locale)}</p>
-            {anyAccountGrain && (
-                <p className="text-muted-foreground text-[10px]">{ui('wasteAccountGrainNote', locale)}</p>
-            )}
+                                <TableCell isNumeric className={SALES_TEXT_CLASS}>
+                                    {counts.sales}
+                                </TableCell>
+                            </TableRow>
+                        );
+                    })}
+                </TableBody>
+                {showFooter && (
+                    <TableFooter>
+                        <TableRow className="font-medium">
+                            {showReviewed && <TableCell className="w-6" />}
+                            <TableCell className="text-muted-foreground">{ui('totalAvg', locale)}</TableCell>
+                            <MetricCells
+                                m={totals}
+                                waste={totalWaste}
+                                wasteGrain={anyAccountGrain ? 'account' : 'campaign'}
+                                thresholds={thresholds}
+                                locale={locale}
+                                plain
+                            />
+                            {ZONES.map((zone) => {
+                                return (
+                                    <TableCell
+                                        key={zone}
+                                        isNumeric
+                                        className={cn(ZONE_TEXT_CLASS[zone], zone === 'red' && BLOCK_START)}
+                                    >
+                                        {totalCounts[zone]}
+                                    </TableCell>
+                                );
+                            })}
+                            <TableCell isNumeric className={SALES_TEXT_CLASS}>
+                                {totalCounts.sales}
+                            </TableCell>
+                        </TableRow>
+                    </TableFooter>
+                )}
+            </Table>
+            <p className="text-muted-foreground text-xs">{ui('wasteEstimate', locale)}</p>
+            {anyAccountGrain && <p className="text-muted-foreground text-xs">{ui('wasteAccountGrainNote', locale)}</p>}
         </section>
     );
 }

@@ -5,6 +5,7 @@ import { PlusIcon } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/Sheet';
+import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
 import { CreateUserForm } from '../CreateUserForm';
 import { EditUserForm } from '../EditUserForm';
 import { InvitePanel } from '../InvitePanel';
@@ -32,19 +33,19 @@ function UsersSection({ users, teams, currentUserId }: UsersSectionProps) {
                 </Button>
             </div>
 
-            <Card variant="flat" className="overflow-x-auto">
-                <table className="w-full text-sm">
-                    <thead className="text-muted-foreground border-b">
-                        <tr>
-                            <th className="px-3 py-2 text-left font-medium">Nickname</th>
-                            <th className="px-3 py-2 text-left font-medium">Email</th>
-                            <th className="px-3 py-2 text-left font-medium">Role</th>
-                            <th className="px-3 py-2 text-left font-medium">Team</th>
-                            <th className="px-3 py-2 text-left font-medium">Status</th>
-                            <th className="px-3 py-2" />
-                        </tr>
-                    </thead>
-                    <tbody>
+            <Card>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Nickname</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Role</TableHead>
+                            <TableHead>Team</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead />
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
                         {users.map((user) => {
                             return (
                                 <UserRow
@@ -58,8 +59,8 @@ function UsersSection({ users, teams, currentUserId }: UsersSectionProps) {
                                 />
                             );
                         })}
-                    </tbody>
-                </table>
+                    </TableBody>
+                </Table>
             </Card>
 
             <Sheet open={isCreateOpen} onOpenChange={setIsCreateOpen}>

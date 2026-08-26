@@ -29,8 +29,8 @@ function ProblemAccounts({ accounts, locale, isReviewed }: ProblemAccountsProps)
     }).length;
 
     return (
-        <section className="glass-tint tint-red rounded-2xl p-4">
-            <p className="text-danger mb-2.5 text-[13px] font-normal tracking-widest uppercase">
+        <section className="bg-surface border-zone-red glow-zone-red rounded-md border p-4">
+            <p className="text-zone-red mb-2.5 text-xs font-medium tracking-widest uppercase">
                 🚨 {ui('problemAccounts', locale)} ({outstanding}/{flagged.length})
             </p>
             <ul className="flex flex-col gap-1 text-xs">
@@ -41,7 +41,7 @@ function ProblemAccounts({ accounts, locale, isReviewed }: ProblemAccountsProps)
                             key={account.account}
                             className={cn('text-muted-foreground', reviewed && 'line-through opacity-60')}
                         >
-                            <span className="text-foreground font-mono">{account.account}</span>{' '}
+                            <span className="text-foreground tabular-nums">{account.account}</span>{' '}
                             {usd(account.metrics.spendPlus)} ·{' '}
                             {problemReason(account.problem!, account.metrics.spendPlus, account.metrics.cpi, locale)}
                         </li>

@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as DesignRouteImport } from './routes/design'
 import { Route as UnauthenticatedRouteRouteImport } from './routes/_unauthenticated/route'
 import { Route as PublicRouteRouteImport } from './routes/_public/route'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
@@ -24,6 +25,11 @@ import { Route as AuthenticatedDashboardDynamicsRouteImport } from './routes/_au
 import { Route as AuthenticatedDashboardArchiveRouteImport } from './routes/_authenticated/dashboard/archive'
 import { Route as AuthenticatedDashboardReportSnapshotIdRouteImport } from './routes/_authenticated/dashboard/report/$snapshotId'
 
+const DesignRoute = DesignRouteImport.update({
+  id: '/design',
+  path: '/design',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const UnauthenticatedRouteRoute = UnauthenticatedRouteRouteImport.update({
   id: '/_unauthenticated',
   getParentRoute: () => rootRouteImport,
@@ -103,6 +109,7 @@ const AuthenticatedDashboardReportSnapshotIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof PublicIndexRoute
+  '/design': typeof DesignRoute
   '/dashboard/archive': typeof AuthenticatedDashboardArchiveRoute
   '/dashboard/dynamics': typeof AuthenticatedDashboardDynamicsRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
@@ -116,6 +123,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof PublicIndexRoute
+  '/design': typeof DesignRoute
   '/dashboard/archive': typeof AuthenticatedDashboardArchiveRoute
   '/dashboard/dynamics': typeof AuthenticatedDashboardDynamicsRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -132,6 +140,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/_public': typeof PublicRouteRouteWithChildren
   '/_unauthenticated': typeof UnauthenticatedRouteRouteWithChildren
+  '/design': typeof DesignRoute
   '/_public/': typeof PublicIndexRoute
   '/_authenticated/dashboard/archive': typeof AuthenticatedDashboardArchiveRoute
   '/_authenticated/dashboard/dynamics': typeof AuthenticatedDashboardDynamicsRoute
@@ -148,6 +157,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/design'
     | '/dashboard/archive'
     | '/dashboard/dynamics'
     | '/admin/'
@@ -161,6 +171,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/design'
     | '/dashboard/archive'
     | '/dashboard/dynamics'
     | '/admin'
@@ -176,6 +187,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/_public'
     | '/_unauthenticated'
+    | '/design'
     | '/_public/'
     | '/_authenticated/dashboard/archive'
     | '/_authenticated/dashboard/dynamics'
@@ -193,10 +205,18 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   PublicRouteRoute: typeof PublicRouteRouteWithChildren
   UnauthenticatedRouteRoute: typeof UnauthenticatedRouteRouteWithChildren
+  DesignRoute: typeof DesignRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/design': {
+      id: '/design'
+      path: '/design'
+      fullPath: '/design'
+      preLoaderRoute: typeof DesignRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_unauthenticated': {
       id: '/_unauthenticated'
       path: ''
@@ -354,6 +374,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   PublicRouteRoute: PublicRouteRouteWithChildren,
   UnauthenticatedRouteRoute: UnauthenticatedRouteRouteWithChildren,
+  DesignRoute: DesignRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

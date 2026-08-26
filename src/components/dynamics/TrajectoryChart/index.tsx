@@ -1,11 +1,11 @@
+import type { DeepPartial, TimeChartOptions } from 'lightweight-charts';
 import type { CostMetric, SeriesPoint } from '@/lib/domain/dynamics';
-import type { DynamicsMode } from '../types';
+import type { ChartPalette, DynamicsMode } from '../types';
 import type { ZoneSeriesApi } from '../ZoneSeries/types';
 import type { DeltaFlag } from './constants';
 import type { ActivePoint, ChartMetric, FigureMetric } from './types';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { ColorType, CrosshairMode, LineStyle } from 'lightweight-charts';
 import { COST_METRICS, deltaPointsFor, deltasFor, hasZone, zoneOfPoint } from '@/lib/domain/dynamics';
 import { cn } from '@/lib/utils/cn';
 import { kyivClock } from '@/lib/utils/kyivDay';
@@ -13,6 +13,7 @@ import { SectionCard } from '@/components/report/SectionCard';
 import { DASH } from '@/components/report/utils/format';
 import { Accordion, AccordionHeader, AccordionItem, AccordionPanel, AccordionTrigger } from '@/components/ui/Accordion';
 import { CHART_HEIGHT, COST_DASH, FLAG_GLYPH, FLAG_HINT, FLAG_LABEL, FLAG_STROKE } from './constants';
+import { chartOptionsFor } from '../utils/chartOptions';
 import { METRIC_FORMAT, METRIC_LABEL, metricValue } from '../utils/metrics';
 import { flagsFor, seriesDataFor, timesOf } from './utils/series';
 import { useChartInstance } from '../hooks/useChartInstance';
@@ -74,6 +75,28 @@ type TrajectoryChartProps = {
     mode: DynamicsMode;
 };
 
+// The system's options, with only what makes this chart itself laid over them: the horizontal
+// crosshair line and the vertical grid are suppressed because neither answers a question a lead has —
+// the figure is in the card, and "which push is this" is the vertical line's job (ADR-0020).
+function trajectoryOptionsFor(palette: ChartPalette): DeepPartial<TimeChartOptions> {
+    const base = chartOptionsFor(palette);
+
+    return {
+        ...base,
+        grid: { ...base.grid, vertLines: { visible: false } },
+        crosshair: {
+            ...base.crosshair,
+            // No label on the axis: the tooltip already names the push, in words rather than a timestamp.
+            vertLine: { ...base.crosshair?.vertLine, labelVisible: false },
+            horzLine: { visible: false, labelVisible: false },
+        },
+        // Both scales carry a metric, and neither carries a border: the card's own edge is the rule.
+        leftPriceScale: { ...base.leftPriceScale, visible: true, borderVisible: false },
+        rightPriceScale: { ...base.rightPriceScale, visible: true, borderVisible: false },
+        timeScale: { ...base.timeScale, timeVisible: true, secondsVisible: false, borderVisible: false },
+    };
+}
+
 function TrajectoryChart({ points, mode }: TrajectoryChartProps) {
     const navigate = useNavigate();
     const palette = useChartPalette();
@@ -96,28 +119,7 @@ function TrajectoryChart({ points, mode }: TrajectoryChartProps) {
     // re-rendering when one is created would put the effect that created it straight back on the queue.
     const seriesRef = useRef(new Map<ChartMetric, ZoneSeriesApi>());
 
-    const { containerRef, chart } = useChartInstance(
-        {
-            autoSize: true,
-            layout: {
-                background: { type: ColorType.Solid, color: 'transparent' },
-                attributionLogo: false,
-                fontSize: 12,
-            },
-            // Vertical only, and largely dashed: the horizontal line marked a price nobody reads —
-            // the figure is in the card — while the vertical one answers "which push is this", which
-            // is the whole question. Its colour is a translucent wash, applied with the palette.
-            crosshair: {
-                mode: CrosshairMode.Normal,
-                vertLine: { style: LineStyle.LargeDashed, labelVisible: false },
-                horzLine: { visible: false, labelVisible: false },
-            },
-            leftPriceScale: { visible: true, borderVisible: false },
-            rightPriceScale: { visible: true, borderVisible: false },
-            timeScale: { timeVisible: true, secondsVisible: false, borderVisible: false },
-        },
-        isOpen
-    );
+    const { containerRef, chart } = useChartInstance(trajectoryOptionsFor(palette), isOpen);
 
     // `deltasFor` is indexed by point: entry i describes the interval ENDING at point i, which is the
     // segment drawn into it. A restated interval is the faded one, in either mode.
@@ -251,14 +253,7 @@ function TrajectoryChart({ points, mode }: TrajectoryChartProps) {
     // light/dark switch — so the chrome is re-applied whenever the palette does.
     useEffect(
         function applyPalette() {
-            chart?.applyOptions({
-                layout: { textColor: palette.muted },
-                grid: {
-                    vertLines: { visible: false },
-                    horzLines: { color: palette.border, style: LineStyle.Dotted },
-                },
-                crosshair: { vertLine: { color: palette.guide, width: 1 } },
-            });
+            chart?.applyOptions(trajectoryOptionsFor(palette));
         },
         [chart, palette]
     );
@@ -296,6 +291,9 @@ function TrajectoryChart({ points, mode }: TrajectoryChartProps) {
                     // colour per segment from the zones at its ends.
                     flatColor: graded ? null : palette.accent,
                     dash: graded ? COST_DASH[metric] : [],
+                    // The wash belongs to the money line and to it alone: it is the one flat-coloured
+                    // stroke here, and three dashed cost lines each carrying a fill would be mud.
+                    areaOpacity: graded ? 0 : 0.14,
                     width: 2,
                     points: 'all',
                     pointRadius: 4.5,
@@ -457,7 +455,7 @@ function TrajectoryChart({ points, mode }: TrajectoryChartProps) {
             >
                 <AccordionItem value="trajectory">
                     <AccordionHeader>
-                        <AccordionTrigger className="text-[13px] tracking-widest uppercase">
+                        <AccordionTrigger className="text-sm font-semibold tracking-widest uppercase">
                             Trajectory
                         </AccordionTrigger>
                     </AccordionHeader>
@@ -490,7 +488,7 @@ function TrajectoryChart({ points, mode }: TrajectoryChartProps) {
                                 <button
                                     type="button"
                                     aria-label={`${mode === 'delta' ? 'Between-report' : 'Cumulative'} trajectory of ${plotted[0].geo} across ${plotted.length} pushes. Arrow keys walk the pushes, Enter opens a report.`}
-                                    className="focus-visible:ring-ring/50 pointer-events-none absolute inset-0 rounded-lg outline-none focus-visible:ring-3"
+                                    className="pointer-events-none absolute inset-0 rounded-lg"
                                     onKeyDown={handleKeyDown}
                                     onFocus={() => {
                                         moveTo(focused);
@@ -557,7 +555,7 @@ function TrajectoryChart({ points, mode }: TrajectoryChartProps) {
                             </p>
 
                             {presentFlags.length > 0 && (
-                                <ul className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
+                                <ul className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-xs">
                                     {presentFlags.map((flag) => {
                                         return (
                                             <li

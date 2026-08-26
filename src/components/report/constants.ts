@@ -1,7 +1,8 @@
 import type { Zone } from '@/lib/domain/types';
 
-// Static class lookups (code-style: no dynamic `bg-${x}`). The reference's traffic-light glass, mapped
-// to Tailwind tokens — a tinted card per zone plus a solid accent bar.
+// Static class lookups (code-style: no dynamic `bg-${x}`). Zone is the only place the app spends
+// colour (ADR-0019), so these four maps are the whole vocabulary for reporting a judgement: text,
+// a solid rail, a hairline-bordered panel and a square chip.
 
 // The three action buckets rendered per Account, in reference order (red → yellow → green).
 export const BUCKET_ZONES = ['red', 'yellow', 'green'] as const;
@@ -15,41 +16,80 @@ export const ZONE_GLYPH: Record<BucketZone, string> = {
     green: '↑',
 };
 
-// Tinted glass card per zone (border + faint fill), for bucket panels and account frames.
+// A panel that reports a zone: the chrome surface, a hairline in the zone colour, and a glow of the
+// same colour bled around it (see `@utility glow-zone-*`). No fill — a wash behind a whole panel
+// says "this area is coloured", not "this figure is red"; the glow carries the same weight from
+// outside without tinting a single figure. Neutral keeps the plain hairline, so the graded panels
+// are the ones that catch the eye.
 export const ZONE_CARD_CLASS: Record<Zone, string> = {
-    green: 'border-success/30 bg-success/5',
-    yellow: 'border-warning/30 bg-warning/5',
-    red: 'border-danger/30 bg-danger/5',
-    neutral: 'border-border bg-muted/20',
+    green: 'border-zone-green glow-zone-green bg-surface',
+    yellow: 'border-zone-yellow glow-zone-yellow bg-surface',
+    red: 'border-zone-red glow-zone-red bg-surface',
+    neutral: 'border-border bg-surface',
 };
 
-// Solid zone accent (bucket pill background, row rail).
+// Solid zone fill, for the 6px row rail on the creative table and the bucket markers — the only
+// places a zone is painted rather than written.
 export const ZONE_ACCENT_CLASS: Record<Zone, string> = {
-    green: 'bg-success',
-    yellow: 'bg-warning',
-    red: 'bg-danger',
-    neutral: 'bg-neutral',
+    green: 'bg-zone-green',
+    yellow: 'bg-zone-yellow',
+    red: 'bg-zone-red',
+    neutral: 'bg-zone-neutral',
 };
 
-// Zone-tinted outline button (bucket "copy ids"), so the action reads in its bucket's colour.
+// A status count: a small chip wearing its own purpose — hairline and glyph in the zone colour, the
+// fill a 10% wash of the same. A neutral border read as chrome and left the bucket chips looking
+// interchangeable; the chip now says which bucket it belongs to before the label is read.
+export const ZONE_CHIP_CLASS: Record<Zone, string> = {
+    green: 'border-zone-green bg-zone-green/10 text-zone-green',
+    yellow: 'border-zone-yellow bg-zone-yellow/10 text-zone-yellow',
+    red: 'border-zone-red bg-zone-red/10 text-zone-red',
+    neutral: 'border-border bg-hover text-zone-neutral',
+};
+
+// The sales chip's counterpart: violet, the one hue outside the Zone scale (see `--sales`).
+export const SALES_CHIP_CLASS = 'border-sales bg-sales/10 text-sales';
+
+// The sales panel's frame — violet hairline over a barely-there wash, so the block reads as its own
+// kind of thing beside the three zone buckets rather than as a fourth, uncoloured one.
+export const SALES_CARD_CLASS = 'border-sales glow-sales bg-sales-tint';
+
+// The same frame at table scale. A wash that reads as "barely there" behind a 200px block is a
+// coloured page behind a full campaign table, and every figure in it then sits on violet — so the
+// fill drops to a trace and the hairline carries the identity on its own.
+export const SALES_PANEL_CLASS = 'border-sales/50 glow-sales bg-sales/[0.03]';
+
+// A bucket panel: the same hairline as `ZONE_CARD_CLASS`, over a trace of its own zone. Used where
+// the panel IS the bucket — the three id blocks under an Account, which sit beside the violet sales
+// block and read as one row of four purposes. A section that merely *reports* a zone (the Geo hero's
+// ROI and waste panels) keeps the plain surface: it is one figure's verdict, not a container's.
+export const ZONE_PANEL_CLASS: Record<Zone, string> = {
+    green: 'border-zone-green glow-zone-green bg-zone-green/8',
+    yellow: 'border-zone-yellow glow-zone-yellow bg-zone-yellow/8',
+    red: 'border-zone-red glow-zone-red bg-zone-red/8',
+    neutral: 'border-border bg-hover',
+};
+
+// Zone-tinted outline button (bucket "copy ids"), so the action reads in its bucket's colour while
+// resting on the same chrome as every other button.
 export const ZONE_BUTTON_CLASS: Record<Zone, string> = {
-    green: 'border-success/40 bg-success/10 text-success hover:bg-success/20 hover:text-success dark:bg-success/10 dark:border-success/40 dark:hover:bg-success/20',
-    yellow: 'border-warning/40 bg-warning/10 text-warning hover:bg-warning/20 hover:text-warning dark:bg-warning/10 dark:border-warning/40 dark:hover:bg-warning/20',
-    red: 'border-danger/40 bg-danger/10 text-danger hover:bg-danger/20 hover:text-danger dark:bg-danger/10 dark:border-danger/40 dark:hover:bg-danger/20',
-    neutral: 'border-border bg-muted/30 text-muted-foreground hover:bg-muted/50',
+    green: 'border-border text-zone-green hover:bg-hover hover:text-zone-green',
+    yellow: 'border-border text-zone-yellow hover:bg-hover hover:text-zone-yellow',
+    red: 'border-border text-zone-red hover:bg-hover hover:text-zone-red',
+    neutral: 'border-border text-muted-foreground hover:bg-hover',
 };
 
-// Violet counterpart to `ZONE_TEXT_CLASS` for the sales tally (dots, summary column).
-export const SALES_TEXT_CLASS = 'text-violet-400';
+// The sales tally is not a judgement, so it may not borrow a Zone colour — but it is not chrome
+// either. Violet is its own, reserved for it, and used nowhere else in the app.
+export const SALES_TEXT_CLASS = 'text-sales';
 
-// Sales panel's violet counterpart to `ZONE_BUTTON_CLASS` (sales is zone-independent).
-export const SALES_BUTTON_CLASS =
-    'border-violet-500/40 bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 hover:text-violet-400 dark:bg-violet-500/10 dark:border-violet-500/40 dark:hover:bg-violet-500/20';
+// Sales panel's counterpart to `ZONE_BUTTON_CLASS`.
+export const SALES_BUTTON_CLASS = 'border-border text-sales hover:bg-hover hover:text-sales';
 
-// Zone text colour for inline emphasis.
+// Zone text colour for inline emphasis. The default way to report a zone.
 export const ZONE_TEXT_CLASS: Record<Zone, string> = {
-    green: 'text-success',
-    yellow: 'text-warning',
-    red: 'text-danger',
+    green: 'text-zone-green',
+    yellow: 'text-zone-yellow',
+    red: 'text-zone-red',
     neutral: 'text-muted-foreground',
 };

@@ -2,12 +2,11 @@ import type { RouterContext } from '@/router';
 import { lazy, Suspense } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from '@tanstack/react-router';
+import { LucideProvider } from 'lucide-react';
 import { queryClient } from '@/lib/@queryClient';
 import { noopReturnNull } from '@/lib/utils/noopReturnNull';
-import { BackgroundProvider } from '@/context/BackgroundContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { useRemoveInitialStyle } from '@/hooks/useRemoveInitialStyle';
-import { BackgroundCanvas } from '@/components/BackgroundCanvas';
 import { Toast } from '@/components/ui/Toast';
 import { TooltipProvider } from '@/components/ui/Tooltip';
 import '@/styles/index.css';
@@ -35,8 +34,8 @@ const THEME_SCRIPT = `
 // Paints the background before Tailwind loads, avoiding a flash; removed after mount
 // (useRemoveInitialStyle).
 const INITIAL_STYLE = `
-:root { --initial-bg: rgb(248 250 253); }
-html.dark { --initial-bg: rgb(8 11 20); }
+:root { --initial-bg: #fafafa; }
+html.dark { --initial-bg: #000000; }
 html { font-family: "Inter", sans-serif; }
 body { background-color: var(--initial-bg); margin: 0; position: relative; }
 `;
@@ -67,8 +66,8 @@ export const Route = createRootRouteWithContext<RouterContext>()({
                 { name: 'format-detection', content: 'telephone=no' },
                 { name: 'viewport', content: 'width=device-width, initial-scale=1.0' },
                 { name: 'color-scheme', content: 'light dark' },
-                { name: 'theme-color', content: '#ffffff', media: '(prefers-color-scheme: light)' },
-                { name: 'theme-color', content: '#080b14', media: '(prefers-color-scheme: dark)' },
+                { name: 'theme-color', content: '#fafafa', media: '(prefers-color-scheme: light)' },
+                { name: 'theme-color', content: '#000000', media: '(prefers-color-scheme: dark)' },
                 { title: 'Adjoin' },
             ],
             links: [
@@ -78,11 +77,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
                 { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossOrigin: 'anonymous' },
                 {
                     rel: 'stylesheet',
-                    href: 'https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap',
-                },
-                {
-                    rel: 'stylesheet',
-                    href: 'https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@100..700&display=swap',
+                    href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400..600&display=swap',
                 },
             ],
         };
@@ -114,19 +109,21 @@ function RootComponent() {
 
     return (
         <QueryClientProvider client={queryClient}>
-            <ThemeProvider defaultTheme="dark">
-                <BackgroundProvider>
+            {/* Every lucide icon in the app draws at 1.5, set once. A wrapper component would have
+                worked too, but only for the call sites that remembered to use it — this covers the
+                ones inside Base UI's portals and react-day-picker as well, and cannot drift. */}
+            <LucideProvider strokeWidth={1.5}>
+                <ThemeProvider defaultTheme="dark">
                     <TooltipProvider>
-                        <BackgroundCanvas />
                         <Outlet />
                         <Toast richColors={true} closeButton={true} swipeDirections={['bottom']} />
                     </TooltipProvider>
-                </BackgroundProvider>
-                <Suspense>
-                    <TanStackRouterDevtools position="bottom-right" />
-                    <TanStackQueryDevtools position="bottom" />
-                </Suspense>
-            </ThemeProvider>
+                    <Suspense>
+                        <TanStackRouterDevtools position="bottom-right" />
+                        <TanStackQueryDevtools position="bottom" />
+                    </Suspense>
+                </ThemeProvider>
+            </LucideProvider>
         </QueryClientProvider>
     );
 }

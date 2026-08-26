@@ -22,7 +22,7 @@ function ComboboxInputGroup({ className, ...props }: ComboboxInputGroupProps) {
         <ComboboxPrimitive.InputGroup
             data-slot="combobox-input-group"
             className={cn(
-                'dark:bg-input/30 border-input focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 flex h-8 w-full min-w-0 items-center gap-2 rounded-lg border bg-transparent px-2.5 py-1 outline-none motion-safe:transition-colors',
+                'border-input focus-ring-within flex h-8 w-full min-w-0 items-center gap-2 rounded-md border bg-transparent px-2.5 py-1 motion-safe:transition-colors motion-safe:duration-150',
                 className
             )}
             {...props}
@@ -34,10 +34,7 @@ function ComboboxInput({ className, ...props }: ComboboxInputProps) {
     return (
         <ComboboxPrimitive.Input
             data-slot="combobox-input"
-            className={cn(
-                'placeholder:text-muted-foreground flex-1 bg-transparent text-base outline-none md:text-sm',
-                className
-            )}
+            className={cn('placeholder:text-faint flex-1 bg-transparent text-base outline-none md:text-sm', className)}
             {...props}
         />
     );
@@ -62,7 +59,7 @@ function ComboboxContent({ className, children, positionerProps, ...props }: Com
                 <ComboboxPrimitive.Popup
                     data-slot="combobox-content"
                     className={cn(
-                        'bg-popover text-popover-foreground border-border max-h-[min(24rem,var(--available-height))] min-w-[var(--anchor-width)] overflow-y-auto rounded-lg border p-1 shadow-md outline-none',
+                        'bg-popover text-popover-foreground border-border shadow-overlay max-h-[min(24rem,var(--available-height))] min-w-[var(--anchor-width)] overflow-y-auto rounded-lg border p-1 outline-none',
                         className
                     )}
                     {...props}
@@ -83,7 +80,7 @@ function ComboboxItem({ className, children, ...props }: ComboboxItemProps) {
         <ComboboxPrimitive.Item
             data-slot="combobox-item"
             className={cn(
-                'data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground relative flex w-full cursor-default select-none items-center gap-2 rounded-md py-1.5 pl-2 pr-8 text-sm outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+                'data-[highlighted]:bg-hover data-[selected]:bg-hover-strong relative flex w-full cursor-default select-none items-center gap-2 rounded-sm py-1.5 pl-2 pr-8 text-sm outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
                 className
             )}
             {...props}

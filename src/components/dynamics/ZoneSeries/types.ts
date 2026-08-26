@@ -25,13 +25,17 @@ export type ZonePoint = CustomData<Time> & {
 };
 
 export type ZoneSeriesOptions = CustomSeriesOptions & {
-    // Canvas cannot read `var(--success)`, so the palette arrives already resolved to real colours
+    // Canvas cannot read `var(--zone-green)`, so the palette arrives already resolved to real colours
     // and is re-applied whenever the theme flips.
     zoneColors: Record<Zone, string>;
     // Set for the money/ROI line, which takes no verdict: one flat colour whatever the zones say.
     flatColor: string | null;
     width: number;
     dash: number[];
+    // The wash under the line, at its strongest against the line and fading to nothing at the foot of
+    // the pane. 0 turns it off, which is what every cost line does: several dashed lines each with a
+    // fill of its own is mud, and a graded line has no single colour to fade anyway.
+    areaOpacity: number;
     // `all` on the big chart, where every push is a target; `last` on a sparkline, which marks only
     // where the day ended; `none` when the shape is the whole message.
     points: 'all' | 'last' | 'none';

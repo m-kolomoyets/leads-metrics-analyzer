@@ -32,7 +32,7 @@ function UserGroup({ group, locale }: UserGroupProps) {
         <AccordionItem
             value={user.id}
             disabled={isQuiet}
-            className={cn('border-border rounded-2xl border p-3', isQuiet && 'opacity-50')}
+            className={cn('border-border rounded-lg border p-3', isQuiet && 'opacity-50')}
         >
             <AccordionHeader>
                 <AccordionTrigger className="w-full">

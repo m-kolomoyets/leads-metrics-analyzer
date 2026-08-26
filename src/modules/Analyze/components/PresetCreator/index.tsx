@@ -144,7 +144,7 @@ function PresetCreator({ geo, locale, onImportShared }: PresetCreatorProps) {
     return (
         <section className="flex flex-col gap-3">
             <div className="flex items-center gap-2">
-                <h4 className="text-muted-foreground text-[11px] font-normal tracking-wider uppercase">
+                <h4 className="text-foreground text-xs font-semibold tracking-wider uppercase">
                     {ui('createPreset', locale)} · {geo}
                 </h4>
             </div>

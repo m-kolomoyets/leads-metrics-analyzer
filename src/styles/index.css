@@ -5,136 +5,175 @@
 @source "../../src";
 @source "../../index.html";
 
-@custom-variant dark (&:is(.dark *));
+/* Nearest themed ancestor wins, not the outermost one. `html` always carries `light` or `dark`
+   (ThemeContext), so a `.light` pane nested inside `html.dark` — the side-by-side arrangement the
+   /design route is built on — has to opt its subtree back out of the dark variant. The exclusion is
+   scoped to a `.light` *inside* the document, so `html.light` itself never matches it and the app's
+   own two themes behave exactly as before. */
+@custom-variant dark (&:is(.dark *):not(:is(html .light *)));
 
-:root {
-    /* Light theme — derived from the dark reference (paler, deeper-blue accent for contrast). */
-    --background: rgb(248 250 253);
-    --foreground: rgb(11 16 26);
-    --card: rgb(255 255 255);
-    --card-foreground: rgb(11 16 26);
-    --popover: rgb(255 255 255);
-    --popover-foreground: rgb(11 16 26);
-    --primary: rgb(37 99 235);
-    --primary-foreground: rgb(255 255 255);
-    --secondary: rgb(241 245 249);
-    --secondary-foreground: rgb(11 16 26);
-    --muted: rgb(241 245 249);
-    --muted-foreground: rgb(51 65 85);
-    --accent: rgb(226 236 254);
-    --accent-foreground: rgb(11 16 26);
-    --destructive: rgb(220 38 38);
-    --destructive-foreground: rgb(255 255 255);
-    --border: rgb(226 232 240);
-    --input: rgb(226 232 240);
-    --ring: rgb(37 99 235);
-    --chart-1: rgb(77 159 255);
-    --chart-2: rgb(37 99 235);
-    --chart-3: rgb(29 78 216);
-    --chart-4: rgb(59 130 246);
-    --chart-5: rgb(96 165 250);
-    --sidebar: rgb(255 255 255 / 0.82);
-    --sidebar-foreground: rgb(11 16 26);
-    --sidebar-primary: rgb(37 99 235);
-    --sidebar-primary-foreground: rgb(255 255 255);
-    --sidebar-accent: rgb(226 236 254);
-    --sidebar-accent-foreground: rgb(11 16 26);
-    --sidebar-border: rgb(226 232 240);
-    --sidebar-ring: rgb(37 99 235);
-    --radius: 0.625rem;
+/* Every colour, radius and font in the app is declared here once and read everywhere else —
+   canvas included, through the `useChartPalette` bridge (ADR-0020). The chrome is true neutral
+   grey; colour is spent on Zone only (ADR-0019); depth is two surfaces and one shadow (ADR-0021). */
 
-    /* Redesign tokens — glass surface, blue accent, grid, status. */
-    --card-top: 219 234 254;
-    --card-base: 239 246 255;
-    --border-soft: rgb(37 99 235 / 0.14);
-    --shadow: rgb(15 23 42 / 0.12);
-    --accent-solid: rgb(37 99 235);
-    --accent-2: rgb(29 78 216);
-    --accent-rgb: 37 99 235;
-    --grid: rgb(37 99 235 / 0.05);
-    --success: rgb(22 163 74);
-    --warning: rgb(202 138 4);
-    --danger: rgb(220 38 38);
-    --neutral: rgb(51 65 85);
+/* `.light` repeats `:root` so a subtree can be pinned to the light theme regardless of the theme
+   on `html` — the /design route renders both at once. `.dark` follows and, at equal specificity,
+   wins for a subtree pinned the other way. */
+:root,
+.light {
+    /* Chrome — achromatic, no cool cast. */
+    --background: #fafafa;
+    --surface: #ffffff;
+    --surface-overlay: #ffffff;
+    --border: #e4e4e4;
+    --border-strong: #d0d0d0;
+    --foreground: #131313;
+    --muted-foreground: #5f5f5f;
+    --faint: #8a8a8a;
 
-    /* Reference status/accent RGB triples (bare, for `rgb(x / a)` tints on glass + pills). */
-    --success-rgb: 22 163 74;
-    --warning-rgb: 202 138 4;
-    --danger-rgb: 220 38 38;
-    --violet: rgb(163 113 247);
-    --violet-rgb: 163 113 247;
-    --chip-ink: rgb(255 255 255);
+    /* Accent — focus ring, selected tab, chosen metric, checked control, link. One blue across both
+       themes: the dark accent darkened until it carries white ink, rather than a second hue picked
+       for light mode. 5.82:1 on --surface, and 5.82:1 the other way for white on the fill. */
+    --accent: #1f5fd0;
+    --accent-foreground: #ffffff;
+
+    /* Zone — the only other colour. `green` renders teal, `yellow` renders amber; the names are
+       the DB enum, not the paint. Measured against --surface, not eyeballed: 5.32 / 4.85 / 8.15. */
+    --zone-green: #008275;
+    --zone-yellow: #ad6200;
+    --zone-red: #a82727;
+    --zone-neutral: #5f5f5f;
+
+    /* Sales — outside the Zone scale on purpose. A sale is a fact, not a judgement, so it may not
+       borrow green; violet is the one hue reserved for it and appears nowhere else. */
+    --sales: #6d28d9;
+    --sales-tint: rgb(109 40 217 / 0.08);
+
+    /* Interaction wash — the one hover/selected surface in the app. Semi-transparent so it reads the
+       same over --surface, --popover and the sidebar without a token per surface. */
+    --hover: rgb(90 90 90 / 0.1);
+    --hover-strong: rgb(90 90 90 / 0.16);
+
+    /* Elevation — the only neutral shadow in the app, worn by overlays alone. */
+    --shadow-overlay: 0 4px 12px rgb(0 0 0 / 0.12);
+
+    /* Zone glow — how much of the zone colour a zone-bordered block bleeds around itself, and the
+       peak the slow pulse breathes up to. Lower in light mode: a coloured halo on white reads as a
+       smudge long before it reads as a signal. */
+    --glow-rest: 32%;
+    --glow-peak: 46%;
+    --glow-strength: var(--glow-rest);
+
+    /* Radius — three steps, nothing above. */
+    --radius: 0.5rem;
+
+    /* shadcn primitives read these names; they are aliases onto the chrome above, not a second
+       palette. `--muted` and `--secondary` are the resting surface, never a wash. */
+    --card: var(--surface);
+    --card-foreground: var(--foreground);
+    --popover: var(--surface-overlay);
+    --popover-foreground: var(--foreground);
+    --primary: var(--accent);
+    --primary-foreground: var(--accent-foreground);
+    --secondary: var(--surface);
+    --secondary-foreground: var(--foreground);
+    --muted: var(--surface);
+    --destructive: var(--zone-red);
+    --destructive-foreground: #ffffff;
+    --input: var(--border-strong);
+    --ring: var(--accent);
+    --sidebar: var(--surface);
+    --sidebar-foreground: var(--foreground);
+    --sidebar-primary: var(--accent);
+    --sidebar-primary-foreground: var(--accent-foreground);
+
+    /* The sidebar's hover state is the same achromatic wash every other control uses. The accent is
+       not spent on navigation at all any more — the selected row reads `--hover-strong`, one step up
+       from hover, so "where I am" and "what I am pointing at" differ in weight rather than in hue. */
+    --sidebar-accent: var(--hover);
+    --sidebar-accent-foreground: var(--foreground);
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--accent);
 }
 
 .dark {
-    /* Dark theme — faithful to references/analizator-kampaniy-blue. */
-    --background: rgb(8 11 20);
-    --foreground: rgb(255 255 255);
-    --card: rgb(14 20 34);
-    --card-foreground: rgb(255 255 255);
-    --popover: rgb(18 24 38);
-    --popover-foreground: rgb(255 255 255);
-    --primary: rgb(77 159 255);
-    --primary-foreground: rgb(255 255 255);
-    --secondary: rgb(30 41 64);
-    --secondary-foreground: rgb(244 248 252);
-    --muted: rgb(20 26 40);
-    --muted-foreground: rgb(196 205 217);
-    --accent: rgb(30 41 64);
-    --accent-foreground: rgb(255 255 255);
-    --destructive: rgb(240 85 107);
-    --destructive-foreground: rgb(255 255 255);
-    --border: rgb(42 42 48);
-    --input: rgb(52 52 52);
-    --ring: rgb(77 159 255);
-    --chart-1: rgb(77 159 255);
-    --chart-2: rgb(37 99 235);
-    --chart-3: rgb(29 78 216);
-    --chart-4: rgb(59 130 246);
-    --chart-5: rgb(96 165 250);
-    --sidebar: rgb(10 14 24 / 0.72);
-    --sidebar-foreground: rgb(255 255 255);
-    --sidebar-primary: rgb(77 159 255);
-    --sidebar-primary-foreground: rgb(255 255 255);
-    --sidebar-accent: rgb(30 41 64);
-    --sidebar-accent-foreground: rgb(255 255 255);
-    --sidebar-border: rgb(42 42 48);
-    --sidebar-ring: rgb(77 159 255);
-    --card-top: 30 41 64;
-    --card-base: 14 20 34;
-    --border-soft: rgb(122 162 220 / 0.18);
-    --shadow: rgb(0 0 0 / 0.55);
-    --accent-solid: rgb(77 159 255);
-    --accent-2: rgb(37 99 235);
-    --accent-rgb: 77 159 255;
-    --grid: rgb(77 159 255 / 0.06);
-    --success: rgb(61 220 132);
-    --warning: rgb(224 184 58);
-    --danger: rgb(240 85 107);
-    --neutral: rgb(196 205 217);
-    --success-rgb: 61 220 132;
-    --warning-rgb: 224 184 58;
-    --danger-rgb: 240 85 107;
-    --violet: rgb(163 113 247);
-    --violet-rgb: 163 113 247;
+    /* Chrome — true black page, two grey surfaces above it. The page itself is #000, so a card is
+       read by its own lightness rather than by a border, and an overlay steps up once more. */
+    --background: #000000;
+    --surface: #161616;
+    --surface-overlay: #212121;
+    --border: #262626;
+    --border-strong: #3a3a3a;
+    --foreground: #f2f2f2;
+    --muted-foreground: #9b9b9b;
+    --faint: #6b6b6b;
 
-    /* Pill glyph chips sit on solid colour → near-black ink like the reference. */
-    --chip-ink: rgb(10 14 24);
+    /* Accent — full-chroma blue; on a black chrome a de-saturated accent reads as another grey.
+       5.04:1 on --surface, 5.84:1 on --background. Ink, not white, on the fill: black is 5.84:1
+       there where white is only 3.59:1. */
+    --accent: #4c82f7;
+    --accent-foreground: #000000;
+
+    /* Measured against --surface: 6.04 / 8.17 / 5.19. */
+    --zone-green: #26a69a;
+    --zone-yellow: #e0a33e;
+    --zone-red: #ef5350;
+    --zone-neutral: #9b9b9b;
+
+    /* Sales — measured against --surface: 6.65. */
+    --sales: #a78bfa;
+    --sales-tint: rgb(167 139 250 / 0.12);
+
+    /* Interaction wash. */
+    --hover: rgb(255 255 255 / 0.08);
+    --hover-strong: rgb(255 255 255 / 0.14);
+
+    /* Elevation — deeper than in light mode, because the drop has black to fall onto. */
+    --shadow-overlay: 0 4px 16px rgb(0 0 0 / 0.6);
+
+    /* On true black the halo has room to spread before it touches anything. */
+    --glow-rest: 65%;
+    --glow-peak: 88%;
+    --glow-strength: var(--glow-rest);
+
+    /* The shadcn aliases inherit from :root; only this one differs — white on #ef5350 is 3.49:1. */
+    --destructive-foreground: #000000;
 }
 
 @theme inline {
+    /* One webfont. Aligned digits come from `tabular-nums`, not from a mono face. */
     --font-sans: "Inter", sans-serif;
-    --font-serif: ui-serif, "Georgia", "Cambria", "Times New Roman", "Times", serif;
-    --font-mono: "Roboto Mono", ui-monospace, "SFMono-Regular", "Menlo", "Monaco", "Consolas", monospace;
-    --radius-sm: calc(var(--radius) * 0.6);
-    --radius-md: calc(var(--radius) * 0.8);
-    --radius-lg: var(--radius);
-    --radius-xl: calc(var(--radius) * 1.4);
-    --radius-2xl: calc(var(--radius) * 1.8);
-    --radius-3xl: calc(var(--radius) * 2.2);
-    --radius-4xl: calc(var(--radius) * 2.6);
+
+    /* One step up on every rung of Tailwind's type scale (~+8%). Declared here rather than by
+       resizing the root, so spacing and radius — both rem-based — stay exactly where they were. The
+       paired `--text-*--line-height` defaults are unitless ratios, so they follow on their own. */
+    --text-xs: 0.8125rem;
+    --text-sm: 0.9375rem;
+    --text-base: 1.0625rem;
+    --text-lg: 1.1875rem;
+    --text-xl: 1.375rem;
+    --text-2xl: 1.625rem;
+    --text-3xl: 2rem;
+
+    /* Ours are the only three steps. Tailwind ships its own scale, so the namespace is cleared
+       first or its larger steps keep working. `rounded-full` is unaffected; it is a literal. */
+    --radius-*: initial;
+    --radius-sm: calc(var(--radius) * 0.5);
+    --radius-md: var(--radius);
+    --radius-lg: calc(var(--radius) * 1.5);
     --color-background: var(--background);
     --color-foreground: var(--foreground);
+    --color-surface: var(--surface);
+    --color-surface-overlay: var(--surface-overlay);
+    --color-faint: var(--faint);
+    --color-zone-green: var(--zone-green);
+    --color-zone-yellow: var(--zone-yellow);
+    --color-zone-red: var(--zone-red);
+    --color-zone-neutral: var(--zone-neutral);
+    --color-sales: var(--sales);
+    --color-sales-tint: var(--sales-tint);
+    --color-hover: var(--hover);
+    --color-hover-strong: var(--hover-strong);
     --color-card: var(--card);
     --color-card-foreground: var(--card-foreground);
     --color-popover: var(--popover);
@@ -148,21 +187,11 @@
     --color-accent: var(--accent);
     --color-accent-foreground: var(--accent-foreground);
     --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
     --color-border: var(--border);
-    --color-border-soft: var(--border-soft);
+    --color-border-strong: var(--border-strong);
     --color-input: var(--input);
     --color-ring: var(--ring);
-    --color-accent-solid: var(--accent-solid);
-    --color-accent-2: var(--accent-2);
-    --color-success: var(--success);
-    --color-warning: var(--warning);
-    --color-danger: var(--danger);
-    --color-neutral: var(--neutral);
-    --color-chart-1: var(--chart-1);
-    --color-chart-2: var(--chart-2);
-    --color-chart-3: var(--chart-3);
-    --color-chart-4: var(--chart-4);
-    --color-chart-5: var(--chart-5);
     --color-sidebar: var(--sidebar);
     --color-sidebar-foreground: var(--sidebar-foreground);
     --color-sidebar-primary: var(--sidebar-primary);
@@ -171,200 +200,125 @@
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
+
+    /* Self-referential on purpose: this generates `shadow-overlay`, whose value points at the
+       :root token above. The theme copy lands in `@layer theme`, which the unlayered :root
+       declaration outranks, so the cycle never resolves against itself. */
+    --shadow-overlay: var(--shadow-overlay);
 }
 
-/* Glass surface — gradient fill + inset highlight; pair with backdrop-blur + border-border-soft. */
-@utility surface-glass {
-    background-image: linear-gradient(180deg, rgb(var(--card-top) / 0.55) 0%, rgb(var(--card-base) / 0.72) 100%);
-    box-shadow:
-        0 8px 32px var(--shadow),
-        inset 0 1px 0 rgb(255 255 255 / 0.08);
+/* Zone glow — the only inline shadow in the app, and an amendment to ADR-0021 rather than a hole in
+   it: it is worn *exclusively* by a block that already carries a zone (or sales) hairline, it is
+   painted in that same colour, and it never appears on chrome. So it says nothing about depth — a
+   glowing block is not floating, it is judged. Geometry is one line for every zone; only the hue and
+   `--glow-rest` change, so the four zones cannot drift apart. Neutral has no glow at all: an
+   ungraded block stays a hairline, which is what makes the coloured ones read as a signal.
+
+   The strength is a *registered* property so it can be interpolated: an unregistered custom property
+   is a token string to the animation engine and would snap between keyframes instead of breathing.
+   It is the *animated* name and reads its resting value from `--glow-rest`, which the keyframes read
+   too — a block animating a property it also derives its own resting value from is a cycle, and
+   resolves to the initial 0%, i.e. no glow at all. */
+@property --glow-strength {
+    syntax: "<percentage>";
+    inherits: true;
+    initial-value: 0%;
 }
 
-/* Blue gradient accent (buttons). */
-@utility surface-accent {
-    background-image: linear-gradient(145deg, var(--accent-solid) 0%, var(--accent-2) 100%);
-    box-shadow: 0 0 12px rgb(var(--accent-rgb) / 0.35);
-}
-
-/* Compositor-only fade: static box-shadow lives on a pseudo-element, only its opacity animates.
-   Opacity runs on the GPU with no repaint, so the glass `backdrop-filter` below never re-blurs
-   per frame — same look, far less CPU/GPU heat than animating `box-shadow` directly. */
-@keyframes glow-fade {
+/* The glow breathes between its resting strength and `--glow-peak` — strength only, never geometry,
+   so nothing reflows and no edge moves. Same 4.8s as `pulse-red`, because two ambient rhythms at
+   different tempos read as a busy page rather than a quiet one. */
+@keyframes zone-glow-pulse {
     0%,
     100% {
-        opacity: 0;
+        --glow-strength: var(--glow-rest);
     }
 
     50% {
-        opacity: 1;
+        --glow-strength: var(--glow-peak);
     }
 }
 
-@keyframes pulse-red-border {
-    0%,
-    100% {
-        border-color: rgb(240 85 107);
-    }
-
-    50% {
-        border-color: rgb(255 112 133);
-    }
+@utility glow-zone-green {
+    box-shadow: 0 0 28px -4px color-mix(in srgb, var(--zone-green) var(--glow-strength), transparent);
+    animation: zone-glow-pulse 4.8s ease-in-out infinite;
 }
 
-/* The glow now lives on ::after, so drop the glass depth shadow the old box-shadow animation
-   used to override — keeps the animated pills looking exactly as before. */
-.glass-tint.pulse-red,
-.glass-tint.glow-soft {
-    box-shadow: none;
+@utility glow-zone-yellow {
+    box-shadow: 0 0 28px -4px color-mix(in srgb, var(--zone-yellow) var(--glow-strength), transparent);
+    animation: zone-glow-pulse 4.8s ease-in-out infinite;
 }
 
-.pulse-red {
-    position: relative;
-    animation: pulse-red-border 3.6s ease-in-out infinite;
+@utility glow-zone-red {
+    box-shadow: 0 0 28px -4px color-mix(in srgb, var(--zone-red) var(--glow-strength), transparent);
+    animation: zone-glow-pulse 4.8s ease-in-out infinite;
 }
 
-.pulse-red::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    box-shadow: 0 0 16px 2px rgb(240 85 107 / 0.5);
-    opacity: 0;
-    pointer-events: none;
-    animation: glow-fade 3.6s ease-in-out infinite;
-}
-
-.glow-soft {
-    position: relative;
-}
-
-.glow-soft::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    box-shadow: 0 0 20px 3px rgb(var(--glow-rgb, var(--tint-rgb, var(--accent-rgb))) / 0.4);
-    opacity: 0;
-    pointer-events: none;
-    animation: glow-fade 4.8s ease-in-out infinite;
+@utility glow-sales {
+    box-shadow: 0 0 28px -4px color-mix(in srgb, var(--sales) var(--glow-strength), transparent);
+    animation: zone-glow-pulse 4.8s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .pulse-red,
-    .pulse-red::after,
-    .glow-soft::after {
-        animation: none !important;
+    .glow-zone-green,
+    .glow-zone-yellow,
+    .glow-zone-red,
+    .glow-sales {
+        animation: none;
     }
 }
 
-/* ── Reference glass tint — glassTint(color, strength): colour gradient + tinted border + colour glow.
-   Compose `glass-tint` with a `tint-*` colour and an optional `tint-s*` strength (default 1). ── */
-.glass-tint {
-    --tint-strength: 1;
+/* The one ambient animation in the app: an unreviewed problem account pulses its border. Border
+   opacity only — no glow, low amplitude, slow — so it reads as a nag, not as decoration. */
+@keyframes pulse-red-border {
+    0%,
+    100% {
+        border-color: var(--zone-red);
+    }
 
-    background-image: linear-gradient(
-        180deg,
-        rgb(var(--tint-rgb) / calc(0.1 * var(--tint-strength))) 0%,
-        rgb(var(--card-base) / 0.72) 100%
-    );
-    border: 1px solid rgb(var(--tint-rgb) / calc(0.35 * var(--tint-strength)));
-    box-shadow:
-        0 8px 32px var(--shadow),
-        0 0 24px rgb(var(--tint-rgb) / calc(0.18 * var(--tint-strength))),
-        inset 0 1px 0 rgb(255 255 255 / 0.08);
-    backdrop-filter: blur(8px);
+    50% {
+        border-color: color-mix(in srgb, var(--zone-red) 45%, transparent);
+    }
 }
 
-.tint-blue {
-    --tint-rgb: var(--accent-rgb);
+/* An unreviewed problem account wears `glow-zone-red` too, and this rule is unlayered — it would
+   otherwise replace the glow's animation outright and leave the halo frozen. Both, on one clock. */
+.pulse-red {
+    border-color: var(--zone-red);
+    animation:
+        pulse-red-border 4.8s ease-in-out infinite,
+        zone-glow-pulse 4.8s ease-in-out infinite;
 }
 
-.tint-violet {
-    --tint-rgb: var(--violet-rgb);
-}
-
-.tint-red {
-    --tint-rgb: var(--danger-rgb);
-}
-
-.tint-green {
-    --tint-rgb: var(--success-rgb);
-}
-
-.tint-yellow {
-    --tint-rgb: var(--warning-rgb);
-}
-
-.tint-s4 {
-    --tint-strength: 0.4;
-}
-
-.tint-s5 {
-    --tint-strength: 0.5;
-}
-
-.tint-s6 {
-    --tint-strength: 0.6;
-}
-
-/* ── Reference Pill — glass pill: colour gradient + glow + solid glyph chip + count. ── */
-.pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 12px 6px 6px;
-    border-radius: 999px;
-    background-image: linear-gradient(135deg, rgb(var(--pill-rgb) / 0.28) 0%, rgb(var(--pill-rgb) / 0.1) 100%);
-    border: 1px solid rgb(var(--pill-rgb) / 0.45);
-    box-shadow:
-        0 0 18px rgb(var(--pill-rgb) / 0.28),
-        inset 0 1px 0 rgb(255 255 255 / 0.12);
-    backdrop-filter: blur(6px);
-}
-
-.pill-chip {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 22px;
-    height: 22px;
-    border-radius: 999px;
-    background: rgb(var(--pill-rgb));
-    color: var(--chip-ink);
-    font-size: 12px;
-    font-weight: 700;
-    box-shadow: 0 0 10px rgb(var(--pill-rgb) / 0.6);
-}
-
-.pill-count {
-    color: rgb(var(--pill-rgb));
-    font-weight: 700;
-    filter: brightness(1.5);
-}
-
-.pill-blue {
-    --pill-rgb: var(--accent-rgb);
-}
-
-.pill-violet {
-    --pill-rgb: var(--violet-rgb);
-}
-
-.pill-red {
-    --pill-rgb: var(--danger-rgb);
-}
-
-.pill-green {
-    --pill-rgb: var(--success-rgb);
-}
-
-.pill-yellow {
-    --pill-rgb: var(--warning-rgb);
+@media (prefers-reduced-motion: reduce) {
+    .pulse-red {
+        animation: none;
+    }
 }
 
 @layer base {
     * {
-        @apply border-border outline-ring/50;
+        @apply border-border;
+    }
+
+    /* One focus treatment across the whole app, declared once rather than per primitive: 2px
+       --accent at 1px offset. Held at 2px deliberately — WCAG 2.2 focus appearance, not an
+       aesthetic call. `outline` rather than a ring so it follows the element's own radius and
+       survives an `overflow-hidden` ancestor. A primitive opts out with `outline-none`, which is
+       a utility and therefore outranks this; the only legitimate opt-outs are popups that take
+       focus programmatically and draw no visible ring. */
+    :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+    }
+}
+
+/* The same treatment when the focus lands on a descendant and the wrapper is what the reader reads
+   as the control — the two combobox input groups are the only cases. Not a `@utility`, because a
+   utility would have to nest to reach the pseudo-class and there is nothing to merge it against. */
+@layer components {
+    .focus-ring-within:focus-within {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
     }
 }

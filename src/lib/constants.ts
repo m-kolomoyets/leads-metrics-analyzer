@@ -1,6 +1,5 @@
 // NOTE: Don't forget to change the theme name in the theme script (src/routes/__root.tsx).
 export const LS_THEME_KEY = '<appName>_ADMIN_Theme';
-export const LS_BG_ANIM_KEY = '<appName>_ADMIN_BgAnimation';
 export const ONE_SECOND = 1_000;
 export const ONE_MINUTE = 60 * ONE_SECOND;
 export const COMMON_ERROR_MESSAGE = 'Uh-oh, something went wrong.';

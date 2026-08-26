@@ -12,6 +12,7 @@ import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/Sheet';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
 
 const routeApi = getRouteApi('/_authenticated');
 
@@ -58,28 +59,30 @@ function Presets() {
                 </Button>
             </MainLayoutHeader>
 
-            <Card variant="flat" className="overflow-x-auto">
-                <table className="w-full text-sm">
-                    <thead className="text-muted-foreground border-b">
-                        <tr>
-                            <th className="px-3 py-2 text-left font-medium">Geo</th>
-                            <th className="px-3 py-2 text-left font-medium">Name</th>
-                            <th className="px-3 py-2 text-left font-medium">Creator</th>
-                            {isHead && <th className="px-3 py-2 text-left font-medium">Team</th>}
-                            <th className="px-3 py-2" />
-                        </tr>
-                    </thead>
-                    <tbody>
+            <Card>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Geo</TableHead>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Creator</TableHead>
+                            {isHead && <TableHead>Team</TableHead>}
+                            <TableHead />
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
                         {presets.map((preset) => {
                             return (
-                                <tr key={preset.id} className="border-b last:border-0">
-                                    <td className="px-3 py-2 font-medium">{preset.geo}</td>
-                                    <td className="px-3 py-2">{preset.name}</td>
-                                    <td className="text-muted-foreground px-3 py-2">{preset.ownerEmail}</td>
+                                <TableRow key={preset.id}>
+                                    <TableCell className="font-medium">{preset.geo}</TableCell>
+                                    <TableCell>{preset.name}</TableCell>
+                                    <TableCell className="text-muted-foreground">{preset.ownerEmail}</TableCell>
                                     {isHead && (
-                                        <td className="text-muted-foreground px-3 py-2">{preset.teamName ?? '—'}</td>
+                                        <TableCell className="text-muted-foreground">
+                                            {preset.teamName ?? '—'}
+                                        </TableCell>
                                     )}
-                                    <td className="px-3 py-2 text-right">
+                                    <TableCell className="text-right">
                                         <Button
                                             size="xs"
                                             variant="ghost"
@@ -89,19 +92,19 @@ function Presets() {
                                         >
                                             {preset.access === 'edit' ? 'Edit' : 'View'}
                                         </Button>
-                                    </td>
-                                </tr>
+                                    </TableCell>
+                                </TableRow>
                             );
                         })}
                         {presets.length === 0 && (
-                            <tr>
-                                <td className="text-muted-foreground px-3 py-6 text-center" colSpan={isHead ? 5 : 4}>
+                            <TableRow>
+                                <TableCell className="text-muted-foreground text-center" colSpan={isHead ? 5 : 4}>
                                     No presets yet.
-                                </td>
-                            </tr>
+                                </TableCell>
+                            </TableRow>
                         )}
-                    </tbody>
-                </table>
+                    </TableBody>
+                </Table>
             </Card>
 
             <Sheet open={isCreateOpen} onOpenChange={setIsCreateOpen}>

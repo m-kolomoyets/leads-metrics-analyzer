@@ -30,7 +30,7 @@ function PopoverContent({
                 <PopoverPrimitive.Popup
                     data-slot="popover-content"
                     className={cn(
-                        'motion-safe:data-open:animate-in motion-safe:data-closed:animate-out motion-safe:data-closed:fade-out-0 motion-safe:data-open:fade-in-0 motion-safe:data-closed:zoom-out-95 motion-safe:data-open:zoom-in-95 motion-safe:data-[side=bottom]:slide-in-from-top-2 motion-safe:data-[side=left]:slide-in-from-right-2 motion-safe:data-[side=right]:slide-in-from-left-2 motion-safe:data-[side=top]:slide-in-from-bottom-2 motion-safe:data-[side=inline-start]:slide-in-from-right-2 motion-safe:data-[side=inline-end]:slide-in-from-left-2 ring-foreground/10 bg-popover text-popover-foreground w-auto origin-(--transform-origin) rounded-lg p-2.5 text-sm shadow-md ring-1 outline-none motion-safe:duration-100',
+                        'motion-safe:data-open:animate-in motion-safe:data-closed:animate-out motion-safe:data-closed:fade-out-0 motion-safe:data-open:fade-in-0 motion-safe:data-closed:zoom-out-95 motion-safe:data-open:zoom-in-95 motion-safe:data-[side=bottom]:slide-in-from-top-2 motion-safe:data-[side=left]:slide-in-from-right-2 motion-safe:data-[side=right]:slide-in-from-left-2 motion-safe:data-[side=top]:slide-in-from-bottom-2 motion-safe:data-[side=inline-start]:slide-in-from-right-2 motion-safe:data-[side=inline-end]:slide-in-from-left-2 bg-popover text-popover-foreground border-border shadow-overlay w-auto origin-(--transform-origin) rounded-lg border p-2.5 text-sm outline-none motion-safe:duration-150',
                         className
                     )}
                     {...props}

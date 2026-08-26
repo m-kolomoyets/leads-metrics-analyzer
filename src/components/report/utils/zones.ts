@@ -15,11 +15,3 @@ export function roiZone(roi: number | null): Zone {
     }
     return roi <= 30 ? 'yellow' : 'green';
 }
-
-// The glass-tint classes for a zone (index.css). Neutral keeps the plain blue tint.
-export const ZONE_TINT_CLASS: Record<Zone, string> = {
-    green: 'glass-tint tint-green',
-    yellow: 'glass-tint tint-yellow',
-    red: 'glass-tint tint-red',
-    neutral: 'glass-tint tint-blue tint-s5',
-};

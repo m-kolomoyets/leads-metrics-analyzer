@@ -7,6 +7,7 @@ import { useAppForm } from '@/components/Form';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Field, FieldGroup } from '@/components/ui/Field';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
 import { buildLeadOptions } from '../../utils/teamOptions';
 import { TeamRow } from '../TeamRow';
 
@@ -76,35 +77,35 @@ function TeamsSection({ users, teams }: TeamsSectionProps) {
                 </Field>
             </form>
 
-            <Card variant="flat" className="overflow-x-auto">
+            <Card>
                 {/* table-fixed + explicit column widths: a row toggling to rename / delete-confirm must
                     not resize columns (no layout shift). Actions column is sized for its widest state. */}
-                <table className="w-full min-w-3xl table-fixed text-sm">
+                <Table className="min-w-3xl table-fixed">
                     <colgroup>
                         <col />
                         <col className="w-72" />
                         <col className="w-64" />
                     </colgroup>
-                    <thead className="text-muted-foreground border-b">
-                        <tr>
-                            <th className="px-3 py-2 text-left font-medium">Team</th>
-                            <th className="px-3 py-2 text-left font-medium">Lead</th>
-                            <th className="px-3 py-2" />
-                        </tr>
-                    </thead>
-                    <tbody>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Team</TableHead>
+                            <TableHead>Lead</TableHead>
+                            <TableHead />
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
                         {teams.length === 0 && (
-                            <tr>
-                                <td className="text-muted-foreground px-3 py-4" colSpan={3}>
+                            <TableRow>
+                                <TableCell className="text-muted-foreground" colSpan={3}>
                                     No teams yet.
-                                </td>
-                            </tr>
+                                </TableCell>
+                            </TableRow>
                         )}
                         {teams.map((team) => {
                             return <TeamRow key={team.id} team={team} leadOptions={leadOptions} />;
                         })}
-                    </tbody>
-                </table>
+                    </TableBody>
+                </Table>
             </Card>
         </section>
     );

@@ -2,6 +2,7 @@ import type { RollupDimension } from '@/lib/auth/dimensionRollup';
 import type { RollupRow } from './utils/rows';
 import { cn } from '@/lib/utils/cn';
 import { int, ratioPct } from '@/components/report/utils/format';
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
 import { DIMENSION_LABEL, RATE_COLUMNS, STAGE_COLUMNS } from './constants';
 
 type RollupTableProps = {
@@ -19,14 +20,22 @@ const BLOCK_START = 'border-l';
 function RowCells({ row }: { row: RollupRow }) {
     return (
         <>
-            <td className="p-2 font-mono">{int(row.linkClicks)}</td>
-            <td className="p-2 font-mono">{int(row.installs)}</td>
-            <td className="p-2 font-mono">{int(row.regs)}</td>
-            <td className="p-2 font-mono">{int(row.sales)}</td>
-            <td className={cn('text-muted-foreground p-2 font-mono', BLOCK_START)}>{ratioPct(row.click2inst)}</td>
-            <td className="text-muted-foreground p-2 font-mono">{ratioPct(row.inst2reg)}</td>
-            <td className="text-muted-foreground p-2 font-mono">{ratioPct(row.reg2dep)}</td>
-            <td className="text-muted-foreground p-2 font-mono">{ratioPct(row.inst2sale)}</td>
+            <TableCell isNumeric>{int(row.linkClicks)}</TableCell>
+            <TableCell isNumeric>{int(row.installs)}</TableCell>
+            <TableCell isNumeric>{int(row.regs)}</TableCell>
+            <TableCell isNumeric>{int(row.sales)}</TableCell>
+            <TableCell isNumeric className={cn('text-muted-foreground', BLOCK_START)}>
+                {ratioPct(row.click2inst)}
+            </TableCell>
+            <TableCell isNumeric className="text-muted-foreground">
+                {ratioPct(row.inst2reg)}
+            </TableCell>
+            <TableCell isNumeric className="text-muted-foreground">
+                {ratioPct(row.reg2dep)}
+            </TableCell>
+            <TableCell isNumeric className="text-muted-foreground">
+                {ratioPct(row.inst2sale)}
+            </TableCell>
         </>
     );
 }
@@ -40,49 +49,47 @@ function RollupTable({ dimension, rows, totals }: RollupTableProps) {
     const showFooter = rows.length > 1;
 
     return (
-        <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-right text-xs">
-                <thead>
-                    <tr className="text-muted-foreground border-b">
-                        <th className="p-2 text-left font-normal whitespace-nowrap">{DIMENSION_LABEL[dimension]}</th>
-                        {STAGE_COLUMNS.map((label) => {
-                            return (
-                                <th key={label} className="p-2 font-normal">
-                                    {label}
-                                </th>
-                            );
-                        })}
-                        {RATE_COLUMNS.map((label, index) => {
-                            return (
-                                <th key={label} className={cn('p-2 font-normal', index === 0 && BLOCK_START)}>
-                                    {label}
-                                </th>
-                            );
-                        })}
-                    </tr>
-                </thead>
-                <tbody>
-                    {rows.map((row) => {
+        <Table density="compact" className="text-xs">
+            <TableHeader>
+                <TableRow>
+                    <TableHead>{DIMENSION_LABEL[dimension]}</TableHead>
+                    {STAGE_COLUMNS.map((label) => {
                         return (
-                            <tr key={row.key} className="border-b">
-                                <td className="max-w-80 truncate p-2 text-left" title={row.key}>
-                                    <span className="text-primary font-mono font-bold">{row.key}</span>
-                                </td>
-                                <RowCells row={row} />
-                            </tr>
+                            <TableHead key={label} isNumeric>
+                                {label}
+                            </TableHead>
                         );
                     })}
-                </tbody>
-                {showFooter && (
-                    <tfoot>
-                        <tr className="border-t-2 font-semibold">
-                            <td className="text-muted-foreground p-2 text-left whitespace-nowrap">Total</td>
-                            <RowCells row={totals} />
-                        </tr>
-                    </tfoot>
-                )}
-            </table>
-        </div>
+                    {RATE_COLUMNS.map((label, index) => {
+                        return (
+                            <TableHead key={label} isNumeric className={cn(index === 0 && BLOCK_START)}>
+                                {label}
+                            </TableHead>
+                        );
+                    })}
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {rows.map((row) => {
+                    return (
+                        <TableRow key={row.key}>
+                            <TableCell className="max-w-80 truncate" title={row.key}>
+                                <span className="text-accent font-medium">{row.key}</span>
+                            </TableCell>
+                            <RowCells row={row} />
+                        </TableRow>
+                    );
+                })}
+            </TableBody>
+            {showFooter && (
+                <TableFooter>
+                    <TableRow>
+                        <TableCell className="text-muted-foreground">Total</TableCell>
+                        <RowCells row={totals} />
+                    </TableRow>
+                </TableFooter>
+            )}
+        </Table>
     );
 }
 

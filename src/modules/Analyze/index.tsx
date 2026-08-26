@@ -245,7 +245,7 @@ function Analyze() {
     const zoneHeader = activeGeo && (
         <>
             <AccordionHeader>
-                <AccordionTrigger className="text-[13px] font-normal tracking-widest uppercase">
+                <AccordionTrigger className="text-sm font-semibold tracking-widest uppercase">
                     {ui('zoneMetrics', locale)} · {activeGeo}
                 </AccordionTrigger>
             </AccordionHeader>
@@ -358,7 +358,7 @@ function Analyze() {
                         </div>
 
                         {result && canWritePresets && (
-                            <SectionCard tone="violet">
+                            <SectionCard>
                                 <div className="flex flex-col gap-2">
                                     <SaveSnapshot
                                         facts={result.facts}
@@ -379,7 +379,7 @@ function Analyze() {
                         )}
 
                         {(activePreset || canWritePresets || shared || canEditShared) && (
-                            <SectionCard tone="blue">
+                            <SectionCard>
                                 <Accordion
                                     value={isZoneOpen ? [ZONE_ITEM] : []}
                                     onValueChange={(value) => {
@@ -430,7 +430,7 @@ function Analyze() {
 
                         {geoRollup && thresholds && (
                             <div className="flex flex-col gap-6">
-                                <SectionCard tone="violet">
+                                <SectionCard>
                                     <OffersTable
                                         title={`📦 ${ui('offers', locale)} · ${activeGeo}`}
                                         firstCol={ui('offers', locale)}
@@ -440,7 +440,7 @@ function Analyze() {
                                         locale={locale}
                                     />
                                 </SectionCard>
-                                <SectionCard tone="blue">
+                                <SectionCard>
                                     <OsTable
                                         title={`💻 ${ui('osTable', locale)} · ${activeGeo}`}
                                         firstCol={ui('osTable', locale)}
@@ -450,7 +450,7 @@ function Analyze() {
                                         locale={locale}
                                     />
                                 </SectionCard>
-                                <SectionCard tone="blue">
+                                <SectionCard>
                                     <CreativeTable
                                         rows={creatives}
                                         thresholds={thresholds}

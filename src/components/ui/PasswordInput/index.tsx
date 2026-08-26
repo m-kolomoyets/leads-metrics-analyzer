@@ -17,14 +17,14 @@ function PasswordInput({ className, disabled, ...props }: PasswordInputProps) {
                 {...props}
             />
             <button
-                className="absolute inset-y-0 inset-e-0 flex h-full w-9 items-center justify-center rounded-e-lg text-muted-foreground outline-offset-2 motion-safe:transition-colors hover:text-foreground focus-visible:z-10 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
+                className="absolute inset-y-0 inset-e-0 flex h-full w-9 items-center justify-center rounded-e-md text-muted-foreground motion-safe:transition-colors motion-safe:duration-150 hover:text-foreground focus-visible:z-10 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
                 type="button"
                 onClick={toggleIsVisible}
                 disabled={disabled}
                 aria-pressed={isVisible}
                 aria-controls="password"
             >
-                <Icon size={16} strokeWidth={2} aria-hidden={true} />
+                <Icon size={16} aria-hidden={true} />
                 <span className="sr-only">{isVisible ? 'Hide password' : 'Show password'}</span>
             </button>
         </div>

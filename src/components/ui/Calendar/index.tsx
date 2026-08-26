@@ -48,7 +48,7 @@ function CalendarDayButton({ className, day, modifiers, ...props }: CalendarDayB
             size="icon"
             data-day={day.date.toISOString().slice(0, 10)}
             // A lone selected day is styled like a range edge; splitting the flags lets the two edges
-            // read as the accent while the days between them stay a flat tinted band.
+            // carry the solid accent while the days between them keep only a wash of it.
             data-selected-single={
                 modifiers.selected && !modifiers.range_start && !modifiers.range_end && !modifiers.range_middle
             }
@@ -56,7 +56,7 @@ function CalendarDayButton({ className, day, modifiers, ...props }: CalendarDayB
             data-range-end={modifiers.range_end}
             data-range-middle={modifiers.range_middle}
             className={cn(
-                'group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-ring/50 data-[range-end=true]:surface-accent data-[range-start=true]:surface-accent data-[selected-single=true]:surface-accent data-[range-middle=true]:text-accent-foreground relative z-10 flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 border-0 leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:ring-3 data-[range-end=true]:text-white data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-transparent data-[range-start=true]:text-white data-[selected-single=true]:text-white',
+                'data-[range-end=true]:bg-accent data-[range-start=true]:bg-accent data-[selected-single=true]:bg-accent data-[range-end=true]:text-accent-foreground data-[range-start=true]:text-accent-foreground data-[selected-single=true]:text-accent-foreground relative z-10 flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 border-0 leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-transparent',
                 defaultClassNames.day,
                 className
             )}
@@ -80,7 +80,7 @@ function Calendar({
         <DayPicker
             showOutsideDays={showOutsideDays}
             captionLayout={captionLayout}
-            className={cn('group/calendar [--cell-size:--spacing(8)] p-1 [--cell-radius:var(--radius-lg)]', className)}
+            className={cn('group/calendar [--cell-size:--spacing(8)] p-1 [--cell-radius:var(--radius-md)]', className)}
             classNames={{
                 root: cn('w-fit', defaultClassNames.root),
                 months: cn('relative flex flex-col gap-4 md:flex-row', defaultClassNames.months),
@@ -108,7 +108,7 @@ function Calendar({
                     defaultClassNames.dropdowns
                 ),
                 dropdown_root: cn(
-                    'border-border has-focus:border-ring has-focus:ring-ring/50 relative rounded-(--cell-radius) border shadow-xs has-focus:ring-3',
+                    'border-border focus-ring-within relative rounded-(--cell-radius) border',
                     defaultClassNames.dropdown_root
                 ),
                 dropdown: cn('bg-popover absolute inset-0 opacity-0', defaultClassNames.dropdown),
@@ -136,11 +136,11 @@ function Calendar({
                 // row, so a tinted cell run reads as one continuous stripe from the first day to the
                 // last. The edge cells keep the tint too — it runs under their accent button and out
                 // to the neighbouring day, instead of leaving a notch at each end.
-                range_start: cn('bg-accent rounded-r-none', defaultClassNames.range_start),
-                range_middle: cn('bg-accent rounded-none', defaultClassNames.range_middle),
-                range_end: cn('bg-accent rounded-l-none', defaultClassNames.range_end),
+                range_start: cn('bg-accent/15 rounded-r-none', defaultClassNames.range_start),
+                range_middle: cn('bg-accent/15 rounded-none', defaultClassNames.range_middle),
+                range_end: cn('bg-accent/15 rounded-l-none', defaultClassNames.range_end),
                 today: cn(
-                    'text-accent-foreground rounded-(--cell-radius) font-semibold underline underline-offset-4 data-[selected=true]:no-underline',
+                    'text-primary rounded-(--cell-radius) font-medium underline underline-offset-4 data-[selected=true]:no-underline',
                     defaultClassNames.today
                 ),
                 outside: cn('text-muted-foreground opacity-60', defaultClassNames.outside),

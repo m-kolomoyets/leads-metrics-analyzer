@@ -51,12 +51,11 @@ function BuyerDimensionDay({ dimension, buyerId, reportDate, geo, onSelectGeo }:
             <GeoTabs geos={geos} active={selected} onSelect={onSelectGeo} />
 
             <SectionCard
-                tone="blue"
                 title={`${REPORT_TITLE[dimension]} · ${day.buyerNickname} · ${selected}`}
                 // When the push landed — the other half of the decision, and the reason a BDM can
                 // tell a live allocation from one nobody has reported on since morning.
                 actions={
-                    <span className="text-muted-foreground font-mono text-xs">
+                    <span className="text-muted-foreground text-xs tabular-nums">
                         pushed {kyivClock(new Date(day.takenAt))}
                     </span>
                 }

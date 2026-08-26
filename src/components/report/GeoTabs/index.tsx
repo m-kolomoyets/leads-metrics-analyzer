@@ -1,5 +1,5 @@
-import { cn } from '@/lib/utils/cn';
 import { usdRound } from '@/components/report/utils/format';
+import { Segmented, SegmentedItem } from '@/components/ui/Segmented';
 
 // ISO-2 → flag emoji via Unicode regional-indicator offset. Returns null for anything that is not two
 // A–Z letters (unknown/aggregate geo), so the label falls back to the raw code.
@@ -20,42 +20,36 @@ type GeoTabsProps = {
     onSelect: (geo: string) => void;
 };
 
-// Geo navigation (reference nav): one glass pill per parsed geo. The active pill takes the blue
-// gradient + glow; the rest stay ghost. Selecting reruns the per-geo view (state lives in the parent).
+// Geo navigation: one tab per parsed geo. It is the app's one row-of-choices control (`ui/Segmented`),
+// so the selected geo reads as a wash rather than as a bordered or accent-filled chip — the figures
+// under it are the page. Selecting reruns the per-geo view (state lives in the parent).
 function GeoTabs({ geos, active, spendByGeo, onSelect }: GeoTabsProps) {
     return (
-        <div role="tablist" aria-label="Geo" className="flex flex-wrap gap-2">
+        <Segmented label="Geo">
             {geos.map((geo) => {
-                const selected = geo === active;
                 const spend = spendByGeo?.[geo];
                 const flag = flagEmoji(geo);
                 return (
-                    <button
+                    <SegmentedItem
                         key={geo}
-                        type="button"
-                        role="tab"
-                        aria-selected={selected}
-                        className={cn(
-                            'rounded-lg border px-3.5 py-2 text-sm font-bold transition-colors flex items-center',
-                            selected
-                                ? 'surface-accent border-primary  text-white'
-                                : 'text-muted-foreground hover:text-foreground border-border bg-[#162036]'
-                        )}
-                        onClick={() => {
+                        selected={geo === active}
+                        onSelect={() => {
                             onSelect(geo);
                         }}
                     >
                         {flag && (
-                            <span aria-hidden={true} className="mr-1.5 text-lg">
+                            <span aria-hidden={true} className="text-base">
                                 {flag}
                             </span>
                         )}
                         {geo}
-                        {spend !== undefined && <span className="ml-1.5 font-mono  opacity-80">{usdRound(spend)}</span>}
-                    </button>
+                        {spend !== undefined && (
+                            <span className="text-muted-foreground text-xs tabular-nums">{usdRound(spend)}</span>
+                        )}
+                    </SegmentedItem>
                 );
             })}
-        </div>
+        </Segmented>
     );
 }
 

@@ -24,8 +24,12 @@ function percent(value: number, max: number): number {
 // The rail always shows BOTH lines with air past the red one, so "how far over" is visible rather
 // than implied — a bar that ended at the red line would draw every failing cost the same way. A
 // figure beyond that air pins to the end and says so through `clamped`.
-export function meterScale(value: number | null, greenBelow: number, redAbove: number): MeterScale {
-    const max = Math.max(redAbove * 1.3, greenBelow * 1.3, value ?? 0);
+//
+// `fixedMax` is for the metrics whose rail has a real end: a percent band runs 0–100 and nothing
+// else, so deriving its end from the thresholds would draw "green below 7%" as most of the rail and
+// lie about how much room is left. Everything else is open-ended and keeps the derived end.
+export function meterScale(value: number | null, greenBelow: number, redAbove: number, fixedMax?: number): MeterScale {
+    const max = fixedMax ?? Math.max(redAbove * 1.3, greenBelow * 1.3, value ?? 0);
 
     return {
         max,

@@ -7,9 +7,9 @@ import { compareFigures, hasZone, thresholdPairOf, zoneOfPoint } from '@/lib/dom
 import { kyivClock } from '@/lib/utils/kyivDay';
 import { DASH, int, usd } from '@/components/report/utils/format';
 import { Button } from '@/components/ui/Button';
+import { ZoneMeter } from '@/components/ZoneMeter';
 import { ZONE_LABEL, ZONE_STROKE } from '../../../constants';
 import { METRIC_FORMAT, METRIC_LABEL } from '../../../utils/metrics';
-import { ThresholdMeter } from '../../../ThresholdMeter';
 
 // The tooltip exists for one reason: PLAN BESIDE FACT. A figure on its own says how the day went; a
 // figure beside the thresholds that graded it and the bases it was divided from says why, and says
@@ -60,7 +60,7 @@ function PointTooltip({ point, previous, metric, mode, position, total }: PointT
         // the verdict on the left (what this metric did and what it was judged against), the bases it
         // was computed from on the right. Stacking all of it read as one long list where the plan and
         // the fact drifted apart.
-        <div className="border-border bg-popover text-popover-foreground flex w-[22rem] flex-col gap-2.5 rounded-lg border p-3 text-xs shadow-lg">
+        <div className="border-border bg-popover text-popover-foreground flex w-[22rem] flex-col gap-2.5 shadow-overlay rounded-lg border p-3 text-xs">
             <p className="text-muted-foreground border-border flex items-baseline justify-between gap-2 border-b pb-2">
                 <span>
                     {point.geo} · {isDelta ? 'interval ending ' : ''}
@@ -72,28 +72,26 @@ function PointTooltip({ point, previous, metric, mode, position, total }: PointT
             </p>
 
             <div className="grid grid-cols-2 gap-x-4">
-                <div className="border-border flex flex-col gap-1.5 border-r pr-4">
-                    <p className="flex items-baseline justify-between gap-2">
-                        <span className="font-semibold">
-                            {prefix}
-                            {METRIC_LABEL[metric]}
-                        </span>
-                        <span className="font-mono text-base font-bold">{format.value(value)}</span>
-                    </p>
-
-                    {zone !== null && (
-                        <p className="flex items-center gap-1.5" style={{ color: ZONE_STROKE[zone] }}>
-                            <span
-                                aria-hidden={true}
-                                className="size-2 rounded-full"
-                                style={{ background: 'currentcolor' }}
-                            />
-                            {ZONE_LABEL[zone]}
-                        </p>
-                    )}
+                {/* The figure IS the verdict, so it wears it: the number sits under its own label and
+                    is painted in its zone. A grey number with "yellow ●" spelled underneath made the
+                    reader join two things that were never separate — and cost the figure the size it
+                    deserves as the one thing the card is opened for. */}
+                <div className="border-border flex flex-col border-r pr-4">
+                    <span className="text-muted-foreground text-xs">
+                        {prefix}
+                        {METRIC_LABEL[metric]}
+                    </span>
+                    <span
+                        className="text-2xl leading-tight font-semibold tabular-nums"
+                        style={zone === null ? undefined : { color: ZONE_STROKE[zone] }}
+                    >
+                        {format.value(value)}
+                    </span>
+                    {/* The grade in words, for anyone the colour does not reach. */}
+                    {zone !== null && <span className="sr-only">{ZONE_LABEL[zone]}</span>}
                 </div>
 
-                <dl className="text-muted-foreground grid grid-cols-[auto_1fr] content-start gap-x-3 font-mono">
+                <dl className="text-muted-foreground grid grid-cols-[auto_1fr] content-start gap-x-3 tabular-nums">
                     <dt>{prefix}Spend⁺</dt>
                     <dd className="text-right">{usd(point.figures.spendPlus)}</dd>
                     <dt>{prefix}Installs</dt>
@@ -106,12 +104,12 @@ function PointTooltip({ point, previous, metric, mode, position, total }: PointT
             {/* The plan the fact was graded against — this Snapshot's own frozen copy, never the
                 reader's live preset (ADR-0002). Full width, because it is a measurement and a
                 measurement needs a run: squeezed into the left column the mark had nowhere to sit. */}
-            {pair !== null && <ThresholdMeter value={value} greenBelow={pair.gy} redAbove={pair.yr} />}
+            {pair !== null && <ZoneMeter value={value} greenBelow={pair.gy} redAbove={pair.yr} />}
 
             {/* The movement gets a row of its own across the whole card: squeezed into the right
                 column it wrapped onto a second line, and half a number under the other half is the
                 one thing a figure must never do. */}
-            <p className="text-muted-foreground border-border flex items-baseline justify-between gap-3 border-t pt-2 font-mono whitespace-nowrap">
+            <p className="text-muted-foreground border-border flex items-baseline justify-between gap-3 border-t pt-2 whitespace-nowrap tabular-nums">
                 <span>{isDelta ? 'Δ vs previous' : 'since last push'}</span>
                 <span className="text-foreground font-semibold">
                     {previous === null

@@ -2,6 +2,7 @@ import type { DynamicsMetric, SeriesPoint } from '@/lib/domain/dynamics';
 import type { Zone } from '@/lib/domain/types';
 import { hasZone, thresholdPairOf, zoneOfPoint } from '@/lib/domain/dynamics';
 import { cn } from '@/lib/utils/cn';
+import { Figure } from '@/components/Figure';
 import { ZONE_CARD_CLASS, ZONE_TEXT_CLASS } from '@/components/report/constants';
 import { SectionCard } from '@/components/report/SectionCard';
 import { cost } from '@/components/report/utils/format';
@@ -40,42 +41,42 @@ type MetricTilesProps = {
 
 function MetricTiles({ point }: MetricTilesProps) {
     return (
-        // The same tinted glass panel every analysis section wears (SectionCard): a bare bordered box
-        // read as a hole in the page next to the tables under it.
+        // The same card every analysis section wears (SectionCard), so the tiles sit on the page the
+        // way the tables under them do.
         <SectionCard label="The day so far" className="flex flex-col gap-3">
             <p className="text-muted-foreground text-xs">
                 first report today — one push is not yet a trajectory, so there is no chart to draw
             </p>
 
-            <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {TILE_METRICS.map((metric) => {
                     const value = metricValue(point.figures, metric);
                     const zone = zoneOfTile(point, metric, value);
                     const pair = hasZone(metric) ? thresholdPairOf(metric, point.thresholds) : null;
 
                     return (
-                        <div
-                            key={metric}
-                            className={cn('flex flex-col gap-0.5 rounded-lg border p-3', ZONE_CARD_CLASS[zone])}
-                        >
-                            <dt className="text-muted-foreground text-[11px] tracking-widest uppercase">
-                                {METRIC_LABEL[metric]}
-                            </dt>
-                            <dd className={cn('font-mono text-2xl font-bold', ZONE_TEXT_CLASS[zone])}>
-                                {METRIC_FORMAT[metric].value(value)}
-                            </dd>
-
-                            {/* The plan beside the fact, from this push's own frozen copy — the same
-                                reason the chart's tooltip carries it. */}
-                            {pair !== null && (
-                                <dd className="text-muted-foreground font-mono text-[10px]">
-                                    green &lt; {cost(pair.gy)} · red &gt; {cost(pair.yr)}
-                                </dd>
-                            )}
+                        <div key={metric} className={cn('rounded-md border p-3', ZONE_CARD_CLASS[zone])}>
+                            {/* One readout, the app's own (`Figure`): label, figure, and the plan
+                                beside the fact from this push's own frozen copy — the same reason the
+                                chart's tooltip carries it. An ungraded tile keeps `--foreground`:
+                                `neutral` is the absence of a grade, not a grade to paint. */}
+                            <Figure
+                                label={METRIC_LABEL[metric]}
+                                value={METRIC_FORMAT[metric].value(value)}
+                                size="lg"
+                                className={zone === 'neutral' ? undefined : ZONE_TEXT_CLASS[zone]}
+                                meta={
+                                    pair !== null ? (
+                                        <>
+                                            green &lt; {cost(pair.gy)} · red &gt; {cost(pair.yr)}
+                                        </>
+                                    ) : undefined
+                                }
+                            />
                         </div>
                     );
                 })}
-            </dl>
+            </div>
         </SectionCard>
     );
 }

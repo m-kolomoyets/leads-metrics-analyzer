@@ -12,6 +12,7 @@ import { ZONE_TEXT_CLASS } from '@/components/report/constants';
 import { cost, int, pct, ratioPct, usd, usdSigned } from '@/components/report/utils/format';
 import { ui } from '@/components/report/utils/i18n';
 import { hasUnallocatedSpend, rollUpRows, showsFooter } from '@/components/report/utils/rollup';
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
 
 type OsTableProps = {
     title: string;
@@ -53,14 +54,18 @@ function CostCell({
     trend?: MetricTrend | null;
 }) {
     if (value === null) {
-        return <td className={cn('p-2 font-mono', className)}>—</td>;
+        return (
+            <TableCell isNumeric className={className}>
+                —
+            </TableCell>
+        );
     }
     const zone = plain ? undefined : ZONE_TEXT_CLASS[zoneFor(value, pair)];
     return (
-        <td className={cn('p-2 font-mono', zone, className)}>
+        <TableCell isNumeric className={cn(zone, className)}>
             {cost(value)}
             <RowTrend metric="cpi" trend={trend ?? null} />
-        </td>
+        </TableCell>
     );
 }
 
@@ -84,39 +89,53 @@ function MetricCells({
     const dim = plain ? undefined : 'text-muted-foreground';
     return (
         <>
-            <td className="p-2 font-mono">{int(m.linkClicks)}</td>
-            <td className="p-2 font-mono">{int(m.installs)}</td>
-            <td className="p-2 font-mono">{int(m.regs)}</td>
-            <td className="p-2 font-mono">{int(m.sales)}</td>
-            <td className={cn('p-2 font-mono', dim)}>{cost(m.epc)}</td>
-            <td className={cn('p-2 font-mono', BLOCK_START, !plain && m.revenue > 0 && 'text-success')}>
+            <TableCell isNumeric>{int(m.linkClicks)}</TableCell>
+            <TableCell isNumeric>{int(m.installs)}</TableCell>
+            <TableCell isNumeric>{int(m.regs)}</TableCell>
+            <TableCell isNumeric>{int(m.sales)}</TableCell>
+            <TableCell isNumeric className={dim}>
+                {cost(m.epc)}
+            </TableCell>
+            <TableCell isNumeric className={cn(BLOCK_START, !plain && m.revenue > 0 && ZONE_TEXT_CLASS.green)}>
                 {usd(m.revenue)}
                 <RowTrend metric="revenue" trend={trend ?? null} />
-            </td>
-            <td className={cn('p-2 font-mono', dim)}>
+            </TableCell>
+            <TableCell isNumeric className={dim}>
                 {usd(m.spendPlus)}
                 <RowTrend metric="spend" trend={trend ?? null} />
-            </td>
-            <td className={cn('p-2 font-mono font-bold', !plain && (m.profit >= 0 ? 'text-success' : 'text-danger'))}>
+            </TableCell>
+            <TableCell
+                isNumeric
+                className={cn('font-medium', !plain && (m.profit >= 0 ? ZONE_TEXT_CLASS.green : ZONE_TEXT_CLASS.red))}
+            >
                 {usdSigned(m.profit)}
                 <RowTrend metric="profit" trend={trend ?? null} />
-            </td>
-            <td
+            </TableCell>
+            <TableCell
+                isNumeric
                 className={cn(
-                    'p-2 font-mono font-bold',
-                    !plain && m.roi !== null && (m.roi >= 0 ? 'text-success' : 'text-danger')
+                    'font-medium',
+                    !plain && m.roi !== null && (m.roi >= 0 ? ZONE_TEXT_CLASS.green : ZONE_TEXT_CLASS.red)
                 )}
             >
                 {pct(m.roi)}
                 <RowTrend metric="roi" trend={trend ?? null} />
-            </td>
+            </TableCell>
             <CostCell value={m.cpi} pair={thresholds.installs} className={BLOCK_START} plain={plain} trend={trend} />
             <CostCell value={m.cpr} pair={thresholds.regs} plain={plain} />
             <CostCell value={m.cps} pair={thresholds.sales} plain={plain} />
-            <td className={cn('p-2 font-mono', BLOCK_START, dim)}>{ratioPct(m.click2inst)}</td>
-            <td className={cn('p-2 font-mono', dim)}>{ratioPct(m.inst2reg)}</td>
-            <td className={cn('p-2 font-mono', dim)}>{ratioPct(m.reg2dep)}</td>
-            <td className={cn('p-2 font-mono', dim)}>{ratioPct(m.inst2sale)}</td>
+            <TableCell isNumeric className={cn(BLOCK_START, dim)}>
+                {ratioPct(m.click2inst)}
+            </TableCell>
+            <TableCell isNumeric className={dim}>
+                {ratioPct(m.inst2reg)}
+            </TableCell>
+            <TableCell isNumeric className={dim}>
+                {ratioPct(m.reg2dep)}
+            </TableCell>
+            <TableCell isNumeric className={dim}>
+                {ratioPct(m.inst2sale)}
+            </TableCell>
         </>
     );
 }
@@ -162,61 +181,54 @@ function OsTable({ title, firstCol, rows, unallocated, thresholds, locale, previ
 
     return (
         <div className="flex flex-col gap-2">
-            <h3 className="text-muted-foreground text-[13px] font-normal tracking-widest uppercase">{title}</h3>
-            <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-right text-xs">
-                    <thead>
-                        <tr className="text-muted-foreground border-b">
-                            <th className="p-2 text-left font-normal whitespace-nowrap">{firstCol}</th>
-                            {HEAD_COLS.map((col) => {
-                                return (
-                                    <th key={col.label} className={cn('p-2 font-normal', col.start && BLOCK_START)}>
-                                        {col.label}
-                                    </th>
-                                );
-                            })}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {rows.map((row) => {
+            <h3 className="text-foreground text-xs font-semibold tracking-widest uppercase">{title}</h3>
+            <Table density="compact" className="text-xs">
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>{firstCol}</TableHead>
+                        {HEAD_COLS.map((col) => {
                             return (
-                                <tr key={row.key} className="border-b">
-                                    <td
-                                        className="max-w-80 truncate p-2 text-left font-mono"
-                                        title={row.label || row.key}
-                                    >
-                                        {row.label || row.key}
-                                    </td>
-                                    <MetricCells
-                                        m={row.metrics}
-                                        thresholds={thresholds}
-                                        trend={trendBetween(previousRows.get(row.key) ?? null, row.metrics)}
-                                    />
-                                </tr>
+                                <TableHead key={col.label} isNumeric className={cn(col.start && BLOCK_START)}>
+                                    {col.label}
+                                </TableHead>
                             );
                         })}
-                        {hasUnallocated && (
-                            <tr className="border-b">
-                                <td className="text-muted-foreground max-w-80 truncate p-2 text-left">
-                                    {ui('unallocatedRow', locale)}
-                                </td>
-                                <MetricCells m={unallocatedMetrics} thresholds={thresholds} plain />
-                            </tr>
-                        )}
-                    </tbody>
-                    {showFooter && (
-                        <tfoot>
-                            <tr className="border-t-2 font-semibold">
-                                <td className="text-muted-foreground p-2 text-left whitespace-nowrap">
-                                    {ui('totalAvg', locale)}
-                                </td>
-                                <MetricCells m={totals} thresholds={thresholds} plain trend={totalsTrend} />
-                            </tr>
-                        </tfoot>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {rows.map((row) => {
+                        return (
+                            <TableRow key={row.key}>
+                                <TableCell className="max-w-80 truncate" title={row.label || row.key}>
+                                    {row.label || row.key}
+                                </TableCell>
+                                <MetricCells
+                                    m={row.metrics}
+                                    thresholds={thresholds}
+                                    trend={trendBetween(previousRows.get(row.key) ?? null, row.metrics)}
+                                />
+                            </TableRow>
+                        );
+                    })}
+                    {hasUnallocated && (
+                        <TableRow>
+                            <TableCell className="text-muted-foreground max-w-80 truncate">
+                                {ui('unallocatedRow', locale)}
+                            </TableCell>
+                            <MetricCells m={unallocatedMetrics} thresholds={thresholds} plain />
+                        </TableRow>
                     )}
-                </table>
-            </div>
-            <p className="text-muted-foreground text-[10px]">{ui('allocEstimate', locale)}</p>
+                </TableBody>
+                {showFooter && (
+                    <TableFooter>
+                        <TableRow className="font-medium">
+                            <TableCell className="text-muted-foreground">{ui('totalAvg', locale)}</TableCell>
+                            <MetricCells m={totals} thresholds={thresholds} plain trend={totalsTrend} />
+                        </TableRow>
+                    </TableFooter>
+                )}
+            </Table>
+            <p className="text-muted-foreground text-xs">{ui('allocEstimate', locale)}</p>
         </div>
     );
 }

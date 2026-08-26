@@ -12,10 +12,11 @@ function ToggleGroup({ className, ...props }: ToggleGroupProps) {
     return (
         <ToggleGroupPrimitive
             data-slot="toggle-group"
-            // A tinted tray, not a bare outline: dropped on a glass panel an outline-only group read
-            // as four floating chips, and the point of the tray is that they are one control.
+            // The tray is a bare inline surface — border and a lightness step, no fill and no
+            // shadow. A row of loose chips reads as four unrelated controls; one tray reads as one
+            // setting with several positions.
             className={cn(
-                'border-border bg-background/40 flex w-fit items-center gap-0.5 rounded-lg border p-0.5',
+                'border-border bg-background flex w-fit items-center gap-0.5 rounded-md border p-0.5',
                 className
             )}
             {...props}
@@ -29,7 +30,7 @@ function Toggle({ className, ...props }: ToggleProps) {
         <TogglePrimitive
             data-slot="toggle"
             className={cn(
-                'text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 data-[pressed]:surface-accent flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1 text-xs font-medium outline-none transition-colors focus-visible:ring-3 data-[pressed]:text-white',
+                'text-muted-foreground hover:text-foreground data-[pressed]:bg-accent data-[pressed]:text-accent-foreground flex cursor-pointer items-center gap-2 rounded-sm px-2.5 py-1 text-xs font-medium motion-safe:transition-colors motion-safe:duration-150',
                 className
             )}
             {...props}
