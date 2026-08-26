@@ -120,6 +120,17 @@ State changes only, 120–160ms. No ambient animation, with one exception: an un
 account pulses its border opacity — no glow, low amplitude, slow. Everything respects
 `prefers-reduced-motion`.
 
+## The workbench
+
+`/design` (dev-only, outside `_authenticated` — `src/routes/design.tsx`) renders every token above and
+every `ui/` primitive in every state it supports, with light and dark side by side rather than behind
+the switcher. Zone swatches re-measure their contrast against their own surface on each render, so the
+table above is checked rather than trusted.
+
+It is the checklist: a primitive is migrated when it looks right on that page, not when the one screen
+using it looks right. Overlay primitives portal to `document.body`, so an opened dialog, menu or
+tooltip wears the app's own theme — check the second one with the theme switcher.
+
 ## Deleted vocabulary
 
 `surface-glass`, `glass-tint`, `tint-*`, `surface-accent`, `pill`, `pill-*`, `glow-soft`,

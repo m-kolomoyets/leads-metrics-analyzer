@@ -5,13 +5,22 @@
 @source "../../src";
 @source "../../index.html";
 
-@custom-variant dark (&:is(.dark *));
+/* Nearest themed ancestor wins, not the outermost one. `html` always carries `light` or `dark`
+   (ThemeContext), so a `.light` pane nested inside `html.dark` — the side-by-side arrangement the
+   /design route is built on — has to opt its subtree back out of the dark variant. The exclusion is
+   scoped to a `.light` *inside* the document, so `html.light` itself never matches it and the app's
+   own two themes behave exactly as before. */
+@custom-variant dark (&:is(.dark *):not(:is(html .light *)));
 
 /* Every colour, radius and font in the app is declared here once and read everywhere else —
    canvas included, through the `useChartPalette` bridge (ADR-0020). The chrome is true neutral
    grey; colour is spent on Zone only (ADR-0019); depth is two surfaces and one shadow (ADR-0021). */
 
-:root {
+/* `.light` repeats `:root` so a subtree can be pinned to the light theme regardless of the theme
+   on `html` — the /design route renders both at once. `.dark` follows and, at equal specificity,
+   wins for a subtree pinned the other way. */
+:root,
+.light {
     /* Chrome — achromatic, no cool cast. */
     --background: #fafafa;
     --surface: #ffffff;
