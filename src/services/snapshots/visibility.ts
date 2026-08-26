@@ -43,11 +43,40 @@ export const listSnapshotsFilter = (scope: VisibilityScope): SQL | undefined => 
     return and(snapshotRowFilter(scope), activeSnapshotsOnly());
 };
 
+// The row-scope axis as a WHERE clause over the `user` table — the roster's half of the same axis
+// `snapshotRowFilter` applies to Snapshots. `undefined` means "no filter" (head sees every user); a
+// teamless team-scope viewer matches no row at all, which `matchesNoRows` catches upstream.
+export const userRowFilter = (scope: VisibilityScope): SQL | undefined => {
+    switch (scope.rowScope) {
+        case 'all': {
+            return undefined;
+        }
+        case 'team': {
+            return eq(user.teamId, scope.teamId ?? '');
+        }
+        case 'own': {
+            return eq(user.id, scope.userId ?? '');
+        }
+    }
+};
+
+// True when the viewer's row-scope can match no row: a team lead not yet placed on a team. This is
+// genuinely "no data", not a refusal — the lead may ask, there is simply nothing under them yet, so
+// it stays separate from the dimension denial (`assertDimension`).
+export const matchesNoRows = (scope: VisibilityScope): boolean => {
+    return scope.rowScope === 'team' && !scope.teamId;
+};
+
 // The roster's join condition, NOT a WHERE clause: the lifecycle filter belongs in the `ON` so a
 // buyer whose only push has been replaced still appears in the roster reading "never", instead of
-// dropping out of the feed entirely.
-export const rosterSnapshotJoinOn = (): SQL | undefined => {
-    return and(eq(snapshot.createdByUserId, user.id), activeSnapshotsOnly());
+// dropping out of the feed entirely. `reportDate` narrows the join to a single day for the Dynamics
+// tab row, where "never" means "not today" rather than "not ever".
+export const rosterSnapshotJoinOn = (reportDate?: string): SQL | undefined => {
+    return and(
+        eq(snapshot.createdByUserId, user.id),
+        activeSnapshotsOnly(),
+        reportDate === undefined ? undefined : eq(snapshot.reportDate, reportDate)
+    );
 };
 
 // The single-Snapshot read behind the detailed report and its bundle. A replaced Snapshot is not

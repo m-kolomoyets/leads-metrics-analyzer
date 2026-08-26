@@ -1,17 +1,22 @@
-import type { SQL } from 'drizzle-orm';
-import type { Viewer, VisibilityScope } from '@/lib/auth/scope';
+import type { Viewer } from '@/lib/auth/scope';
 import type { UserRole } from '@/lib/constants';
 import type { MeData } from '@/services/auth/types';
 import type { ReportGeoView, ReportRosterUser, ReportSnapshotView } from './types';
 import { createServerFn } from '@tanstack/react-start';
 import { and, eq, gte, inArray, lte, max } from 'drizzle-orm';
+import { assertDimension } from '@/lib/auth/denial';
 import { requireUser } from '@/lib/auth/guards';
 import { scopeFor } from '@/lib/auth/scope';
 import { USER_ROLES } from '@/lib/constants';
 import { db } from '@/lib/db';
 import { appliedRuleset, appliedRulesetGeo, snapshot, snapshotGeo, user } from '@/lib/db/schema';
 import { appliedSettingsSchema, geoThresholdsSchema } from '@/services/snapshots/schemas';
-import { listSnapshotsFilter, rosterSnapshotJoinOn } from '@/services/snapshots/visibility';
+import {
+    listSnapshotsFilter,
+    matchesNoRows,
+    rosterSnapshotJoinOn,
+    userRowFilter,
+} from '@/services/snapshots/visibility';
 import { reportRangeInputSchema } from './schemas';
 
 // The two reads behind the Report feed (S4, #56). Both run through `scopeFor(viewer)` (ADR-0007) —
@@ -22,34 +27,16 @@ const viewerFrom = (me: MeData): Viewer => {
     return { id: me.id, role: me.role, teamId: me.teamId };
 };
 
+// The dollar dimension the Report surfaces read through. A role whose scope omits it may not read a
+// Snapshot at all (spec story 40) — and is told so, rather than handed an empty feed.
+const REPORT_DIMENSION = 'campaign';
+
 // The roles that could ever push a Snapshot — derived from the dimension scope, never listed by hand.
 // Designer and BDM fall out because their scope carries no campaign dimension (spec story 40); if a
 // role's scope changes, the roster follows it without an edit here.
 const CAMPAIGN_ROLES: UserRole[] = USER_ROLES.filter((role) => {
-    return scopeFor({ id: '', role }).dimensions.includes('campaign');
+    return scopeFor({ id: '', role }).dimensions.includes(REPORT_DIMENSION);
 });
-
-// The row-scope axis as a WHERE clause over the `user` table. `undefined` means "no filter" (head sees
-// every user); a teamless team-scope viewer is excluded upstream, so a bound teamId is expected here.
-const userRowFilter = (scope: VisibilityScope): SQL | undefined => {
-    switch (scope.rowScope) {
-        case 'all': {
-            return undefined;
-        }
-        case 'team': {
-            return eq(user.teamId, scope.teamId ?? '');
-        }
-        case 'own': {
-            return eq(user.id, scope.userId ?? '');
-        }
-    }
-};
-
-// True when the viewer can read no Snapshot at all: a dollar-barred role (designer/bdm), or a team
-// lead not yet placed on a team, who can match no team's rows.
-const readsNothing = (scope: VisibilityScope): boolean => {
-    return !scope.dimensions.includes('campaign') || (scope.rowScope === 'team' && !scope.teamId);
-};
 
 // The feed's roster: every user the viewer may see who could push a Snapshot, with their last push
 // EVER. Deliberately NOT `requireHead` — the Head-only admin user API stays as it is; this one is
@@ -58,7 +45,11 @@ export const listVisibleUsersFn = createServerFn({ method: 'GET' }).handler(asyn
     const me = await requireUser();
     const scope = scopeFor(viewerFrom(me));
 
-    if (readsNothing(scope)) {
+    // Designer and BDM are refused outright: an empty roster would read as "nobody works here"
+    // rather than "this is not yours" (SPEC I8, dimension half).
+    assertDimension(scope, REPORT_DIMENSION);
+
+    if (matchesNoRows(scope)) {
         return [];
     }
 
@@ -98,7 +89,11 @@ export const listReportFn = createServerFn({ method: 'GET' })
         const me = await requireUser();
         const scope = scopeFor(viewerFrom(me));
 
-        if (readsNothing(scope)) {
+        assertDimension(scope, REPORT_DIMENSION);
+
+        // A team lead not yet placed on a team matches no row. That IS an empty feed — they may ask,
+        // there is simply nothing under them — so it stays a legitimate empty result, not a denial.
+        if (matchesNoRows(scope)) {
             return [];
         }
 

@@ -3,7 +3,14 @@ import type { Viewer } from '@/lib/auth/scope';
 import { PgDialect } from 'drizzle-orm/pg-core';
 import { describe, expect, it } from 'vitest';
 import { scopeFor } from '@/lib/auth/scope';
-import { activeSnapshotsOnly, listSnapshotsFilter, readableSnapshotFilter, rosterSnapshotJoinOn } from './visibility';
+import {
+    activeSnapshotsOnly,
+    listSnapshotsFilter,
+    matchesNoRows,
+    readableSnapshotFilter,
+    rosterSnapshotJoinOn,
+    userRowFilter,
+} from './visibility';
 
 // Renders a clause to SQL text with its parameters inlined, so a test can assert on the predicate
 // rather than on `$1`. No connection is opened — `PgDialect` is pure string building.
@@ -79,5 +86,44 @@ describe('readableSnapshotFilter', () => {
 
     it('applies to a dollar-barred role, which is not the head despite its all-rows scope', () => {
         expect(render(readableSnapshotFilter({ id: 'd', role: 'designer' }))).toContain(ACTIVE);
+    });
+});
+
+// The roster half of the row-scope axis: the same rule as `snapshotRowFilter`, spelled over `user`.
+describe('userRowFilter', () => {
+    it('pins a buyer to their own user row', () => {
+        expect(render(userRowFilter(scopeFor(buyer)))).toContain('"user"."id" = buyer-1');
+    });
+
+    it('scopes a lead to their team', () => {
+        expect(render(userRowFilter(scopeFor(lead)))).toContain('"user"."team_id" = team-1');
+    });
+
+    it('applies no filter for the head', () => {
+        expect(render(userRowFilter(scopeFor(head)))).toBe('');
+    });
+});
+
+describe('matchesNoRows', () => {
+    it('is true only for a team-scope viewer with no team', () => {
+        expect(matchesNoRows(scopeFor({ id: 'lead-2', role: 'team_lead', teamId: null }))).toBe(true);
+        expect(matchesNoRows(scopeFor(lead))).toBe(false);
+        expect(matchesNoRows(scopeFor(buyer))).toBe(false);
+        expect(matchesNoRows(scopeFor(head))).toBe(false);
+    });
+});
+
+// The Dynamics tab row joins the same roster for a single day: a buyer with no push today must
+// still come back as a row reading "missing", which is why the day rides in the ON clause.
+describe('rosterSnapshotJoinOn with a report date', () => {
+    it('narrows the join to that day, keeping the lifecycle filter', () => {
+        const clause = render(rosterSnapshotJoinOn('2026-08-26'));
+
+        expect(clause).toContain('"snapshot"."report_date" = 2026-08-26');
+        expect(clause).toContain(ACTIVE);
+    });
+
+    it('joins every day when no date is given', () => {
+        expect(render(rosterSnapshotJoinOn())).not.toContain('report_date');
     });
 });
