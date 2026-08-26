@@ -1,7 +1,7 @@
 import type { FileType } from '@/lib/domain/parse';
 import type { UploadedFile } from '../../types';
 import { useState } from 'react';
-import { FileSpreadsheet, TriangleAlert, Upload, X } from 'lucide-react';
+import { FileSpreadsheet, Trash2, TriangleAlert, Upload, X } from 'lucide-react';
 import { parseFile } from '@/lib/domain/parse';
 import { cn } from '@/lib/utils/cn';
 import { PendingArea } from '@/components/PendingArea';
@@ -213,6 +213,13 @@ function FileDropzones({ files, onChange }: FileDropzonesProps) {
         );
     }
 
+    // Emptying the whole section, for the reader starting a different period. Cheap to undo — the
+    // files are on their disk and the zones take them back in one drop — so it acts at once rather
+    // than through a confirmation the reader would learn to click past.
+    function clearAll() {
+        onChange([]);
+    }
+
     const unknown = files.filter((file) => {
         return file.type === null;
     });
@@ -310,6 +317,23 @@ function FileDropzones({ files, onChange }: FileDropzonesProps) {
                     );
                 })}
             </div>
+
+            {files.length > 0 && (
+                // Under the pickers, not in the heading: it acts on everything the three zones hold,
+                // so it sits after them the way a footer acts on the table above it. Destructive
+                // outline — it throws work away, and a ghost button in the corner was quiet enough
+                // to be missed by the reader who came looking for it.
+                <Button
+                    type="button"
+                    variant="destructive"
+                    disabled={isParsing}
+                    className="self-start"
+                    onClick={clearAll}
+                >
+                    <Trash2 data-icon="inline-start" />
+                    Clear all {files.length} {files.length === 1 ? 'file' : 'files'}
+                </Button>
+            )}
 
             {unknown.length > 0 && (
                 <ul className="border-border flex flex-col rounded-md border">
