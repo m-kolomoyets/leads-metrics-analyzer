@@ -36,7 +36,7 @@ function GeoTabs({ geos, active, spendByGeo, onSelect }: GeoTabsProps) {
                         role="tab"
                         aria-selected={selected}
                         className={cn(
-                            'rounded-lg border px-3.5 py-2 text-sm font-bold transition-colors flex items-center',
+                            'rounded-lg border px-3.5 py-2 text-sm font-semibold transition-colors flex items-center',
                             selected
                                 ? 'surface-accent border-primary  text-white'
                                 : 'text-muted-foreground hover:text-foreground border-border bg-[#162036]'

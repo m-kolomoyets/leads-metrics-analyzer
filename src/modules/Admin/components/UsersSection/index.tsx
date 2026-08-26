@@ -32,7 +32,7 @@ function UsersSection({ users, teams, currentUserId }: UsersSectionProps) {
                 </Button>
             </div>
 
-            <Card variant="flat" className="overflow-x-auto">
+            <Card className="overflow-x-auto">
                 <table className="w-full text-sm">
                     <thead className="text-muted-foreground border-b">
                         <tr>

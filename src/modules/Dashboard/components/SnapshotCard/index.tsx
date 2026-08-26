@@ -31,10 +31,10 @@ function SnapshotCard({ card, locale }: SnapshotCardProps) {
     const tone = roiZone(headline?.roi ?? null);
 
     return (
-        <article className={cn('glow-soft flex flex-col gap-4 rounded-2xl p-4', ZONE_TINT_CLASS[tone])}>
+        <article className={cn('glow-soft flex flex-col gap-4 rounded-lg p-4', ZONE_TINT_CLASS[tone])}>
             <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
                 <div className="flex flex-col">
-                    <span className="font-mono text-lg font-bold">{card.reportDate}</span>
+                    <span className="font-mono text-lg font-semibold">{card.reportDate}</span>
                     <span className="text-muted-foreground text-[11px]">
                         {ui('pushed', locale)} {timeFormat.format(new Date(card.takenAt))}
                     </span>

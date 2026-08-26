@@ -28,7 +28,7 @@ function TeamTabs({ teams, activeId, onSelect }: TeamTabsProps) {
                         role="tab"
                         aria-selected={selected}
                         className={cn(
-                            'rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors',
+                            'rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors',
                             selected
                                 ? 'surface-accent border-primary text-white'
                                 : 'text-muted-foreground hover:text-foreground border-border bg-[#162036]'

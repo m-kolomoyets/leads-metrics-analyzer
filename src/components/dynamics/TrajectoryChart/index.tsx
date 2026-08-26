@@ -490,7 +490,7 @@ function TrajectoryChart({ points, mode }: TrajectoryChartProps) {
                                 <button
                                     type="button"
                                     aria-label={`${mode === 'delta' ? 'Between-report' : 'Cumulative'} trajectory of ${plotted[0].geo} across ${plotted.length} pushes. Arrow keys walk the pushes, Enter opens a report.`}
-                                    className="focus-visible:ring-ring/50 pointer-events-none absolute inset-0 rounded-lg outline-none focus-visible:ring-3"
+                                    className="pointer-events-none absolute inset-0 rounded-lg"
                                     onKeyDown={handleKeyDown}
                                     onFocus={() => {
                                         moveTo(focused);

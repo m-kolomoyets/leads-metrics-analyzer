@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils/cn';
 
 // Styled Base UI Accordion (base-ui.com/react/components/accordion). Chrome-free on purpose — the
 // primitive carries only the disclosure behaviour, so an item can sit inside whatever panel the page
-// already uses (here: SectionCard's tinted glass). Panel height animates off `--accordion-panel-height`.
+// already uses. Panel height animates off `--accordion-panel-height`.
 
 function Accordion({ className, ...props }: AccordionProps) {
     return <AccordionPrimitive.Root data-slot="accordion" className={cn('flex flex-col', className)} {...props} />;
@@ -32,13 +32,13 @@ function AccordionTrigger({ className, children, ...props }: AccordionTriggerPro
         <AccordionPrimitive.Trigger
             data-slot="accordion-trigger"
             className={cn(
-                'text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 group flex cursor-pointer items-center gap-2 rounded-lg outline-none motion-safe:transition-colors focus-visible:ring-3',
+                'text-muted-foreground hover:text-foreground group flex cursor-pointer items-center gap-2 rounded-sm motion-safe:transition-colors motion-safe:duration-150',
                 className
             )}
             {...props}
         >
             {/* `data-panel-open` sits on the trigger, so the icon reads it through the group. */}
-            <ChevronDownIcon className="size-4 shrink-0 duration-200 ease-out group-data-[panel-open]:rotate-180 motion-safe:transition-transform" />
+            <ChevronDownIcon className="size-4 shrink-0 duration-150 ease-out group-data-[panel-open]:rotate-180 motion-safe:transition-transform" />
             {children}
         </AccordionPrimitive.Trigger>
     );

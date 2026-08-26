@@ -36,7 +36,7 @@ function DialogOverlay({ className, ...props }: DialogOverlayProps) {
         <DialogPrimitive.Backdrop
             data-slot="dialog-overlay"
             className={cn(
-                'bg-black/10 supports-backdrop-filter:backdrop-blur-xs fixed inset-0 motion-safe:transition-opacity motion-safe:duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0',
+                'bg-black/40 fixed inset-0 motion-safe:transition-opacity motion-safe:duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0',
                 className
             )}
             {...props}
@@ -51,7 +51,7 @@ function DialogContent({ className, children, showCloseButton = true, ...props }
             <DialogPrimitive.Popup
                 data-slot="dialog-content"
                 className={cn(
-                    'bg-background fixed left-1/2 top-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg border p-6 shadow-lg sm:max-w-md motion-safe:transition motion-safe:duration-200 data-ending-style:opacity-0 data-ending-style:scale-95 data-starting-style:opacity-0 data-starting-style:scale-95',
+                    'bg-popover text-popover-foreground border-border shadow-overlay fixed left-1/2 top-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg border p-6 sm:max-w-md motion-safe:transition motion-safe:duration-150 data-ending-style:opacity-0 data-ending-style:scale-95 data-starting-style:opacity-0 data-starting-style:scale-95',
                     className
                 )}
                 {...props}

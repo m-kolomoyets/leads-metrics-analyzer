@@ -60,9 +60,9 @@ function BuyerTabs({ tabs, activeId, onSelect }: BuyerTabsProps) {
                         role="tab"
                         aria-selected={selected}
                         className={cn(
-                            'flex items-center gap-2 rounded-lg border px-3.5 py-2 text-sm font-bold transition-colors',
+                            'flex items-center gap-2 rounded-lg border px-3.5 py-2 text-sm font-semibold transition-colors',
                             STATE_CLASS[tab.state],
-                            selected && 'ring-primary ring-2'
+                            selected && 'border-primary text-foreground'
                         )}
                         onClick={() => {
                             onSelect(tab.id);

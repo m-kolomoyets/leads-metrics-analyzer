@@ -96,13 +96,18 @@ function MetricCells({
                 {usd(m.spendPlus)}
                 <RowTrend metric="spend" trend={trend ?? null} />
             </td>
-            <td className={cn('p-2 font-mono font-bold', !plain && (m.profit >= 0 ? 'text-success' : 'text-danger'))}>
+            <td
+                className={cn(
+                    'p-2 font-mono font-semibold',
+                    !plain && (m.profit >= 0 ? 'text-success' : 'text-danger')
+                )}
+            >
                 {usdSigned(m.profit)}
                 <RowTrend metric="profit" trend={trend ?? null} />
             </td>
             <td
                 className={cn(
-                    'p-2 font-mono font-bold',
+                    'p-2 font-mono font-semibold',
                     !plain && m.roi !== null && (m.roi >= 0 ? 'text-success' : 'text-danger')
                 )}
             >
@@ -181,7 +186,7 @@ function OffersTable({ title, firstCol, rows, unallocated, thresholds, locale, p
                             return (
                                 <tr key={row.key} className="border-b">
                                     <td className="max-w-80 truncate p-2 text-left" title={`${row.key} ${row.label}`}>
-                                        <span className="text-primary font-mono font-bold">{row.key}</span>
+                                        <span className="text-primary font-mono font-semibold">{row.key}</span>
                                         {row.label && <span className="text-muted-foreground"> {row.label}</span>}
                                     </td>
                                     <MetricCells

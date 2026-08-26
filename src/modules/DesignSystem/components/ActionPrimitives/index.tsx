@@ -11,9 +11,10 @@ const BADGE_VARIANTS = [
     'default',
     'secondary',
     'destructive',
-    'success',
-    'warning',
-    'danger',
+    'green',
+    'yellow',
+    'red',
+    'neutral',
     'outline',
     'ghost',
     'link',
@@ -48,7 +49,7 @@ function ActionPrimitives() {
                 {ICON_SIZES.map((size) => {
                     return (
                         <Button key={size} variant="outline" size={size} aria-label={`Add (${size})`}>
-                            <PlusIcon strokeWidth={1.5} />
+                            <PlusIcon />
                         </Button>
                     );
                 })}
@@ -56,11 +57,11 @@ function ActionPrimitives() {
 
             <Specimen label="Button — with icons">
                 <Button variant="outline">
-                    <PlusIcon data-icon="inline-start" strokeWidth={1.5} />
+                    <PlusIcon data-icon="inline-start" />
                     Leading
                 </Button>
                 <Button variant="destructive">
-                    <TrashIcon data-icon="inline-start" strokeWidth={1.5} />
+                    <TrashIcon data-icon="inline-start" />
                     Delete
                 </Button>
             </Specimen>
@@ -88,7 +89,7 @@ function ActionPrimitives() {
 
             <Specimen label="Badge — with icon, invalid">
                 <Badge variant="outline">
-                    <PlusIcon strokeWidth={1.5} />
+                    <PlusIcon />
                     with icon
                 </Badge>
                 <Badge variant="outline" aria-invalid={true}>

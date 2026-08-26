@@ -51,7 +51,7 @@ function AvatarBadge({ className, ...props }: AvatarBadgeProps) {
         <span
             data-slot="avatar-badge"
             className={cn(
-                'bg-primary text-primary-foreground ring-background absolute right-0 bottom-0 z-10 inline-flex items-center justify-center rounded-full bg-blend-color ring-2 select-none',
+                'bg-primary text-primary-foreground border-background absolute right-0 bottom-0 z-10 inline-flex items-center justify-center rounded-full border-2 bg-blend-color select-none',
                 'group-data-[size=sm]/avatar:size-2 group-data-[size=sm]/avatar:[&>svg]:hidden',
                 'group-data-[size=default]/avatar:size-2.5 group-data-[size=default]/avatar:[&>svg]:size-2',
                 'group-data-[size=lg]/avatar:size-3 group-data-[size=lg]/avatar:[&>svg]:size-2',
@@ -67,7 +67,7 @@ function AvatarGroup({ className, ...props }: AvatarGroupProps) {
         <div
             data-slot="avatar-group"
             className={cn(
-                'group/avatar-group flex -space-x-2 *:data-[slot=avatar]:ring-2 *:data-[slot=avatar]:ring-background',
+                'group/avatar-group flex -space-x-2 *:data-[slot=avatar]:border-2 *:data-[slot=avatar]:border-background',
                 className
             )}
             {...props}
@@ -80,7 +80,7 @@ function AvatarGroupCount({ className, ...props }: AvatarGroupCountProps) {
         <div
             data-slot="avatar-group-count"
             className={cn(
-                'bg-muted text-muted-foreground size-8 rounded-full text-sm group-has-data-[size=lg]/avatar-group:size-10 group-has-data-[size=sm]/avatar-group:size-6 [&>svg]:size-4 group-has-data-[size=lg]/avatar-group:[&>svg]:size-5 group-has-data-[size=sm]/avatar-group:[&>svg]:size-3 relative flex shrink-0 items-center justify-center ring-2 ring-background',
+                'bg-muted text-muted-foreground size-8 rounded-full text-sm group-has-data-[size=lg]/avatar-group:size-10 group-has-data-[size=sm]/avatar-group:size-6 [&>svg]:size-4 group-has-data-[size=lg]/avatar-group:[&>svg]:size-5 group-has-data-[size=sm]/avatar-group:[&>svg]:size-3 relative flex shrink-0 items-center justify-center border-2 border-background',
                 className
             )}
             {...props}

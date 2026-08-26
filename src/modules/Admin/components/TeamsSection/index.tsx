@@ -76,7 +76,7 @@ function TeamsSection({ users, teams }: TeamsSectionProps) {
                 </Field>
             </form>
 
-            <Card variant="flat" className="overflow-x-auto">
+            <Card className="overflow-x-auto">
                 {/* table-fixed + explicit column widths: a row toggling to rename / delete-confirm must
                     not resize columns (no layout shift). Actions column is sized for its widest state. */}
                 <table className="w-full min-w-3xl table-fixed text-sm">

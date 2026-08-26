@@ -126,7 +126,7 @@ function Sparkline({ label, values, zones, trailing, tone, selected, onSelect }:
                 flattens into a near-horizontal streak, and the shape is the whole message. */}
             <span className="flex min-w-0 flex-col">
                 <span className="text-muted-foreground text-[11px] tracking-widest uppercase">{label}</span>
-                <span className={cn('font-mono text-sm font-bold', TONE_TEXT_CLASS[tone])}>{trailing}</span>
+                <span className={cn('font-mono text-sm font-semibold', TONE_TEXT_CLASS[tone])}>{trailing}</span>
             </span>
 
             {/* `pointer-events-none`: the chart is a picture here, and every click belongs to the

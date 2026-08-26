@@ -14,7 +14,7 @@ function SelectTrigger({ className, children, ...props }: SelectTriggerProps) {
         <SelectPrimitive.Trigger
             data-slot="select-trigger"
             className={cn(
-                'dark:bg-input/30 border-input focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 flex h-8 w-full min-w-0 items-center justify-between gap-2 rounded-lg border bg-transparent px-2.5 py-1 text-base outline-none motion-safe:transition-colors md:text-sm aria-invalid:ring-3 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 [&>span]:truncate',
+                'border-input aria-invalid:border-destructive flex h-8 w-full min-w-0 items-center justify-between gap-2 rounded-md border bg-transparent px-2.5 py-1 text-base motion-safe:transition-colors motion-safe:duration-150 md:text-sm disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 [&>span]:truncate',
                 className
             )}
             {...props}
@@ -44,7 +44,7 @@ function SelectContent({ className, children, positionerProps, ...props }: Selec
                 <SelectPrimitive.Popup
                     data-slot="select-content"
                     className={cn(
-                        'bg-popover text-popover-foreground border-border max-h-[min(24rem,var(--available-height))] min-w-[var(--anchor-width)] overflow-y-auto rounded-lg border p-1 shadow-md outline-none',
+                        'bg-popover text-popover-foreground border-border shadow-overlay max-h-[min(24rem,var(--available-height))] min-w-[var(--anchor-width)] overflow-y-auto rounded-lg border p-1 outline-none',
                         className
                     )}
                     {...props}
@@ -61,7 +61,7 @@ function SelectItem({ className, children, ...props }: SelectItemProps) {
         <SelectPrimitive.Item
             data-slot="select-item"
             className={cn(
-                'data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground relative flex w-full cursor-default select-none items-center gap-2 rounded-md py-1.5 pl-2 pr-8 text-sm outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+                'data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground relative flex w-full cursor-default select-none items-center gap-2 rounded-sm py-1.5 pl-2 pr-8 text-sm outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
                 className
             )}
             {...props}

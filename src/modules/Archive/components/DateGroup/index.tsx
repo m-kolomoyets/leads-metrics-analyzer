@@ -15,8 +15,8 @@ type DateGroupProps = {
 // the window they care about; hiding rows behind a disclosure would only add a click to every lookup.
 function DateGroup({ group, locale }: DateGroupProps) {
     return (
-        <section className="border-border flex flex-col gap-4 rounded-2xl border p-4">
-            <h2 className="font-mono text-lg font-bold">{group.reportDate}</h2>
+        <section className="border-border flex flex-col gap-4 rounded-lg border p-4">
+            <h2 className="font-mono text-lg font-semibold">{group.reportDate}</h2>
 
             {group.users.map(({ user, cards }) => {
                 return (

@@ -53,7 +53,7 @@ function ThresholdMeter({ value, greenBelow, redAbove, className }: ThresholdMet
                     <span
                         aria-hidden={true}
                         className={cn(
-                            'bg-foreground text-background absolute rounded px-1.5 py-px font-bold shadow-sm',
+                            'bg-foreground text-background absolute rounded-sm px-1.5 py-px font-semibold',
                             shiftOf(scale.value)
                         )}
                         style={{ left: `${scale.value}%` }}

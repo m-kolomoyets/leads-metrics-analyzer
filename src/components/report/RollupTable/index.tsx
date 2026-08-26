@@ -66,7 +66,7 @@ function RollupTable({ dimension, rows, totals }: RollupTableProps) {
                         return (
                             <tr key={row.key} className="border-b">
                                 <td className="max-w-80 truncate p-2 text-left" title={row.key}>
-                                    <span className="text-primary font-mono font-bold">{row.key}</span>
+                                    <span className="text-primary font-mono font-semibold">{row.key}</span>
                                 </td>
                                 <RowCells row={row} />
                             </tr>

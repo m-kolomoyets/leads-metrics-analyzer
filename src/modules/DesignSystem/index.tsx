@@ -19,6 +19,7 @@ import { OverlayPrimitives } from './components/OverlayPrimitives';
 import { Section } from './components/Section';
 import { Specimen } from './components/Specimen';
 import { Swatch } from './components/Swatch';
+import { TablePrimitive } from './components/TablePrimitive';
 import { ThemeSplit } from './components/ThemeSplit';
 
 const swatchesFor = (tokens: ReadonlyArray<ColourToken>, theme: ThemeName, withRatio = false) => {
@@ -181,27 +182,27 @@ function DesignSystem() {
             <Section
                 id="focus"
                 title="Focus"
-                description="One treatment everywhere: 2px --accent ring, 1px offset. Held at 2px deliberately — a hairline ring would fail WCAG 2.2 focus appearance."
+                description="One treatment everywhere: a 2px --accent outline at 1px offset, declared once as a :focus-visible rule in src/styles/index.css rather than per primitive. Held at 2px deliberately — a hairline would fail WCAG 2.2 focus appearance."
             >
                 <ThemeSplit>
                     {() => {
                         return (
                             <>
-                                <Specimen label="The ring, drawn statically">
-                                    <span className="ring-ring bg-surface border-border rounded-md border px-3 py-1.5 text-sm ring-2 ring-offset-1">
+                                <Specimen label="The outline, drawn statically">
+                                    <span className="bg-surface border-border rounded-md border px-3 py-1.5 text-sm outline-2 outline-offset-1 outline-[var(--accent)]">
                                         focused
                                     </span>
                                 </Specimen>
-                                <Specimen label="The ring, live — Tab into these">
+                                <Specimen label="The outline, live — Tab into these. Nothing declares it locally.">
                                     <button
                                         type="button"
-                                        className="bg-surface border-border focus-visible:ring-ring rounded-md border px-3 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                                        className="bg-surface border-border rounded-md border px-3 py-1.5 text-sm"
                                     >
                                         button
                                     </button>
                                     <a
                                         href="#focus"
-                                        className="text-primary focus-visible:ring-ring rounded-md text-sm underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-offset-1"
+                                        className="text-primary rounded-md text-sm underline-offset-4 hover:underline"
                                     >
                                         link
                                     </a>
@@ -215,17 +216,17 @@ function DesignSystem() {
             <Section
                 id="icons"
                 title="Icons"
-                description="Lucide at strokeWidth 1.5. 16px is the default, 12px goes inline with 12px text; nothing larger outside avatars and empty-state art."
+                description="Lucide at strokeWidth 1.5 — set once by the LucideProvider in __root.tsx, so nothing here passes it. 16px is the default, 12px goes inline with 12px text; nothing larger outside avatars and empty-state art."
             >
                 <ThemeSplit>
                     {() => {
                         return ICON_SIZES.map((size) => {
                             return (
                                 <Specimen key={size.name} label={`${size.name} — ${size.note}`}>
-                                    <SearchIcon className={size.className} strokeWidth={1.5} />
-                                    <SettingsIcon className={size.className} strokeWidth={1.5} />
-                                    <BellIcon className={size.className} strokeWidth={1.5} />
-                                    <ChartLineIcon className={size.className} strokeWidth={1.5} />
+                                    <SearchIcon className={size.className} />
+                                    <SettingsIcon className={size.className} />
+                                    <BellIcon className={size.className} />
+                                    <ChartLineIcon className={size.className} />
                                 </Specimen>
                             );
                         });
@@ -261,6 +262,18 @@ function DesignSystem() {
                 <ThemeSplit>
                     {() => {
                         return <OverlayPrimitives />;
+                    }}
+                </ThemeSplit>
+            </Section>
+
+            <Section
+                id="table"
+                title="Primitives — Table"
+                description="Hairline row rules and no zebra, figures right and tabular, small grey column heads, a sticky header and one heavier total rule. Two densities."
+            >
+                <ThemeSplit>
+                    {() => {
+                        return <TablePrimitive />;
                     }}
                 </ThemeSplit>
             </Section>

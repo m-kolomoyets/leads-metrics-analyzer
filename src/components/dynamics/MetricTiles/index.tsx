@@ -61,7 +61,7 @@ function MetricTiles({ point }: MetricTilesProps) {
                             <dt className="text-muted-foreground text-[11px] tracking-widest uppercase">
                                 {METRIC_LABEL[metric]}
                             </dt>
-                            <dd className={cn('font-mono text-2xl font-bold', ZONE_TEXT_CLASS[zone])}>
+                            <dd className={cn('font-mono text-2xl font-semibold', ZONE_TEXT_CLASS[zone])}>
                                 {METRIC_FORMAT[metric].value(value)}
                             </dd>
 

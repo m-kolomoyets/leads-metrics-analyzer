@@ -28,7 +28,9 @@ function CostCell({ value, pair }: { value: number | null; pair: ThresholdPair |
         return <td className="p-2 font-mono">{usd(value)}</td>;
     }
     const zone = zoneFor(value, pair);
-    return <td className={cn('p-2 font-mono', zone === 'red' && 'font-bold', ZONE_TEXT_CLASS[zone])}>{usd(value)}</td>;
+    return (
+        <td className={cn('p-2 font-mono', zone === 'red' && 'font-semibold', ZONE_TEXT_CLASS[zone])}>{usd(value)}</td>
+    );
 }
 
 // The Account's campaigns at Campaign grain, one row each with an exclude toggle. Toggling a row

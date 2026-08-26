@@ -174,7 +174,7 @@ function FileDropzones({ files, onChange }: FileDropzonesProps) {
     }
 
     return (
-        <section className="glass-tint tint-blue tint-s5 flex flex-col gap-4 rounded-2xl p-4">
+        <section className="glass-tint tint-blue tint-s5 flex flex-col gap-4 rounded-lg p-4">
             <h3 className="text-muted-foreground text-[13px] font-normal tracking-widest uppercase">1 · Files</h3>
             <div className="grid gap-3 sm:grid-cols-3">
                 {ZONES.map((zone) => {

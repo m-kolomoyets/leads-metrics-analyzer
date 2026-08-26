@@ -75,7 +75,7 @@ function AccountBlock({
         <section
             id={`acc-${account.account}`}
             className={cn(
-                'scroll-mt-4 rounded-2xl p-4 transition-opacity',
+                'scroll-mt-4 rounded-lg p-4 transition-opacity',
                 problem ? 'glass-tint tint-red' : 'glass-tint tint-blue tint-s4',
                 // The pulse is a call to act, so reviewing silences it — the red frame and pill stay,
                 // since the account is still Problem, only no longer unhandled.
@@ -98,7 +98,7 @@ function AccountBlock({
                 <button
                     type="button"
                     title="copy account id"
-                    className={cn('font-mono text-base font-bold', problem && 'text-danger')}
+                    className={cn('font-mono text-base font-semibold', problem && 'text-danger')}
                     onClick={() => {
                         onCopy(account.account, `acc:${account.account}`);
                     }}
@@ -124,13 +124,17 @@ function AccountBlock({
                             value={metrics.revenue > 0 ? usdRound(metrics.revenue) : '—'}
                             className={metrics.revenue > 0 ? 'text-success' : 'text-muted-foreground'}
                         />
-                        <Stat label="Spend" value={usd(metrics.spendPlus)} className="font-bold" />
+                        <Stat label="Spend" value={usd(metrics.spendPlus)} className="font-semibold" />
                         <Stat
                             label="Profit"
                             value={usdSigned(metrics.profit)}
-                            className={cn('font-bold', metrics.profit >= 0 ? 'text-success' : 'text-danger')}
+                            className={cn('font-semibold', metrics.profit >= 0 ? 'text-success' : 'text-danger')}
                         />
-                        <Stat label="ROI" value={pct(metrics.roi)} className={cn('font-bold', roiClass(metrics.roi))} />
+                        <Stat
+                            label="ROI"
+                            value={pct(metrics.roi)}
+                            className={cn('font-semibold', roiClass(metrics.roi))}
+                        />
                     </div>
 
                     <div className="flex items-center gap-3 border-l pl-3">
@@ -202,8 +206,10 @@ function AccountBlock({
                     </div>
 
                     {account.salesCampaigns.length > 0 && (
-                        <div className="flex flex-col gap-2 rounded-xl border border-violet-500/30 bg-violet-500/5 p-3">
-                            <span className="text-sm font-bold text-violet-400">{ui('salesCampaigns', locale)}</span>
+                        <div className="flex flex-col gap-2 rounded-lg border border-violet-500/30 bg-violet-500/5 p-3">
+                            <span className="text-sm font-semibold text-violet-400">
+                                {ui('salesCampaigns', locale)}
+                            </span>
                             <AccountCampaigns
                                 campaigns={account.salesCampaigns}
                                 thresholds={thresholds}

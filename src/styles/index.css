@@ -105,7 +105,7 @@
     --font-sans: "Inter", sans-serif;
 
     /* Ours are the only three steps. Tailwind ships its own scale, so the namespace is cleared
-       first or `rounded-2xl` keeps working. `rounded-full` is unaffected; it is a literal. */
+       first or its larger steps keep working. `rounded-full` is unaffected; it is a literal. */
     --radius-*: initial;
     --radius-sm: calc(var(--radius) * 0.5);
     --radius-md: var(--radius);
@@ -178,6 +178,27 @@
 
 @layer base {
     * {
-        @apply border-border outline-ring/50;
+        @apply border-border;
+    }
+
+    /* One focus treatment across the whole app, declared once rather than per primitive: 2px
+       --accent at 1px offset. Held at 2px deliberately — WCAG 2.2 focus appearance, not an
+       aesthetic call. `outline` rather than a ring so it follows the element's own radius and
+       survives an `overflow-hidden` ancestor. A primitive opts out with `outline-none`, which is
+       a utility and therefore outranks this; the only legitimate opt-outs are popups that take
+       focus programmatically and draw no visible ring. */
+    :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+    }
+}
+
+/* The same treatment when the focus lands on a descendant and the wrapper is what the reader reads
+   as the control — the two combobox input groups are the only cases. Not a `@utility`, because a
+   utility would have to nest to reach the pseudo-class and there is nothing to merge it against. */
+@layer components {
+    .focus-ring-within:focus-within {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
     }
 }

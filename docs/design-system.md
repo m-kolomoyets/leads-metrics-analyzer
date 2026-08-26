@@ -106,19 +106,39 @@ DOM text beside it.
 
 ## Icons
 
-Lucide at `strokeWidth={1.5}`. Sizes: 16px (`size-4`) default, 12px (`size-3`) inline with 12px text.
-Nothing larger outside avatars and empty-state art.
+Lucide at `strokeWidth={1.5}`, set once by the `LucideProvider` in `src/routes/__root.tsx` rather
+than at call sites — it reaches the icons inside Base UI's portals and react-day-picker too, and a
+call site that passes `strokeWidth` is overriding the system, not applying it. Sizes: 16px (`size-4`)
+default, 12px (`size-3`) inline with 12px text. Nothing larger outside avatars and empty-state art.
 
 ## Focus
 
-One treatment everywhere: 2px `--accent` ring, 1px offset. Held at 2px deliberately — a hairline ring
-would be more consistent with the rest of the system and would fail WCAG 2.2 focus appearance.
+One treatment everywhere: a 2px `--accent` outline at 1px offset. Held at 2px deliberately — a
+hairline would be more consistent with the rest of the system and would fail WCAG 2.2 focus
+appearance.
+
+It is declared once, as a `:focus-visible` rule in `@layer base`, not as a class each primitive
+remembers to wear — that is what makes "exactly one treatment" a property of the stylesheet rather
+than a thing to keep re-checking. `outline` rather than a ring so it follows the element's own radius
+and survives an `overflow-hidden` ancestor. A primitive opts out with `outline-none`, which is a
+utility and outranks the base layer; the only legitimate opt-outs are popups that take focus
+programmatically and draw no visible ring. Where the focus lands on a descendant but the wrapper is
+what reads as the control — the two combobox input groups — `.focus-ring-within` repeats the same
+two numbers.
 
 ## Motion
 
 State changes only, 120–160ms. No ambient animation, with one exception: an unreviewed problem
 account pulses its border opacity — no glow, low amplitude, slow. Everything respects
 `prefers-reduced-motion`.
+
+## Tables
+
+`ui/Table` owns the table rules so a report table cannot re-derive them: hairline row rules and **no
+zebra** (striping is a workaround for rows too tall to track across, and at this density a 1px rule
+does the same job), figures right-aligned and `tabular-nums` through the `isNumeric` prop, column
+heads at 12px in `--muted-foreground`, an optional sticky header, and a total row in `<tfoot>` under
+one `--border-strong` rule. Two densities, `default` and `compact`.
 
 ## The workbench
 

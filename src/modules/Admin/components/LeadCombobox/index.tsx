@@ -51,12 +51,12 @@ function LeadCombobox({ value, options, onChange, disabled }: LeadComboboxProps)
         >
             <Combobox.InputGroup
                 className={cn(
-                    'dark:bg-input/30 border-input focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 flex h-8 w-full max-w-64 items-center gap-2 rounded-lg border bg-transparent px-2.5 py-1 motion-safe:transition-colors'
+                    'border-input focus-ring-within flex h-8 w-full max-w-64 items-center gap-2 rounded-md border bg-transparent px-2.5 py-1 motion-safe:transition-colors motion-safe:duration-150'
                 )}
             >
                 <Combobox.Input
                     placeholder="Search lead…"
-                    className="placeholder:text-muted-foreground w-full min-w-0 bg-transparent text-sm outline-none"
+                    className="placeholder:text-faint w-full min-w-0 bg-transparent text-sm outline-none"
                 />
                 <Combobox.Icon className="text-muted-foreground shrink-0">
                     <ChevronsUpDownIcon className="size-3.5" />
@@ -64,7 +64,7 @@ function LeadCombobox({ value, options, onChange, disabled }: LeadComboboxProps)
             </Combobox.InputGroup>
             <Combobox.Portal>
                 <Combobox.Positioner sideOffset={4} className="z-50 outline-none">
-                    <Combobox.Popup className="bg-popover px-2 py-1.5 text-popover-foreground border-border max-h-[min(24rem,var(--available-height))] min-w-[var(--anchor-width)] overflow-y-auto rounded-lg border p-1 shadow-md outline-none">
+                    <Combobox.Popup className="bg-popover px-2 py-1.5 text-popover-foreground border-border max-h-[min(24rem,var(--available-height))] min-w-[var(--anchor-width)] shadow-overlay overflow-y-auto rounded-lg border p-1 outline-none">
                         <Combobox.Empty className="text-muted-foreground  text-sm">No users found</Combobox.Empty>
                         <Combobox.List>
                             {(item: SelectFieldItem) => {

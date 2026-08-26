@@ -2,6 +2,7 @@ import type { RouterContext } from '@/router';
 import { lazy, Suspense } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from '@tanstack/react-router';
+import { LucideProvider } from 'lucide-react';
 import { queryClient } from '@/lib/@queryClient';
 import { noopReturnNull } from '@/lib/utils/noopReturnNull';
 import { BackgroundProvider } from '@/context/BackgroundContext';
@@ -110,19 +111,24 @@ function RootComponent() {
 
     return (
         <QueryClientProvider client={queryClient}>
-            <ThemeProvider defaultTheme="dark">
-                <BackgroundProvider>
-                    <TooltipProvider>
-                        <BackgroundCanvas />
-                        <Outlet />
-                        <Toast richColors={true} closeButton={true} swipeDirections={['bottom']} />
-                    </TooltipProvider>
-                </BackgroundProvider>
-                <Suspense>
-                    <TanStackRouterDevtools position="bottom-right" />
-                    <TanStackQueryDevtools position="bottom" />
-                </Suspense>
-            </ThemeProvider>
+            {/* Every lucide icon in the app draws at 1.5, set once. A wrapper component would have
+                worked too, but only for the call sites that remembered to use it — this covers the
+                ones inside Base UI's portals and react-day-picker as well, and cannot drift. */}
+            <LucideProvider strokeWidth={1.5}>
+                <ThemeProvider defaultTheme="dark">
+                    <BackgroundProvider>
+                        <TooltipProvider>
+                            <BackgroundCanvas />
+                            <Outlet />
+                            <Toast richColors={true} closeButton={true} swipeDirections={['bottom']} />
+                        </TooltipProvider>
+                    </BackgroundProvider>
+                    <Suspense>
+                        <TanStackRouterDevtools position="bottom-right" />
+                        <TanStackQueryDevtools position="bottom" />
+                    </Suspense>
+                </ThemeProvider>
+            </LucideProvider>
         </QueryClientProvider>
     );
 }

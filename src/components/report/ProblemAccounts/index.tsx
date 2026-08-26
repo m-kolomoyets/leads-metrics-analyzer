@@ -29,7 +29,7 @@ function ProblemAccounts({ accounts, locale, isReviewed }: ProblemAccountsProps)
     }).length;
 
     return (
-        <section className="glass-tint tint-red rounded-2xl p-4">
+        <section className="glass-tint tint-red rounded-lg p-4">
             <p className="text-danger mb-2.5 text-[13px] font-normal tracking-widest uppercase">
                 🚨 {ui('problemAccounts', locale)} ({outstanding}/{flagged.length})
             </p>

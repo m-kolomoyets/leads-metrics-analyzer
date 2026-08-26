@@ -28,7 +28,7 @@ type SectionCardProps = {
 // heading. Every analysis section is one of these, so the accent + glow read as one system.
 function SectionCard({ title, label, tone = 'blue', actions, className, children }: SectionCardProps) {
     return (
-        <section className={cn('rounded-2xl p-4', TONE_CLASS[tone], className)} aria-label={label}>
+        <section className={cn('rounded-lg p-4', TONE_CLASS[tone], className)} aria-label={label}>
             {(title || actions) && (
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                     {title && (

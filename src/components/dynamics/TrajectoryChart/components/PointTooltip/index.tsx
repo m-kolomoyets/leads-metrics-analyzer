@@ -60,7 +60,7 @@ function PointTooltip({ point, previous, metric, mode, position, total }: PointT
         // the verdict on the left (what this metric did and what it was judged against), the bases it
         // was computed from on the right. Stacking all of it read as one long list where the plan and
         // the fact drifted apart.
-        <div className="border-border bg-popover text-popover-foreground flex w-[22rem] flex-col gap-2.5 rounded-lg border p-3 text-xs shadow-lg">
+        <div className="border-border bg-popover text-popover-foreground flex w-[22rem] flex-col gap-2.5 shadow-overlay rounded-lg border p-3 text-xs">
             <p className="text-muted-foreground border-border flex items-baseline justify-between gap-2 border-b pb-2">
                 <span>
                     {point.geo} · {isDelta ? 'interval ending ' : ''}
@@ -78,7 +78,7 @@ function PointTooltip({ point, previous, metric, mode, position, total }: PointT
                             {prefix}
                             {METRIC_LABEL[metric]}
                         </span>
-                        <span className="font-mono text-base font-bold">{format.value(value)}</span>
+                        <span className="font-mono text-base font-semibold">{format.value(value)}</span>
                     </p>
 
                     {zone !== null && (

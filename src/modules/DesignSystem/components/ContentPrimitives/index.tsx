@@ -85,14 +85,18 @@ function ContentPrimitives() {
                 </AvatarGroup>
             </Specimen>
 
-            <Specimen label="Card — variants">
+            <Specimen label="Card — one card, no variants">
                 <Card className="w-56 p-3">
-                    <p className="text-sm font-medium">glass (default)</p>
-                    <p className="text-muted-foreground text-xs">The depth model slice 01 deleted.</p>
+                    <p className="text-sm font-medium">Card</p>
+                    <p className="text-muted-foreground text-xs">
+                        Inline surface: one hairline border, a lightness step, no shadow.
+                    </p>
                 </Card>
-                <Card variant="flat" className="w-56 p-3">
-                    <p className="text-sm font-medium">flat</p>
-                    <p className="text-muted-foreground text-xs">Opaque surface, one hairline border.</p>
+                <Card className="w-56 gap-2 p-3">
+                    <p className="text-sm font-medium">Nested</p>
+                    <Card className="p-2">
+                        <p className="text-muted-foreground text-xs">Two hairlines, one step — a subsection.</p>
+                    </Card>
                 </Card>
             </Specimen>
 
@@ -104,7 +108,7 @@ function ContentPrimitives() {
                 <Empty className="border-border w-full max-w-md rounded-md border">
                     <EmptyHeader>
                         <EmptyMedia variant="icon">
-                            <FileSearchIcon strokeWidth={1.5} />
+                            <FileSearchIcon />
                         </EmptyMedia>
                         <EmptyTitle>No snapshots yet</EmptyTitle>
                         <EmptyDescription>Import a Keitaro export to see a report here.</EmptyDescription>

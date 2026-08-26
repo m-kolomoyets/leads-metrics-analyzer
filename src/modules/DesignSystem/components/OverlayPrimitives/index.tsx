@@ -117,13 +117,13 @@ function OverlayPrimitives() {
                                 MenuGroupContext and throws outside one. */}
                             <DropdownMenuLabel>Snapshot</DropdownMenuLabel>
                             <DropdownMenuItem>
-                                <CopyIcon strokeWidth={1.5} />
+                                <CopyIcon />
                                 Duplicate
                                 <DropdownMenuShortcut>⌘D</DropdownMenuShortcut>
                             </DropdownMenuItem>
                             <DropdownMenuItem disabled={true}>Disabled item</DropdownMenuItem>
                             <DropdownMenuItem variant="destructive">
-                                <TrashIcon strokeWidth={1.5} />
+                                <TrashIcon />
                                 Delete
                             </DropdownMenuItem>
                         </DropdownMenuGroup>

@@ -97,13 +97,18 @@ function MetricCells({
             <td className={cn('p-2 font-mono', BLOCK_START, !plain && m.revenue > 0 && 'text-success')}>
                 {m.revenue > 0 ? usdRound(m.revenue) : '—'}
             </td>
-            <td className="p-2 font-mono font-bold">{usd(m.spendPlus)}</td>
-            <td className={cn('p-2 font-mono font-bold', !plain && (m.profit >= 0 ? 'text-success' : 'text-danger'))}>
+            <td className="p-2 font-mono font-semibold">{usd(m.spendPlus)}</td>
+            <td
+                className={cn(
+                    'p-2 font-mono font-semibold',
+                    !plain && (m.profit >= 0 ? 'text-success' : 'text-danger')
+                )}
+            >
                 {usdSigned(m.profit)}
             </td>
             <td
                 className={cn(
-                    'p-2 font-mono font-bold',
+                    'p-2 font-mono font-semibold',
                     !plain && m.roi !== null && (m.roi >= 0 ? 'text-success' : 'text-danger')
                 )}
             >
@@ -162,7 +167,7 @@ function AccountSummary({ accounts, thresholds, locale, isReviewed, onJump }: Ac
     }
 
     return (
-        <section className="glass-tint tint-blue tint-s5 flex flex-col gap-2 rounded-2xl p-4">
+        <section className="glass-tint tint-blue tint-s5 flex flex-col gap-2 rounded-lg p-4">
             <h3 className="text-muted-foreground text-[13px] font-normal tracking-widest uppercase">
                 {ui('accountSummary', locale)} <span className="normal-case">· {ui('summaryHint', locale)}</span>
             </h3>
@@ -231,7 +236,7 @@ function AccountSummary({ accounts, thresholds, locale, isReviewed, onJump }: Ac
                                     {showReviewed && (
                                         <td className="text-success w-6 p-2 text-left">{reviewed && '✓'}</td>
                                     )}
-                                    <td className={cn('p-2 text-left font-mono', alarm && 'font-bold text-danger')}>
+                                    <td className={cn('p-2 text-left font-mono', alarm && 'font-semibold text-danger')}>
                                         {account.account} {alarm && '🚨'}
                                     </td>
                                     <MetricCells

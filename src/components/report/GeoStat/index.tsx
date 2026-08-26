@@ -61,7 +61,7 @@ function Stat({
     return (
         <div className="flex flex-col">
             <span className="text-muted-foreground text-[11px] tracking-widest uppercase">{label}</span>
-            <span className={cn('font-mono font-bold', size === 'lg' ? 'text-2xl' : 'text-xl', className)}>
+            <span className={cn('font-mono font-semibold', size === 'lg' ? 'text-2xl' : 'text-xl', className)}>
                 {value}
             </span>
         </div>
@@ -88,9 +88,9 @@ function GeoStat({ geo, rollup, thresholds, waste, wasteZone, action, locale }: 
     const untaggedPct = metrics.revenue > 0 ? (untaggedRevenue / metrics.revenue) * 100 : 0;
 
     return (
-        <section className="glass-tint tint-blue tint-s5 flex flex-col gap-4 rounded-2xl p-4">
+        <section className="glass-tint tint-blue tint-s5 flex flex-col gap-4 rounded-lg p-4">
             <div className="flex flex-wrap items-center gap-4">
-                <span className="text-2xl font-bold">
+                <span className="text-2xl font-semibold">
                     {flagEmoji(geo)} {geo}
                 </span>
                 <span className="bg-border h-9 w-px" />
@@ -111,7 +111,7 @@ function GeoStat({ geo, rollup, thresholds, waste, wasteZone, action, locale }: 
             <div className="flex flex-wrap gap-4">
                 <div
                     className={cn(
-                        'glow-soft flex min-w-64 flex-1 flex-col gap-3 rounded-2xl px-5 py-4',
+                        'glow-soft flex min-w-64 flex-1 flex-col gap-3 rounded-lg px-5 py-4',
                         ZONE_TINT_CLASS[roi]
                     )}
                 >
@@ -152,7 +152,7 @@ function GeoStat({ geo, rollup, thresholds, waste, wasteZone, action, locale }: 
 
                 <div
                     className={cn(
-                        'glow-soft flex min-w-64 flex-1 items-center gap-6 rounded-2xl px-5 py-4',
+                        'glow-soft flex min-w-64 flex-1 items-center gap-6 rounded-lg px-5 py-4',
                         ZONE_TINT_CLASS[wasteTone]
                     )}
                 >

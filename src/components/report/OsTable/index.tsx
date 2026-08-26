@@ -97,13 +97,18 @@ function MetricCells({
                 {usd(m.spendPlus)}
                 <RowTrend metric="spend" trend={trend ?? null} />
             </td>
-            <td className={cn('p-2 font-mono font-bold', !plain && (m.profit >= 0 ? 'text-success' : 'text-danger'))}>
+            <td
+                className={cn(
+                    'p-2 font-mono font-semibold',
+                    !plain && (m.profit >= 0 ? 'text-success' : 'text-danger')
+                )}
+            >
                 {usdSigned(m.profit)}
                 <RowTrend metric="profit" trend={trend ?? null} />
             </td>
             <td
                 className={cn(
-                    'p-2 font-mono font-bold',
+                    'p-2 font-mono font-semibold',
                     !plain && m.roi !== null && (m.roi >= 0 ? 'text-success' : 'text-danger')
                 )}
             >

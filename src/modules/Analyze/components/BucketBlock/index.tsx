@@ -28,7 +28,7 @@ function BucketBlock({ zone, campaigns, locale, copiedKey, onCopy, copyKey }: Bu
     return (
         <div
             className={cn(
-                'flex min-w-48 flex-1 flex-col gap-3 rounded-xl border p-3 backdrop-blur',
+                'flex min-w-48 flex-1 flex-col gap-3 rounded-lg border p-3 backdrop-blur',
                 ZONE_CARD_CLASS[zone]
             )}
         >
