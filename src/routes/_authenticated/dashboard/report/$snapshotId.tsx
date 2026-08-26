@@ -1,19 +1,12 @@
 import { createFileRoute, notFound } from '@tanstack/react-router';
-import { z } from 'zod';
 import { checkIsRouteAllowed } from '@/lib/utils/auth/permissions';
 import { SNAPSHOT_NOT_FOUND } from '@/services/snapshots/constants';
 import { snapshotBundleQueryOptions } from '@/services/snapshots/queries';
 import { Report } from '@/modules/Report';
-
-// The tab the report opens on. `.catch()` per repo convention: the param is a shareable link's
-// payload, so a stale or malformed geo falls back to the Snapshot's first market rather than
-// throwing (`activeGeo` makes the same call once the Snapshot is known).
-const searchSchema = z.object({
-    geo: z.string().optional().catch(undefined),
-});
+import { reportSearchSchema } from '@/modules/Report/schemas';
 
 export const Route = createFileRoute('/_authenticated/dashboard/report/$snapshotId')({
-    validateSearch: searchSchema,
+    validateSearch: reportSearchSchema,
     // Dollar roles only: a Designer's or BDM's dimension scope carries no campaign dimension, so the
     // Report surfaces are not theirs (spec story 40). The server gate is `scopeFor`, not this list.
     beforeLoad({ context: { auth } }) {

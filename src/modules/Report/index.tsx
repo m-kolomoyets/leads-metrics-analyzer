@@ -19,6 +19,7 @@ import { SectionCard } from '@/components/report/SectionCard';
 import { LOCALES, ui } from '@/components/report/utils/i18n';
 import { Button } from '@/components/ui/Button';
 import { activeGeo } from './utils/activeGeo';
+import { BackButton } from './components/BackButton';
 
 const routeApi = getRouteApi('/_authenticated/dashboard/report/$snapshotId');
 
@@ -78,6 +79,7 @@ function Report() {
     return (
         <>
             <MainLayoutHeader>
+                <BackButton from={search.from} locale={locale} />
                 <h1 className="text-xl">
                     {ui('report', locale)} · {view.snapshot.reportDate}
                 </h1>

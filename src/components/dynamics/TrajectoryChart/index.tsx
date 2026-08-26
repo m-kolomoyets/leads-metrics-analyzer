@@ -212,7 +212,7 @@ function TrajectoryChart({ points, mode }: TrajectoryChartProps) {
         void navigate({
             to: '/dashboard/report/$snapshotId',
             params: { snapshotId: point.snapshotId },
-            search: { geo: point.geo },
+            search: { geo: point.geo, from: 'dynamics' },
         });
     }
 

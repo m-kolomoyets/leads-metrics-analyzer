@@ -1,4 +1,5 @@
 import type { Locale } from '@/components/report/utils/i18n';
+import type { ReportOrigin } from '@/modules/Report/types';
 import type { ReportCard } from '../../types';
 import { Link } from '@tanstack/react-router';
 import { ArrowUpRightIcon } from 'lucide-react';
@@ -13,6 +14,8 @@ import { toGeoRollup } from '../../utils/toGeoRollup';
 type SnapshotCardProps = {
     card: ReportCard;
     locale: Locale;
+    // The surface this card is rendered on, handed to the report so its way out leads back here.
+    from: ReportOrigin;
 };
 
 // Push time as the reader's local clock. Only the time is shown — the DATE that matters is the report
@@ -25,7 +28,7 @@ const timeFormat = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '
 // The card prints no figures of its own. Every number it could show is already in the `GeoStat` rows
 // below it, and a summed copy sitting above them reads as a second, subtly different set of numbers.
 // The summed headline survives only as the card's ROI border, which is a colour rather than a figure.
-function SnapshotCard({ card, locale }: SnapshotCardProps) {
+function SnapshotCard({ card, locale, from }: SnapshotCardProps) {
     const { headline } = card;
     // Bordered by the ROI summed across the Snapshot's Geos, so a bad day is visible from across the
     // room (spec story 9). A Snapshot with no frozen rollup has no ROI to band and stays neutral.
@@ -51,7 +54,15 @@ function SnapshotCard({ card, locale }: SnapshotCardProps) {
 
                 {/* Accented, not ghost: opening the detailed report is the one thing a reader does
                     from this card, and everything around it is a number rather than a control. */}
-                <Button render={<Link to="/dashboard/report/$snapshotId" params={{ snapshotId: card.snapshotId }} />}>
+                <Button
+                    render={
+                        <Link
+                            to="/dashboard/report/$snapshotId"
+                            params={{ snapshotId: card.snapshotId }}
+                            search={{ from }}
+                        />
+                    }
+                >
                     {ui('openReport', locale)}
                     <ArrowUpRightIcon />
                 </Button>
@@ -76,7 +87,7 @@ function SnapshotCard({ card, locale }: SnapshotCardProps) {
                                     <Link
                                         to="/dashboard/report/$snapshotId"
                                         params={{ snapshotId: card.snapshotId }}
-                                        search={{ geo: geo.geo }}
+                                        search={{ geo: geo.geo, from }}
                                     />
                                 }
                             >

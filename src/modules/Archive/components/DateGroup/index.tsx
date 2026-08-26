@@ -34,7 +34,7 @@ function DateGroup({ group, locale }: DateGroupProps) {
                         </div>
 
                         {cards.map((card) => {
-                            return <SnapshotCard key={card.snapshotId} card={card} locale={locale} />;
+                            return <SnapshotCard key={card.snapshotId} card={card} locale={locale} from="archive" />;
                         })}
                     </div>
                 );

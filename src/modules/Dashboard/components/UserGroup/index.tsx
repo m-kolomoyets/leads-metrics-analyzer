@@ -48,7 +48,7 @@ function UserGroup({ group, locale }: UserGroupProps) {
             <AccordionPanel>
                 <div className="flex flex-col gap-4 pt-3">
                     {cards.map((card) => {
-                        return <SnapshotCard key={card.snapshotId} card={card} locale={locale} />;
+                        return <SnapshotCard key={card.snapshotId} card={card} locale={locale} from="dashboard" />;
                     })}
 
                     {/* The way out of the range: this person's whole history, in the archive, where

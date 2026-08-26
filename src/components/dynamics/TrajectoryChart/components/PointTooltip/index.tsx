@@ -133,7 +133,7 @@ function PointTooltip({ point, previous, metric, mode, position, total }: PointT
                     <Link
                         to="/dashboard/report/$snapshotId"
                         params={{ snapshotId: point.snapshotId }}
-                        search={{ geo: point.geo }}
+                        search={{ geo: point.geo, from: 'dynamics' }}
                     >
                         Open this report
                         <ArrowUpRightIcon data-icon="inline-end" />
