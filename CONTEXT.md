@@ -279,7 +279,23 @@ _Avoid_: Cached rollup, summary row, header snapshot
 > **A Snapshot's two dates.** `report date` is the day the data describes, picked by the buyer at
 > push; `taken at` is when they pushed it. Reports group and filter by the **report date** — the only
 > one stable when a buyer re-pushes a corrected analysis of an old day. `taken at` is shown only as
-> freshness ("last reported at"), never as a grouping key.
+> freshness ("last reported at"), never as a grouping key — including on a Dynamics page, where it is
+> the axis a Trajectory is drawn on but never the day it belongs to (ADR-0017).
+
+**Replaced Snapshot**:
+A Snapshot superseded by a corrected one from the same buyer, within 60 minutes of its push. Nothing
+in it is edited — it keeps its Facts, its Frozen Geo Rollup and its copied thresholds, and still
+rebuilds its own report — but it is invisible to every calculation: no series, no delta, no table, no
+total. Every read filters for active Snapshots. The Trajectory keeps a badge where the point was, so
+a number someone read an hour ago can still be accounted for (ADR-0018).
+_Avoid_: Deleted snapshot, void snapshot, amended snapshot, draft
+
+**Trajectory**:
+The sequence of one buyer's active Snapshots for a single `report date`, ordered by `taken at` — the
+shape of their day as it was pushed, not as it is summarised. Two pushes an hour apart are two
+points; nothing merges them. The day a Trajectory belongs to is its `report date`; the axis it is
+drawn on is `taken at` (ADR-0017).
+_Avoid_: Timeline, history, series, snapshot list
 
 **Review Multiplier**:
 Global multiplier applied to a Geo's install `yr` threshold to detect a Problem Account.
