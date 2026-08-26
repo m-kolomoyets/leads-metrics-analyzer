@@ -1,6 +1,7 @@
 import type { SeriesPoint } from '@/lib/domain/dynamics';
 import { compareFigures } from '@/lib/domain/dynamics';
 import { kyivClock } from '@/lib/utils/kyivDay';
+import { SectionCard } from '@/components/report/SectionCard';
 import { METRIC_FORMAT, METRIC_LABEL } from '../utils/metrics';
 import { TrendArrow } from '../TrendArrow';
 
@@ -40,7 +41,7 @@ function ComparisonPanel({ points }: ComparisonPanelProps) {
     const previousClock = previous === null ? null : clockOf(previous.takenAt);
 
     return (
-        <section className="border-border flex flex-col gap-3 rounded-lg border p-4" aria-label="Since the last push">
+        <SectionCard label="Since the last push" className="flex flex-col gap-3">
             <p className="text-muted-foreground text-xs">
                 {previous === null
                     ? // One push so far: the day arrived in one piece, which is normal in the morning
@@ -81,7 +82,7 @@ function ComparisonPanel({ points }: ComparisonPanelProps) {
                     );
                 })}
             </dl>
-        </section>
+        </SectionCard>
     );
 }
 

@@ -9,6 +9,7 @@ import { Link } from '@tanstack/react-router';
 import { COST_METRICS, deltaPointsFor, deltasFor, hasZone, zoneOfPoint } from '@/lib/domain/dynamics';
 import { cn } from '@/lib/utils/cn';
 import { kyivClock } from '@/lib/utils/kyivDay';
+import { SectionCard } from '@/components/report/SectionCard';
 import { cost, DASH } from '@/components/report/utils/format';
 import {
     CORRECTED_STROKE,
@@ -240,7 +241,7 @@ function TrajectoryChart({ points, mode }: TrajectoryChartProps) {
             : [];
 
     return (
-        <section className="border-border flex flex-col gap-3 rounded-lg border p-4" aria-label="Trajectory">
+        <SectionCard label="Trajectory" className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
                 {COST_METRICS.map((metric) => {
                     return (
@@ -578,7 +579,7 @@ function TrajectoryChart({ points, mode }: TrajectoryChartProps) {
             {/* The strip reads the day as it happened whatever the toggle says — it is the map, and
                 the chart above it is the territory. */}
             <SparklineStrip points={points} selected={[...costMetrics, figure]} onSelect={selectFromStrip} />
-        </section>
+        </SectionCard>
     );
 }
 
