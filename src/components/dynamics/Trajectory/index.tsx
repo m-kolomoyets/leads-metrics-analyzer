@@ -2,11 +2,11 @@ import type { CostMetric, SeriesPoint } from '@/lib/domain/dynamics';
 import type { DynamicsMode, FigureMetric } from '../types';
 import { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { COST_METRICS } from '@/lib/domain/dynamics';
 import { TrajectoryCard } from '@/components/charts/TrajectoryCard';
 import { Accordion, AccordionHeader, AccordionItem, AccordionPanel, AccordionTrigger } from '@/components/ui/Accordion';
 import { trajectoryProps } from '../utils/chartProps';
-import { METRIC_FORMAT, METRIC_LABEL } from '../utils/metrics';
+import { toggleCostMetric } from '../utils/costSelection';
+import { METRIC_FORMAT, METRIC_LABEL, metricValue } from '../utils/metrics';
 import { MetricControls } from '../MetricControls';
 import { PointTooltip } from '../PointTooltip';
 
@@ -47,15 +47,7 @@ function Trajectory({ points, mode, costMetrics, figure, onCostMetricsChange, on
     const plotted = props.points;
 
     function toggleCost(metric: CostMetric) {
-        onCostMetricsChange(
-            costMetrics.includes(metric)
-                ? costMetrics.filter((one) => {
-                      return one !== metric;
-                  })
-                : COST_METRICS.filter((one) => {
-                      return one === metric || costMetrics.includes(one);
-                  })
-        );
+        onCostMetricsChange(toggleCostMetric(costMetrics, metric));
     }
 
     // At THIS Snapshot, never the latest: a lead who sees CPI spike at 15:00 and is handed the 17:00
@@ -88,6 +80,26 @@ function Trajectory({ points, mode, costMetrics, figure, onCostMetricsChange, on
         })
         .join(', ')}. Right axis: ${METRIC_LABEL[figure]}.`;
 
+    // The metric the keyboard reads out as it walks: the first cost line, which is the one the marker
+    // and the tooltip lead with too. Announcing all four would turn one arrow press into a paragraph.
+    const spoken = costMetrics[0] ?? figure;
+
+    // Where the keyboard is, said the way the surface says it: a cost is a bare two-decimal number,
+    // money carries its currency, ROI its percent sign. The clock is the row's own label, so the
+    // spoken reading and the time axis can never drift apart.
+    function describePoint(index: number) {
+        const point = plotted[index];
+
+        if (point === undefined) {
+            return '';
+        }
+
+        const value = metricValue(point.figures, spoken);
+        const reading = value === null ? 'not measured' : METRIC_FORMAT[spoken].value(value);
+
+        return `${METRIC_LABEL[spoken]} ${reading} at ${props.rows[index]?.label ?? ''}, push ${index + 1} of ${plotted.length}`;
+    }
+
     return (
         <Accordion
             value={open}
@@ -118,10 +130,15 @@ function Trajectory({ points, mode, costMetrics, figure, onCostMetricsChange, on
                             costDomain={props.costDomain}
                             costTick={METRIC_FORMAT[costMetrics[0] ?? 'cpi'].axis}
                             costTicks={props.costTicks}
+                            describePoint={describePoint}
                             description={description}
                             figureDomain={props.figureDomain}
                             figureTick={METRIC_FORMAT[figure].axis}
                             figureTicks={props.figureTicks}
+                            // The description says what the plot draws; this says what the keys do,
+                            // because a reader who has just tabbed onto a chart has no other way to
+                            // find out that it walks.
+                            label={`${description} Arrow keys walk the pushes, Enter opens that push's report.`}
                             renderTooltip={(index) => {
                                 const point = plotted[index];
 

@@ -23,6 +23,7 @@ import {
     UNGRADED_STROKE,
 } from '../constants';
 import { toneStops } from '../utils/gradient';
+import { pointStep } from '../utils/keyboard';
 
 // The day, at the size the day deserves. It draws several lines at once and tells them apart by
 // DASH, because the one colour channel it has is spent entirely on the zone (ADR-0019) — two
@@ -39,6 +40,11 @@ import { toneStops } from '../utils/gradient';
 // inside it can never be reached — it walks away from the cursor sent to press it, and would not
 // take the click if it stood still. So Recharts is left doing the only part it is better at (which
 // push is the pointer over) and the card is positioned, frozen and dismissed here.
+//
+// The pointer is not the only way in. The plot carries a transparent button in the tab order:
+// arrows walk the pushes, Home and End jump to the day's ends, Enter opens the report of the push in
+// hand. Its position is held apart from the pointer's on purpose — a pointer leaving the plot closes
+// the card, and must not also throw away where the keyboard was.
 
 // One push, as the plot eats it. `index` is what the time axis is keyed on rather than `label`: two
 // pushes inside the same minute print the same clock, and a category axis keyed on a repeated label
@@ -60,6 +66,12 @@ type TrajectoryCardProps = {
     // What the plot draws, in words, for a reader who cannot see it. Rendered into the SVG's own
     // `<desc>`, which is where a screen reader looks for it.
     description?: string;
+    // What the keyboard's handle announces itself as. Falls back to the description, which already
+    // names both axes; a caller with keys to explain passes its own.
+    label?: string;
+    // The push the keyboard has in hand, said out loud. Without it the arrow keys move a highlight
+    // that a screen-reader user has no way to read.
+    describePoint?: (index: number) => string;
     // Given the index of the push being pointed at. Deliberately not Recharts' payload: the payload
     // is cleared the moment the pointer leaves the SVG for the card, which is exactly when the card
     // still needs to be on screen.
@@ -114,14 +126,10 @@ function renderNothing() {
     return null;
 }
 
-// What the pointer is over, and whether it is being held still. `pinned` is separate from `index`
-// because moving onto the card is not the same as moving to another push: while the card is being
-// read — or its button aimed at — the reading behind it must not change under it.
-//
-// `left` is a WINDOW coordinate, not a plot one: the card is positioned `fixed` so that no ancestor
-// with `overflow: hidden` — the accordion panel the chart may be folded inside, the section card
-// around it — can clip a card that is deliberately allowed out of the plot.
-type Hover = { index: number; left: number };
+// Where the card sits, in WINDOW coordinates rather than plot ones: it is positioned `fixed` so that
+// no ancestor with `overflow: hidden` — the accordion panel the chart may be folded inside, the
+// section card around it — can clip a card that is deliberately allowed out of the plot.
+type Spot = { left: number; top: number };
 
 function TrajectoryCard({
     rows,
@@ -133,6 +141,8 @@ function TrajectoryCard({
     costTick,
     figureTick,
     description,
+    label,
+    describePoint,
     renderTooltip,
     onSelectPoint,
     className,
@@ -142,22 +152,45 @@ function TrajectoryCard({
     const prefix = useId();
     const plotRef = useRef<HTMLDivElement>(null);
     // Measured rather than assumed: the card is the caller's, and this component has no idea how
-    // wide it chose to be. Read in the move handler, never in render — and never through a ref
-    // callback, which fires with `null` on every detach and would set state in a loop.
+    // wide it chose to be.
     const cardRef = useRef<HTMLDivElement>(null);
-    const [hover, setHover] = useState<Hover | null>(null);
+    // What the pointer is over. Cleared the moment it leaves the plot box.
+    const [hovered, setHovered] = useState<number | null>(null);
+    // Where the KEYBOARD is, which is a different question and survives a different set of events.
+    // It is remembered while the plot is unfocused so that tabbing back in resumes the day where the
+    // reader left it rather than at breakfast.
+    const [focused, setFocused] = useState(0);
+    // Whether the keyboard's position is the one on screen: true while the plot holds focus and the
+    // reader has not pressed Escape.
+    const [walking, setWalking] = useState(false);
+    // True while the pointer is ON the card. Moving onto the card is not the same as moving to
+    // another push — while the card is being read, or its button aimed at, the reading behind it
+    // must not change under it.
     const [pinned, setPinned] = useState(false);
-    const [top, setTop] = useState(TOOLTIP_GAP);
+    const [spot, setSpot] = useState<Spot | null>(null);
+    // Bumped when the page moves under a keyboard reading, to send the card after its push.
+    const [placement, setPlacement] = useState(0);
+
+    // The pointer wins while it is on the plot: it is the more recent thing the reader did, and two
+    // markers on one plot is two answers to one question.
+    const reading = hovered ?? (walking ? focused : null);
+    // Clamped rather than trusted, whichever of the two it came from: both positions outlive a mode
+    // switch that shortens the day, and a marker on a push that no longer exists is a crosshair
+    // standing in empty air.
+    const active = reading === null || rows.length === 0 ? null : Math.min(reading, rows.length - 1);
 
     // The card hangs off the MARKED POINT, not the pointer — and is measured rather than computed:
     // turning a value back into a pixel would mean reproducing Recharts' plot geometry (margins, two
     // axis widths, the time axis's height) here, and that copy would be wrong the first time any of
     // them changed. The marker is already on screen and knows exactly where it is.
+    //
+    // Before paint, so the card never shows at last frame's position: it is rendered hidden, placed
+    // here, and revealed in the same frame.
     useLayoutEffect(
         function placeCard() {
             const plot = plotRef.current;
             const card = cardRef.current;
-            if (hover === null || plot === null || card === null) {
+            if (active === null || plot === null || card === null) {
                 return;
             }
             // The first marker belongs to the first series — a cost line, the graded one the reader
@@ -165,35 +198,52 @@ function TrajectoryCard({
             // asked for by name rather than taken as the first dot on the plot.
             const marker = plot.querySelector('.chart-point-marker circle');
             if (marker === null) {
+                // Every series is null at this push, so there is no point to hang a card off. Better
+                // no card than one floating over an arbitrary part of the plot.
+                setSpot(null);
                 return;
             }
             const markerBox = marker.getBoundingClientRect();
+
             // Above the point, and deliberately NOT clamped to the plot: a card this size squeezed
             // inside an h-80 plot would sit on top of the very line it describes. Nothing clips it,
             // so it is allowed out — the reader keeps the shape and the reading at once.
             const above = markerBox.top - card.offsetHeight - TOOLTIP_GAP;
-
             // The window IS a real edge, though. A push near the top of the screen has no room above
             // it, and a card half off the top is a card whose link cannot be pressed — so it drops
-            // under the point rather than being cut.
-            setTop(above < VIEWPORT_MARGIN ? markerBox.bottom + TOOLTIP_GAP : above);
+            // under the point rather than being cut. Same at either side: a card hanging off the
+            // right edge is a card whose link cannot be clicked, which is the bug this whole
+            // arrangement exists to fix.
+            const wanted = markerBox.left + markerBox.width / 2 - card.offsetWidth / 2;
+            const furthest = Math.max(VIEWPORT_MARGIN, window.innerWidth - card.offsetWidth - VIEWPORT_MARGIN);
+
+            setSpot({
+                left: Math.min(Math.max(wanted, VIEWPORT_MARGIN), furthest),
+                top: above < VIEWPORT_MARGIN ? markerBox.bottom + TOOLTIP_GAP : above,
+            });
         },
-        [hover]
+        // `rows` and `series` are in the list because either changing moves the marker without
+        // moving the reading: a metric switched on rescales the axis under a card already open.
+        [active, placement, rows, series]
     );
 
     // The card is placed in WINDOW coordinates, and a wheel under a stationary pointer moves the plot
     // without moving the pointer — so nothing else would tell the card its push had walked out from
-    // under it. It is dismissed rather than followed: the reading is a moment's answer, and a card
-    // chasing the page while the reader scrolls past it is noise.
+    // under it. A POINTER reading is dismissed rather than followed: it is a moment's answer, and a
+    // card chasing the page while the reader scrolls past it is noise. A KEYBOARD reading is
+    // followed, because the reader has not let go of that push — the plot still holds focus.
     useEffect(
-        function dismissOnScroll() {
-            if (hover === null) {
+        function trackScroll() {
+            if (active === null) {
                 return;
             }
 
             function handleScroll() {
-                setHover(null);
+                setHovered(null);
                 setPinned(false);
+                setPlacement((count) => {
+                    return count + 1;
+                });
             }
 
             window.addEventListener('scroll', handleScroll, { capture: true, passive: true });
@@ -202,8 +252,34 @@ function TrajectoryCard({
                 window.removeEventListener('scroll', handleScroll, { capture: true });
             };
         },
-        [hover]
+        [active]
     );
+
+    // The keyboard path across a plot the pointer owns: arrows walk the day, Home and End jump to its
+    // ends, Enter opens the report of the push in hand, Escape puts the card away without losing the
+    // place. Space is Enter's twin here because this handle is a button and a reader will press it.
+    function handleKeyDown(event: React.KeyboardEvent<HTMLButtonElement>) {
+        const next = pointStep(event.key, focused, rows.length);
+
+        if (next !== null) {
+            event.preventDefault();
+            setFocused(next);
+            setWalking(true);
+            return;
+        }
+
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            if (onSelectPoint && rows.length > 0) {
+                onSelectPoint(Math.min(focused, rows.length - 1));
+            }
+            return;
+        }
+
+        if (event.key === 'Escape') {
+            setWalking(false);
+        }
+    }
 
     // Every nth stamp, so the labels stay evenly spaced instead of being dropped where they collide.
     const timeInterval = Math.max(0, Math.ceil(rows.length / TIME_LABELS) - 1);
@@ -217,7 +293,7 @@ function TrajectoryCard({
                 // the chart — it may be the pointer on its way to the card — and closing there would
                 // snatch the card away mid-reach.
                 onMouseLeave={() => {
-                    setHover(null);
+                    setHovered(null);
                     setPinned(false);
                 }}
             >
@@ -237,25 +313,10 @@ function TrajectoryCard({
                                 return;
                             }
                             const index = indexOf(state.activeTooltipIndex);
-                            const x = state.activeCoordinate?.x;
-                            if (index === null || typeof x !== 'number') {
+                            if (index === null) {
                                 return;
                             }
-                            // Anchored to the push, then pulled back inside the window at either end.
-                            // A card hanging half off the right edge is a card whose link cannot be
-                            // clicked, which is the bug this whole arrangement exists to fix.
-                            // Zero on the very first move, when the card has never been mounted — it
-                            // lands under the pointer for one frame and centres itself on the next,
-                            // which is quicker than a reader can see.
-                            const card = cardRef.current?.offsetWidth ?? 0;
-                            const plotLeft = plotRef.current?.getBoundingClientRect().left ?? 0;
-                            // Held inside the WINDOW rather than inside the plot. The plot's edge is
-                            // not a real boundary — nothing clips the card — but the window's is, and
-                            // a card half off the screen is a card whose link cannot be clicked.
-                            const wanted = plotLeft + x - card / 2;
-                            const furthest = Math.max(VIEWPORT_MARGIN, window.innerWidth - card - VIEWPORT_MARGIN);
-                            const left = Math.min(Math.max(wanted, VIEWPORT_MARGIN), furthest);
-                            setHover({ index, left });
+                            setHovered(index);
                         }}
                     >
                         <defs>
@@ -314,9 +375,10 @@ function TrajectoryCard({
                         {/* Mounted, and draws nothing. Recharts computes which push the pointer is
                             over only while a Tooltip is present, and that hit-testing is the one
                             part of this worth keeping. The cursor rule is drawn below instead, off
-                            our own state, so it holds still when the card does. */}
+                            our own state, so it holds still when the card does — and so the keyboard
+                            gets the same rule the pointer does. */}
                         <Tooltip content={renderNothing} cursor={false} />
-                        {hover && <ReferenceLine stroke="var(--border-strong)" x={hover.index} yAxisId="cost" />}
+                        {active !== null && <ReferenceLine stroke="var(--border-strong)" x={active} yAxisId="cost" />}
 
                         {series.flatMap((entry) => {
                             const stroke = entry.tones ? `url(#${prefix}${entry.dataKey})` : UNGRADED_STROKE;
@@ -358,14 +420,15 @@ function TrajectoryCard({
                         {/* The marked push, ours rather than the library's. Recharts' own activeDot
                             is tied to its tooltip state, which clears the instant the pointer leaves
                             the SVG — so the point would vanish exactly as the reader reaches for the
-                            card that point opened. */}
-                        {hover &&
+                            card that point opened, and would never appear at all for a reader who
+                            never touches a pointer. */}
+                        {active !== null &&
                             series.flatMap((entry) => {
-                                const value = rows[hover.index]?.[entry.dataKey];
+                                const value = rows[active]?.[entry.dataKey];
                                 if (typeof value !== 'number') {
                                     return [];
                                 }
-                                const color = pointColor(entry.tones, hover.index);
+                                const color = pointColor(entry.tones, active);
                                 return [
                                     // The ring, breathing on the app's own 4.8s ambient clock and
                                     // held still under `prefers-reduced-motion` — both live in the
@@ -380,7 +443,7 @@ function TrajectoryCard({
                                         fill={color}
                                         r={ACTIVE_RING_RADIUS}
                                         stroke="none"
-                                        x={hover.index}
+                                        x={active}
                                         y={value}
                                         yAxisId={entry.axis}
                                     />,
@@ -391,7 +454,7 @@ function TrajectoryCard({
                                         r={ACTIVE_POINT_RADIUS}
                                         stroke="var(--card)"
                                         strokeWidth={2}
-                                        x={hover.index}
+                                        x={active}
                                         y={value}
                                         yAxisId={entry.axis}
                                     />,
@@ -400,7 +463,25 @@ function TrajectoryCard({
                     </ComposedChart>
                 </ResponsiveContainer>
 
-                {hover && (
+                {/* The keyboard's handle on a plot the pointer owns: a real button laid over it,
+                    transparent to the pointer so hovering and clicking still reach the chart, but in
+                    the tab order and carrying the arrow keys. Its focus ring is the app's own, drawn
+                    around the whole plot — which is honest, because the whole plot is what the keys
+                    now belong to. */}
+                <button
+                    type="button"
+                    aria-label={label ?? description}
+                    className="pointer-events-none absolute inset-0 rounded-lg"
+                    onBlur={() => {
+                        setWalking(false);
+                    }}
+                    onFocus={() => {
+                        setWalking(true);
+                    }}
+                    onKeyDown={handleKeyDown}
+                />
+
+                {active !== null && (
                     <div
                         ref={cardRef}
                         className="pointer-events-auto fixed z-50"
@@ -413,12 +494,27 @@ function TrajectoryCard({
                         onMouseLeave={() => {
                             setPinned(false);
                         }}
-                        style={{ left: hover.left, top }}
+                        // Laid out before it is shown: the placement below measures this node
+                        // against the marker, so it has to exist first. Hidden rather than unmounted
+                        // for that one pass, and revealed in the same frame.
+                        style={
+                            spot === null
+                                ? { left: 0, top: 0, visibility: 'hidden' }
+                                : { left: spot.left, top: spot.top }
+                        }
                     >
-                        {renderTooltip(hover.index)}
+                        {renderTooltip(active)}
                     </div>
                 )}
             </div>
+
+            {/* What the keyboard has in hand, said out loud. Without it the arrow keys would move a
+                highlight a screen-reader user cannot see. */}
+            {describePoint && (
+                <p aria-live="polite" className="sr-only">
+                    {walking && rows.length > 0 ? describePoint(Math.min(focused, rows.length - 1)) : ''}
+                </p>
+            )}
         </div>
     );
 }

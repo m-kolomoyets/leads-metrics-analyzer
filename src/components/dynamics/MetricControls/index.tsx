@@ -13,6 +13,12 @@ import { METRIC_LABEL } from '../utils/metrics';
 // Each cost toggle carries its own dash pattern rather than a tick. Colour on this chart is spoken
 // for by the zones, so dash is the only thing telling two cost lines apart, and a control that shows
 // the dash IS the legend — one thing to read instead of a box here and a key somewhere else.
+//
+// It is dressed as the chart card rather than as a form standing above one: the tray is the same
+// inset surface the metric cards mount their plots on, and a lit toggle is the same lifted panel and
+// ring a selected metric card wears. Selection is chrome and never hue, for the reason every hue on
+// this surface is already spoken for by the zone (ADR-0019) — a blue "on" state here would read as a
+// fourth verdict.
 
 const FIGURE_METRICS: FigureMetric[] = ['revenue', 'profit', 'spend', 'roi'];
 
@@ -23,9 +29,19 @@ type MetricControlsProps = {
     onSelectFigure: (metric: FigureMetric) => void;
 };
 
+// The same label the metric cards under the plot wear, so the row of controls and the row of cards
+// read as one surface rather than as a form bolted onto a chart.
 function Caption({ children }: { children: React.ReactNode }) {
-    return <span className="text-muted-foreground/70 text-xs tracking-[0.15em] uppercase">{children}</span>;
+    return <span className="text-muted-foreground text-sm font-medium">{children}</span>;
 }
+
+// The tray: the chart card's own inset panel, edgeless. A border here would draw a second box inside
+// the card's, and the surface step already says where the control begins.
+const TRAY = 'bg-chart-surface border-0 gap-1 rounded-lg p-1';
+
+// A lit toggle is a selected metric card, shrunk: the panel lifts and takes the ring.
+const TOGGLE =
+    'rounded-md px-3 py-1.5 text-sm data-[pressed]:bg-surface-overlay data-[pressed]:text-foreground data-[pressed]:ring-ring data-[pressed]:ring-1';
 
 function MetricControls({ costMetrics, figure, onToggleCost, onSelectFigure }: MetricControlsProps) {
     // The group hands back the whole next selection; the chart owns the one rule about it (a cost
@@ -63,12 +79,13 @@ function MetricControls({ costMetrics, figure, onToggleCost, onSelectFigure }: M
                 <ToggleGroup
                     multiple
                     aria-label="Cost metrics on the left axis"
+                    className={TRAY}
                     value={costMetrics}
                     onValueChange={handleCostChange}
                 >
                     {COST_METRICS.map((metric) => {
                         return (
-                            <Toggle key={metric} value={metric}>
+                            <Toggle key={metric} className={TOGGLE} value={metric}>
                                 {/* The dash pattern, shown rather than described: it is the only thing
                                     telling two cost lines apart once both are on. */}
                                 <svg width="20" height="8" aria-hidden={true} className="shrink-0">
@@ -92,10 +109,15 @@ function MetricControls({ costMetrics, figure, onToggleCost, onSelectFigure }: M
             <div className="flex flex-col items-end gap-1.5">
                 <Caption>Right axis</Caption>
 
-                <ToggleGroup aria-label="Figure on the right axis" value={[figure]} onValueChange={handleFigureChange}>
+                <ToggleGroup
+                    aria-label="Figure on the right axis"
+                    className={TRAY}
+                    value={[figure]}
+                    onValueChange={handleFigureChange}
+                >
                     {FIGURE_METRICS.map((metric) => {
                         return (
-                            <Toggle key={metric} value={metric}>
+                            <Toggle key={metric} className={TOGGLE} value={metric}>
                                 {METRIC_LABEL[metric]}
                             </Toggle>
                         );
