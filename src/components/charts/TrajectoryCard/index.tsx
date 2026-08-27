@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import type { ChartSeries, ChartTone } from '../types';
+import type { XAxisTickContentProps } from 'recharts';
+import type { ChartFlag, ChartMark, ChartSeries, ChartTone } from '../types';
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import {
     CartesianGrid,
@@ -16,13 +17,17 @@ import { cn } from '@/lib/utils/cn';
 import {
     ACTIVE_POINT_RADIUS,
     ACTIVE_RING_RADIUS,
+    BADGE_RADIUS,
+    CHROME_STROKE,
     CURVE,
+    FLAG_GLYPH_SIZE,
+    FLAG_LANE_HEIGHT,
     HALO_SPREAD,
     STROKE_WIDTH,
     TONE_STROKE,
     UNGRADED_STROKE,
 } from '../constants';
-import { toneStops } from '../utils/gradient';
+import { strokeStops } from '../utils/gradient';
 import { pointStep } from '../utils/keyboard';
 
 // The day, at the size the day deserves. It draws several lines at once and tells them apart by
@@ -76,6 +81,13 @@ type TrajectoryCardProps = {
     // is cleared the moment the pointer leaves the SVG for the card, which is exactly when the card
     // still needs to be on screen.
     renderTooltip: (index: number) => ReactNode;
+    // What happened to each push beyond its figures, parallel to `rows`: which edge cases the
+    // interval into it carried, whether that interval measured anything, and whether the push
+    // restated an earlier one. Worked out by the caller, like everything else on this surface.
+    marks?: readonly ChartMark[];
+    // The key for the lane, holding only the flags the day actually raised. Empty — or absent — and
+    // no lane is drawn at all: a key to three cases that did not happen is furniture.
+    flagLegend?: readonly ChartFlag[];
     onSelectPoint?: (index: number) => void;
     className?: string;
 };
@@ -144,6 +156,8 @@ function TrajectoryCard({
     label,
     describePoint,
     renderTooltip,
+    marks,
+    flagLegend,
     onSelectPoint,
     className,
 }: TrajectoryCardProps) {
@@ -284,6 +298,63 @@ function TrajectoryCard({
     // Every nth stamp, so the labels stay evenly spaced instead of being dropped where they collide.
     const timeInterval = Math.max(0, Math.ceil(rows.length / TIME_LABELS) - 1);
 
+    // Which intervals were restated, parallel to the rows. A restated interval is a clamped
+    // remainder rather than a measurement, so every line is weakened across it — the figures it
+    // would have carried are already gaps, and a full-strength stroke joining the two ends would
+    // claim a step nobody traded through.
+    const faded = rows.map((_row, index) => {
+        return marks?.[index]?.faded === true;
+    });
+    const restated = faded.includes(true);
+
+    // A line is painted from a gradient when it has something to vary along its length: a grade at
+    // each push, a weakened interval, or both. A line with neither takes the flat accent, which is
+    // one fewer node for the browser to interpolate on every hover.
+    function gradient(entry: ChartSeries) {
+        return entry.tones !== undefined || restated;
+    }
+
+    function colorsOf(entry: ChartSeries): string[] {
+        return rows.map((_row, index) => {
+            return entry.tones ? TONE_STROKE[entry.tones[index] ?? 'neutral'] : UNGRADED_STROKE;
+        });
+    }
+
+    // The lane exists only for a day that raised something. It hangs BENEATH the time axis in a
+    // strip of its own — the flags describe the interval, and printing them on the line would make
+    // them look like properties of the figure.
+    const legend = flagLegend ?? [];
+    const flagsByKey = new Map(
+        legend.map((flag) => {
+            return [flag.key, flag];
+        })
+    );
+
+    // One push's glyphs, drawn as the lane axis's tick. Coloured per flag so the lane and the key
+    // under it are read as one thing; the key carries the words, so the glyphs are hidden from a
+    // screen reader rather than spelled out as punctuation.
+    function renderFlagTick({ x, y, payload }: XAxisTickContentProps) {
+        const flags = marks?.[Number(payload.value)]?.flags ?? [];
+
+        if (flags.length === 0) {
+            return null;
+        }
+
+        return (
+            <text aria-hidden={true} fontSize={FLAG_GLYPH_SIZE} textAnchor="middle" x={x} y={y} dy={FLAG_GLYPH_SIZE}>
+                {flags.map((key) => {
+                    const flag = flagsByKey.get(key);
+
+                    return flag === undefined ? null : (
+                        <tspan key={key} fill={flag.color}>
+                            {flag.glyph}
+                        </tspan>
+                    );
+                })}
+            </text>
+        );
+    }
+
     return (
         <div className={cn('bg-card border-border rounded-lg border p-6', className)}>
             <div
@@ -321,7 +392,7 @@ function TrajectoryCard({
                     >
                         <defs>
                             {series.map((entry) => {
-                                if (!entry.tones) {
+                                if (!gradient(entry)) {
                                     return null;
                                 }
                                 return (
@@ -333,9 +404,17 @@ function TrajectoryCard({
                                         y1="0"
                                         y2="0"
                                     >
-                                        {toneStops(entry.tones).map((stop) => {
+                                        {strokeStops(colorsOf(entry), faded).map((stop, index) => {
                                             return (
-                                                <stop key={stop.offset} offset={stop.offset} stopColor={stop.color} />
+                                                <stop
+                                                    // Two stops can share an offset — that is how the
+                                                    // strength steps at a boundary without the colour
+                                                    // stepping with it — so the offset is not a key.
+                                                    key={index}
+                                                    offset={stop.offset}
+                                                    stopColor={stop.color}
+                                                    stopOpacity={stop.opacity}
+                                                />
                                             );
                                         })}
                                     </linearGradient>
@@ -355,6 +434,21 @@ function TrajectoryCard({
                             }}
                             tickMargin={14}
                         />
+                        {/* The lane: a second time axis carrying glyphs instead of clocks. It is
+                            an axis rather than an overlay so that Recharts places each glyph on the
+                            push it belongs to and reserves the strip's height out of the plot's —
+                            the lane can never sit on the line, at any width or in either theme. */}
+                        {legend.length > 0 && (
+                            <XAxis
+                                axisLine={false}
+                                dataKey="index"
+                                height={FLAG_LANE_HEIGHT}
+                                interval={0}
+                                tick={renderFlagTick}
+                                tickLine={false}
+                                xAxisId="flags"
+                            />
+                        )}
                         <YAxis
                             {...AXIS_PROPS}
                             domain={costDomain}
@@ -381,7 +475,7 @@ function TrajectoryCard({
                         {active !== null && <ReferenceLine stroke="var(--border-strong)" x={active} yAxisId="cost" />}
 
                         {series.flatMap((entry) => {
-                            const stroke = entry.tones ? `url(#${prefix}${entry.dataKey})` : UNGRADED_STROKE;
+                            const stroke = gradient(entry) ? `url(#${prefix}${entry.dataKey})` : UNGRADED_STROKE;
                             const dash = entry.dash?.length ? entry.dash.join(' ') : undefined;
                             return [
                                 <Line
@@ -413,6 +507,42 @@ function TrajectoryCard({
                                     strokeWidth={STROKE_WIDTH.big}
                                     type={CURVE}
                                     yAxisId={entry.axis}
+                                />,
+                            ];
+                        })}
+
+                        {/* The badge a restated push wears: a ring around the point, drawn ONCE
+                            per push — one push corrected an earlier one, and printing that on every
+                            drawn metric would read as several corrections. It hangs on the first
+                            line that measured anything there, because the metric a restatement makes
+                            unmeasurable is exactly the one that has no point to hang it off. It is
+                            drawn in the chrome colour and never from the zone palette (ADR-0019):
+                            the badge is a fact about the push, not a verdict on it, and a green ring
+                            would read as praise. */}
+                        {rows.flatMap((row, index) => {
+                            if (marks?.[index]?.badge !== true) {
+                                return [];
+                            }
+
+                            const anchor = series.find((entry) => {
+                                return typeof row[entry.dataKey] === 'number';
+                            });
+                            const value = anchor === undefined ? null : row[anchor.dataKey];
+
+                            if (anchor === undefined || typeof value !== 'number') {
+                                return [];
+                            }
+
+                            return [
+                                <ReferenceDot
+                                    key={`badge-${row.index}`}
+                                    fill="none"
+                                    r={BADGE_RADIUS}
+                                    stroke={CHROME_STROKE}
+                                    strokeWidth={1.5}
+                                    x={index}
+                                    y={value}
+                                    yAxisId={anchor.axis}
                                 />,
                             ];
                         })}
@@ -507,6 +637,24 @@ function TrajectoryCard({
                     </div>
                 )}
             </div>
+
+            {/* The key to the lane, and only to the flags the day actually raised. Each entry
+                carries its hint, so the reader can find out what a glyph means where they met it
+                rather than being sent to a legend page. */}
+            {legend.length > 0 && (
+                <ul className="text-muted-foreground mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                    {legend.map((flag) => {
+                        return (
+                            <li key={flag.key} className="flex items-center gap-1.5" title={flag.hint}>
+                                <span aria-hidden={true} style={{ color: flag.color }}>
+                                    {flag.glyph}
+                                </span>
+                                {flag.label}
+                            </li>
+                        );
+                    })}
+                </ul>
+            )}
 
             {/* What the keyboard has in hand, said out loud. Without it the arrow keys would move a
                 highlight a screen-reader user cannot see. */}

@@ -4,7 +4,7 @@ import type { Zone } from '@/lib/domain/types';
 import type { ChartMetric, DynamicsMode } from '../../types';
 import type { ZonePoint } from '../../ZoneSeries/types';
 import { deltasFor, hasZone, zoneOfPoint } from '@/lib/domain/dynamics';
-import { FLAG_GLYPH } from '../constants';
+import { FLAG_GLYPH } from '../../constants';
 import { metricValue } from '../../utils/metrics';
 
 // Snapshots → what the chart library eats. Pure, so the two rules that make the chart honest — an

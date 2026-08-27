@@ -1,5 +1,5 @@
 import type { ChartTone } from '../types';
-import { TONE_STROKE } from '../constants';
+import { FADED_OPACITY, TONE_STROKE } from '../constants';
 
 // A zone-graded stroke, as SVG gradient stops. One stop per point, placed at the fraction of the
 // plot's width that point sits at, so the colour changes exactly where the verdict does — the same
@@ -40,4 +40,43 @@ export function toneFill(tones: readonly ChartTone[]): string {
 // The same, for a line that carries no grade. One hue, so one blob spanning the plot.
 export function accentFill(color: string): string {
     return `radial-gradient(110% 130% at 50% 105%, ${color}, transparent 72%)`;
+}
+
+// The same stroke, once opacity has something to say as well: colour from the grade at each push,
+// strength from whether the interval INTO that push measured anything. `faded[i]` describes the
+// segment ending at point i — the one drawn into it — so a restated interval is weakened without
+// touching the intervals either side of it.
+//
+// That precision is why a point can emit TWO stops at one offset: a stop is shared by the segments
+// on both sides of it, so a boundary where the strength changes needs one stop for each. The colour
+// is the same on both, so only the opacity steps; the hue still blends across every segment.
+export function strokeStops(
+    colors: readonly string[],
+    faded: readonly boolean[]
+): { offset: number; color: string; opacity: number }[] {
+    if (colors.length === 0) {
+        return [];
+    }
+    // A single point has no width to spread a gradient across — one flat stop, or the browser draws
+    // nothing at all. It has no interval into it either, so nothing to fade.
+    if (colors.length === 1) {
+        return [{ offset: 0, color: colors[0], opacity: 1 }];
+    }
+
+    const stops: { offset: number; color: string; opacity: number }[] = [];
+
+    colors.forEach((color, index) => {
+        const offset = index / (colors.length - 1);
+        const incoming = faded[index] === true ? FADED_OPACITY : 1;
+        const outgoing = faded[index + 1] === true ? FADED_OPACITY : 1;
+
+        if (index > 0) {
+            stops.push({ offset, color, opacity: incoming });
+        }
+        if (index < colors.length - 1 && (index === 0 || incoming !== outgoing)) {
+            stops.push({ offset, color, opacity: outgoing });
+        }
+    });
+
+    return stops;
 }

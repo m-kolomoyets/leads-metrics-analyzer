@@ -135,6 +135,10 @@ function Trajectory({ points, mode, costMetrics, figure, onCostMetricsChange, on
                             figureDomain={props.figureDomain}
                             figureTick={METRIC_FORMAT[figure].axis}
                             figureTicks={props.figureTicks}
+                            // The three edge cases the day actually hit, and the key to them. Both
+                            // are empty on a day that hit none — and in cumulative mode, where the
+                            // flags describe intervals the plot is not drawing.
+                            flagLegend={props.flagLegend}
                             // The description says what the plot draws; this says what the keys do,
                             // because a reader who has just tabbed onto a chart has no other way to
                             // find out that it walks.
@@ -157,6 +161,7 @@ function Trajectory({ points, mode, costMetrics, figure, onCostMetricsChange, on
                                     />
                                 );
                             }}
+                            marks={props.marks}
                             rows={props.rows}
                             series={props.series}
                             onSelectPoint={openReport}

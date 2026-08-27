@@ -1,12 +1,12 @@
 import type { TrajectoryRow } from '@/components/charts/TrajectoryCard';
-import type { ChartSeries, ChartTone } from '@/components/charts/types';
+import type { ChartFlag, ChartMark, ChartSeries, ChartTone } from '@/components/charts/types';
 import type { CostMetric, DynamicsMetric, SeriesPoint } from '@/lib/domain/dynamics';
 import type { DynamicsMode, FigureMetric } from '../types';
-import { COST_METRICS, deltaPointsFor, hasZone, zoneOfPoint } from '@/lib/domain/dynamics';
+import { COST_METRICS, deltaPointsFor, deltasFor, hasZone, zoneOfPoint } from '@/lib/domain/dynamics';
 import { kyivClock } from '@/lib/utils/kyivDay';
 import { extentOf, niceTicks, paddedDomain } from '@/components/charts/utils/ticks';
 import { DASH } from '@/components/report/utils/format';
-import { COST_DASH } from '../constants';
+import { COST_DASH, DELTA_FLAGS, FLAG_GLYPH, FLAG_HINT, FLAG_LABEL, FLAG_STROKE } from '../constants';
 import { METRIC_FORMAT, METRIC_LABEL, metricValue } from './metrics';
 
 // The one seam between the Dynamics domain and the charts that draw it (spec #64). Everything the
@@ -119,7 +119,35 @@ export type TrajectoryProps = {
     figureTicks: number[];
     costDomain: [number, number];
     figureDomain: [number, number];
+    // What happened to each push beyond its figures, parallel to `rows`.
+    marks: ChartMark[];
+    // The key under the plot, holding ONLY the flags the day actually raised: a permanent key for
+    // three edge cases that occur on maybe one day in ten trains the reader to ignore the lane.
+    flagLegend: ChartFlag[];
 };
+
+// The three edge cases, per push (SPEC §4.3). `deltasFor` is indexed by point: entry i describes the
+// interval ENDING at point i, which is the stroke drawn into it.
+//
+// The flags are raised in delta mode only — in cumulative mode they describe intervals the chart is
+// not drawing — but a restatement fades its interval in EITHER mode, because a clamped remainder is
+// not a measurement whichever question the toggle is asking.
+function marksOf(points: SeriesPoint[], mode: DynamicsMode): ChartMark[] {
+    return deltasFor(points).map((delta): ChartMark => {
+        return {
+            flags:
+                mode === 'delta'
+                    ? DELTA_FLAGS.filter((flag) => {
+                          return delta.flags[flag];
+                      })
+                    : [],
+            faded: delta.flags.corrected,
+            // The push that did the correcting wears the badge, and the badge does not cascade onto
+            // the pushes after it (ADR-0018).
+            badge: delta.to.replacedAt !== null,
+        };
+    });
+}
 
 // Everything the whole-day card draws, worked out once. The card takes this and renders it; nothing
 // on it is computed during a render, so a wrong axis or a misplaced grade is caught by a test rather
@@ -166,10 +194,31 @@ export function trajectoryProps({ points, mode, costMetrics, figure }: Trajector
     // Asked for the row count the cost axis settled on, so both land on the same rules.
     const figures = axisOf(rows, [figure], cost.ticks.length || AXIS_ROWS);
 
+    const marks = marksOf(points, mode);
+    // Read off the lane rather than off the mode, so the key can never list a flag the plot did not
+    // draw.
+    const raised = new Set(
+        marks.flatMap((mark) => {
+            return mark.flags;
+        })
+    );
+
     return {
         points: plotted,
         rows,
         series,
+        marks,
+        flagLegend: DELTA_FLAGS.filter((flag) => {
+            return raised.has(flag);
+        }).map((flag): ChartFlag => {
+            return {
+                key: flag,
+                glyph: FLAG_GLYPH[flag],
+                color: FLAG_STROKE[flag],
+                label: FLAG_LABEL[flag],
+                hint: FLAG_HINT[flag],
+            };
+        }),
         costTicks: cost.ticks,
         figureTicks: figures.ticks,
         costDomain: cost.domain,

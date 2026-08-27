@@ -2,7 +2,6 @@ import type { DeepPartial, TimeChartOptions } from 'lightweight-charts';
 import type { CostMetric, SeriesPoint } from '@/lib/domain/dynamics';
 import type { ChartMetric, ChartPalette, DynamicsMode, FigureMetric } from '../types';
 import type { ZoneSeriesApi } from '../ZoneSeries/types';
-import type { DeltaFlag } from './constants';
 import type { ActivePoint } from './types';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
@@ -11,8 +10,8 @@ import { cn } from '@/lib/utils/cn';
 import { kyivClock } from '@/lib/utils/kyivDay';
 import { DASH } from '@/components/report/utils/format';
 import { Accordion, AccordionHeader, AccordionItem, AccordionPanel, AccordionTrigger } from '@/components/ui/Accordion';
-import { COST_DASH } from '../constants';
-import { CHART_HEIGHT, FLAG_GLYPH, FLAG_HINT, FLAG_LABEL, FLAG_STROKE } from './constants';
+import { COST_DASH, DELTA_FLAGS, FLAG_GLYPH, FLAG_HINT, FLAG_LABEL, FLAG_STROKE } from '../constants';
+import { CHART_HEIGHT } from './constants';
 import { chartOptionsFor } from '../utils/chartOptions';
 import { METRIC_FORMAT, METRIC_LABEL, metricValue } from '../utils/metrics';
 import { flagsFor, seriesDataFor, timesOf } from './utils/series';
@@ -44,8 +43,6 @@ import { ZoneSeries } from '../ZoneSeries';
 // Canvas has no DOM, so the drill-in that WAS a row of focusable links is rebuilt here: the plot is a
 // single focusable widget, arrow keys walk the pushes, Enter opens the report of the one in hand, and
 // a live region says what is in hand. Everything a pointer can do here, a keyboard can do.
-
-const FLAGS: DeltaFlag[] = ['firstOfDay', 'corrected', 'spendWithoutConversions'];
 
 // How far the tooltip's anchor is kept from either edge — roughly half its own width, so the card
 // stays inside the plot instead of being clipped by the panel around it.
@@ -421,7 +418,7 @@ function TrajectoryChart({
     // that occur on maybe one day in ten would train the reader to ignore the lane.
     const presentFlags =
         mode === 'delta'
-            ? FLAGS.filter((flag) => {
+            ? DELTA_FLAGS.filter((flag) => {
                   return flags.some((lane) => {
                       return lane.includes(FLAG_GLYPH[flag]);
                   });

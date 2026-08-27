@@ -17,3 +17,27 @@ export type ChartSeries = {
     // Which of the two Y scales it belongs to.
     axis: 'cost' | 'figure';
 };
+
+// One edge case a chart can mark an interval with: what it prints, in what colour, and what it means
+// in words. Named and coloured by the caller — a chart primitive knows nothing about a campaign
+// (ADR-0025), so which three cases exist and what they are called is the domain's business.
+export type ChartFlag = {
+    key: string;
+    glyph: string;
+    color: string;
+    label: string;
+    hint: string;
+};
+
+// What a chart knows about one push beyond its figures. Parallel to the rows, one entry per push,
+// and read as the INTERVAL ending at that push — which is why `faded` and `flags` describe a stroke
+// while `badge` describes the point itself.
+export type ChartMark = {
+    // Keys of the flags raised on the interval ending here, in the legend's own order.
+    flags: string[];
+    // The interval into this push is a clamped remainder rather than a measurement, so the stroke
+    // across it is weakened.
+    faded: boolean;
+    // This push restated an earlier one, so it wears the correction badge — and only it does.
+    badge: boolean;
+};

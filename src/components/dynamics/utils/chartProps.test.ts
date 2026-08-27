@@ -1,7 +1,7 @@
 import type { DynamicsBases, SeriesPoint } from '@/lib/domain/dynamics';
 import { describe, expect, it } from 'vitest';
 import { figuresFrom } from '@/lib/domain/dynamics';
-import { COST_DASH } from '../constants';
+import { COST_DASH, FLAG_GLYPH, FLAG_HINT, FLAG_LABEL, FLAG_STROKE } from '../constants';
 import { STRIP_METRICS, stripCards, trajectoryProps } from './chartProps';
 
 const THRESHOLDS = {
@@ -271,5 +271,92 @@ describe('trajectoryProps', () => {
             // reading at that push is $10 and yellow.
             expect(props({ mode: 'delta' }).series[0].tones?.[1]).toBe('green');
         });
+    });
+});
+
+describe('the edge cases it marks', () => {
+    // A day with all three: the first push is the day's first report, the second restates it —
+    // installs go backwards — and the third spends money nothing installs against.
+    const restated: SeriesPoint[] = [
+        point('1', { spendPlus: 100, revenue: 90, installs: 10 }),
+        { ...point('2', { spendPlus: 200, revenue: 400, installs: 8 }), replacedAt: '2026-08-26T12:00:00Z' },
+        point('3', { spendPlus: 300, revenue: 400, installs: 8 }),
+    ];
+
+    function marks(over: Partial<Parameters<typeof trajectoryProps>[0]> = {}) {
+        return trajectoryProps({
+            points: restated,
+            mode: 'delta',
+            costMetrics: ['cpi'],
+            figure: 'revenue',
+            ...over,
+        });
+    }
+
+    it('flags each interval with the edge cases it actually carries, in the key’s own order', () => {
+        expect(
+            marks().marks.map((mark) => {
+                return mark.flags;
+            })
+        ).toEqual([['firstOfDay'], ['corrected'], ['spendWithoutConversions']]);
+    });
+
+    it('keeps the lane empty in cumulative mode, where the flags describe intervals nobody drew', () => {
+        expect(
+            marks({ mode: 'cumulative' }).marks.every((mark) => {
+                return mark.flags.length === 0;
+            })
+        ).toBe(true);
+    });
+
+    it('fades the restated interval, in either mode', () => {
+        const faded = [false, true, false];
+
+        expect(
+            marks().marks.map((mark) => {
+                return mark.faded;
+            })
+        ).toEqual(faded);
+        expect(
+            marks({ mode: 'cumulative' }).marks.map((mark) => {
+                return mark.faded;
+            })
+        ).toEqual(faded);
+    });
+
+    it('badges the push that did the correcting, and no push after it', () => {
+        expect(
+            marks().marks.map((mark) => {
+                return mark.badge;
+            })
+        ).toEqual([false, true, false]);
+    });
+
+    it('leaves a restated interval’s derived figures unmeasurable rather than zero', () => {
+        expect(marks().rows[1].cpi).toBeNull();
+    });
+
+    it('keys the legend to the flags the day actually raised, and to nothing else', () => {
+        const quiet = marks({ points: [restated[0], point('2', { spendPlus: 200, revenue: 400, installs: 20 })] });
+
+        expect(
+            quiet.flagLegend.map((flag) => {
+                return flag.key;
+            })
+        ).toEqual(['firstOfDay']);
+    });
+
+    it('gives the legend the glyph, the colour and the hint the lane is drawn with', () => {
+        expect(marks().flagLegend[1]).toEqual({
+            key: 'corrected',
+            glyph: FLAG_GLYPH.corrected,
+            color: FLAG_STROKE.corrected,
+            label: FLAG_LABEL.corrected,
+            hint: FLAG_HINT.corrected,
+        });
+    });
+
+    it('shows no key at all in cumulative mode, where no flag was drawn', () => {
+        expect(marks({ mode: 'cumulative' }).flagLegend).toEqual([]);
     });
 });
