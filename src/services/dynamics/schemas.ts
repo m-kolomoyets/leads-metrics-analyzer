@@ -28,3 +28,13 @@ export const dynamicsDimensionDayInputSchema = z.object({
 });
 
 export type DynamicsDimensionDayInput = z.infer<typeof dynamicsDimensionDayInputSchema>;
+
+// The month behind the member cards' dot grids. The range arrives already resolved, for the same
+// reason the day does: which month "this month" is depends on the Kyiv business day (ADR-0017), and
+// that resolution is viewer-local.
+export const dynamicsHistoryInputSchema = z.object({
+    from: calendarDateSchema,
+    to: calendarDateSchema,
+});
+
+export type DynamicsHistoryInput = z.infer<typeof dynamicsHistoryInputSchema>;

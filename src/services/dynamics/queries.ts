@@ -1,6 +1,13 @@
-import type { DynamicsDayInput, DynamicsDimensionDayInput, DynamicsRosterInput } from './schemas';
+import type { DynamicsDayInput, DynamicsDimensionDayInput, DynamicsHistoryInput, DynamicsRosterInput } from './schemas';
 import { queryOptions } from '@tanstack/react-query';
-import { listDayFn, listDayRosterFn, listDimensionDayFn, listDimensionRosterFn } from './functions';
+import {
+    listDayFn,
+    listDayRosterFn,
+    listDimensionDayFn,
+    listDimensionMonthHistoryFn,
+    listDimensionRosterFn,
+    listMonthHistoryFn,
+} from './functions';
 import { dynamicsKeys } from './queryKeys';
 
 export const dynamicsDayQueryOptions = (input: DynamicsDayInput) => {
@@ -35,6 +42,24 @@ export const dynamicsDimensionDayQueryOptions = (input: DynamicsDimensionDayInpu
         queryKey: dynamicsKeys.dimensionDayQueryKey(input),
         queryFn() {
             return listDimensionDayFn({ data: input });
+        },
+    });
+};
+
+export const dynamicsHistoryQueryOptions = (input: DynamicsHistoryInput) => {
+    return queryOptions({
+        queryKey: dynamicsKeys.historyQueryKey(input),
+        queryFn() {
+            return listMonthHistoryFn({ data: input });
+        },
+    });
+};
+
+export const dynamicsDimensionHistoryQueryOptions = (input: DynamicsHistoryInput) => {
+    return queryOptions({
+        queryKey: dynamicsKeys.dimensionHistoryQueryKey(input),
+        queryFn() {
+            return listDimensionMonthHistoryFn({ data: input });
         },
     });
 };

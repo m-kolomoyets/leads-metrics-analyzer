@@ -2,18 +2,24 @@ import type { DynamicsMode } from '@/components/dynamics/types';
 import { Suspense, useState } from 'react';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
+import { monthDays, monthLabel, monthRange } from '@/lib/utils/calendarMonth';
 import { kyivDay } from '@/lib/utils/kyivDay';
 import { useMinuteClock } from '@/hooks/useMinuteClock';
-import { dynamicsRosterQueryOptions } from '@/services/dynamics/queries';
-import { BuyerTabs } from '@/components/dynamics/BuyerTabs';
+import { dynamicsHistoryQueryOptions, dynamicsRosterQueryOptions } from '@/services/dynamics/queries';
 import { DataAge } from '@/components/dynamics/DataAge';
+import { MemberCard } from '@/components/dynamics/MemberCard';
 import { ModeToggle } from '@/components/dynamics/ModeToggle';
 import { RefreshButton } from '@/components/dynamics/RefreshButton';
 import { TeamTabs } from '@/components/dynamics/TeamTabs';
-import { MainLayoutHeader } from '@/components/layouts/MainLayoutHeader';
+import {
+    MainLayoutHeader,
+    MainLayoutHeaderActions,
+    MainLayoutHeaderTitle,
+} from '@/components/layouts/MainLayoutHeader';
 import { PendingArea } from '@/components/PendingArea';
 import { buyerTabs } from './utils/buyerTabs';
 import { activeBuyer, tabsOfTeam, teamsOf } from './utils/frame';
+import { memberDays } from './utils/memberDays';
 import { BuyerDay } from './components/BuyerDay';
 
 const routeApi = getRouteApi('/_authenticated/dashboard/dynamics');
@@ -35,9 +41,27 @@ function Dynamics() {
 
     // Which day "today" is, is a Kyiv question, and it is resolved viewer-side: the server is only
     // ever asked for a concrete date (ADR-0017). Only today has a UI; the param carries the rest.
-    const reportDate = search.day ?? kyivDay(now);
+    // Two different questions, and conflating them is what put the "today" mark on a past day: this
+    // is NOW (ADR-0017), and it is what the month grids date themselves against.
+    const today = kyivDay(now);
+    // This is the day being READ, which is today until a link says otherwise.
+    const reportDate = search.day ?? today;
+
+    // The month the read day sits in — the same range for every card, so one query fills all of them
+    // and moving between two days of one month refetches nothing.
+    const month = monthRange(reportDate);
 
     const { data: roster } = useSuspenseQuery(dynamicsRosterQueryOptions({ reportDate }));
+    const { data: history } = useSuspenseQuery(dynamicsHistoryQueryOptions(month));
+
+    const days = monthDays(reportDate);
+    // Keyed by buyer, because the two reads answer independently: a person with no push all month is
+    // simply absent from the history, and their card still draws a full month of holes.
+    const historyOf = new Map(
+        history.map((entry) => {
+            return [entry.buyerId, entry.days];
+        })
+    );
 
     const tabs = buyerTabs(roster, now);
     // The buyer is resolved against the WHOLE row first, so a shared link opens on the person it
@@ -69,18 +93,41 @@ function Dynamics() {
     return (
         <>
             <MainLayoutHeader>
-                <h1 className="text-xl">Dynamics · {reportDate}</h1>
+                <MainLayoutHeaderTitle meta={reportDate}>Dynamics</MainLayoutHeaderTitle>
                 <DataAge takenAt={buyer?.lastTakenAt ?? null} now={now} />
-                <span className="flex-1" />
-                <ModeToggle mode={mode} onSelect={setMode} />
-                <RefreshButton />
+                <MainLayoutHeaderActions>
+                    <ModeToggle mode={mode} onSelect={setMode} />
+                    <RefreshButton />
+                </MainLayoutHeaderActions>
             </MainLayoutHeader>
 
             <div className="flex flex-col gap-4">
                 {teams.length > 0 && <TeamTabs teams={teams} activeId={teamId} onSelect={selectTeam} />}
 
                 {teamTabs.length > 0 && (
-                    <BuyerTabs tabs={teamTabs} activeId={buyer?.id ?? null} onSelect={selectBuyer} />
+                    <section className="flex flex-col gap-2" aria-label="Team">
+                        {/* The month is named once, over the whole row: it is the same month on every
+                            card, and thirty-one dots with no heading are a shape nobody can date. */}
+                        <h2 className="text-muted-foreground text-xs">{monthLabel(reportDate)}</h2>
+
+                        <div className="flex flex-wrap gap-3">
+                            {teamTabs.map((tab) => {
+                                return (
+                                    <MemberCard
+                                        key={tab.id}
+                                        days={memberDays(days, historyOf.get(tab.id) ?? [], today)}
+                                        reading={reportDate}
+                                        selected={tab.id === buyer?.id}
+                                        tab={tab}
+                                        today={today}
+                                        onSelect={() => {
+                                            selectBuyer(tab.id);
+                                        }}
+                                    />
+                                );
+                            })}
+                        </div>
+                    </section>
                 )}
 
                 {buyer ? (

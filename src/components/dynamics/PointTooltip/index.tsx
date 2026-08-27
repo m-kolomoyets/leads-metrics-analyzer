@@ -59,7 +59,7 @@ function PointTooltip({ point, previous, metric, mode, position, total }: PointT
         // the verdict on the left (what this metric did and what it was judged against), the bases it
         // was computed from on the right. Stacking all of it read as one long list where the plan and
         // the fact drifted apart.
-        <div className="border-border bg-popover text-popover-foreground flex w-[22rem] flex-col gap-2.5 shadow-overlay rounded-lg border p-3 text-xs">
+        <div className="border-border bg-popover text-popover-foreground flex w-[24rem] flex-col gap-2.5 shadow-overlay rounded-lg border p-3 text-xs">
             <p className="text-muted-foreground border-border flex items-baseline justify-between gap-2 border-b pb-2">
                 <span>
                     {point.geo} · {isDelta ? 'interval ending ' : ''}
@@ -70,7 +70,10 @@ function PointTooltip({ point, previous, metric, mode, position, total }: PointT
                 </span>
             </p>
 
-            <div className="grid grid-cols-2 gap-x-4">
+            {/* 35/65, not an even split: the verdict is one short number and the bases are three
+                money figures that must never wrap. An even split cost the right column the room the
+                widest of them needed and pushed the digits into the card's edge. */}
+            <div className="grid grid-cols-[35fr_65fr] gap-x-4">
                 {/* The figure IS the verdict, so it wears it: the number sits under its own label and
                     is painted in its zone. A grey number with "yellow ●" spelled underneath made the
                     reader join two things that were never separate — and cost the figure the size it

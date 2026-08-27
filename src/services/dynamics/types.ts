@@ -52,3 +52,32 @@ export type DynamicsDimensionDay = {
     takenAt: string | null;
     rows: DynamicsDimensionRow[];
 };
+
+// One day of a buyer's month, as the member card's dot grid reads it. The figures come from that
+// day's LATEST active push and nothing is summed across pushes: a Snapshot restates the day so far
+// (ADR-0017), so adding two of them would double-count the day.
+//
+// A day the buyer never pushed is simply ABSENT from the array — the grid builds its own month and
+// paints the holes, so the wire carries facts rather than a row of nulls.
+export type DynamicsHistoryDay = {
+    reportDate: string;
+    // Σ of the push's Frozen Geo Rollups. Null when the push froze no rollup at all — no total to
+    // grade, which is not a total of zero.
+    profit: number | null;
+    // The denominator the day's ROI is taken over, and the reason a zero-spend day cannot be graded.
+    spendPlus: number;
+};
+
+// One buyer's month. Keyed by buyer rather than nested into the roster so the two reads stay
+// independent: the roster paints names and today's figure, the history fills the grid underneath.
+export type DynamicsBuyerHistory = {
+    buyerId: string;
+    days: DynamicsHistoryDay[];
+};
+
+// The dollar-free half of the same read (#10). A Designer or BDM holds no money dimension, so their
+// grid can only say WHETHER a day was reported — the dates are the whole payload.
+export type DynamicsDimensionBuyerHistory = {
+    buyerId: string;
+    reportedDates: string[];
+};

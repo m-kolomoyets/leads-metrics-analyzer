@@ -37,6 +37,7 @@ function MetricStrip({ points, selected, onSelect }: MetricStripProps) {
                         tones={card.tones}
                         value={card.value}
                         values={card.values}
+                        valueTone={card.valueTone}
                         onSelect={() => {
                             onSelect(card.metric);
                         }}

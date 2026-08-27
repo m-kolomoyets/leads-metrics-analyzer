@@ -2,16 +2,22 @@ import type { RollupDimension } from '@/lib/auth/dimensionRollup';
 import { Suspense } from 'react';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
+import { monthDays, monthLabel, monthRange } from '@/lib/utils/calendarMonth';
 import { kyivDay } from '@/lib/utils/kyivDay';
 import { useMinuteClock } from '@/hooks/useMinuteClock';
-import { dynamicsDimensionRosterQueryOptions } from '@/services/dynamics/queries';
+import { dynamicsDimensionHistoryQueryOptions, dynamicsDimensionRosterQueryOptions } from '@/services/dynamics/queries';
 import { buyerTabs } from '@/modules/Dynamics/utils/buyerTabs';
 import { activeBuyer, tabsOfTeam, teamsOf } from '@/modules/Dynamics/utils/frame';
-import { BuyerTabs } from '@/components/dynamics/BuyerTabs';
+import { dimensionMemberDays } from '@/modules/Dynamics/utils/memberDays';
 import { DataAge } from '@/components/dynamics/DataAge';
+import { MemberCard } from '@/components/dynamics/MemberCard';
 import { RefreshButton } from '@/components/dynamics/RefreshButton';
 import { TeamTabs } from '@/components/dynamics/TeamTabs';
-import { MainLayoutHeader } from '@/components/layouts/MainLayoutHeader';
+import {
+    MainLayoutHeader,
+    MainLayoutHeaderActions,
+    MainLayoutHeaderTitle,
+} from '@/components/layouts/MainLayoutHeader';
 import { PendingArea } from '@/components/PendingArea';
 import { PAGE_TITLE } from './constants';
 import { BuyerDimensionDay } from './components/BuyerDimensionDay';
@@ -35,9 +41,25 @@ function DynamicsDimension({ dimension }: DynamicsDimensionProps) {
     const navigate = routeApi.useNavigate();
     const now = useMinuteClock();
 
-    const reportDate = search.day ?? kyivDay(now);
+    // Two different questions, and conflating them is what put the "today" mark on a past day: this
+    // is NOW (ADR-0017), and it is what the month grids date themselves against.
+    const today = kyivDay(now);
+    // This is the day being READ, which is today until a link says otherwise.
+    const reportDate = search.day ?? today;
+
+    const month = monthRange(reportDate);
 
     const { data: roster } = useSuspenseQuery(dynamicsDimensionRosterQueryOptions({ reportDate }));
+    // The same grid, with the only thing this viewer may know about a past day in it: whether it was
+    // reported. Every reported dot is neutral — there is no money here to grade anyone on.
+    const { data: history } = useSuspenseQuery(dynamicsDimensionHistoryQueryOptions(month));
+
+    const days = monthDays(reportDate);
+    const historyOf = new Map(
+        history.map((entry) => {
+            return [entry.buyerId, entry.reportedDates];
+        })
+    );
 
     // The roster carries no `totalProfit` field, so every tab that pushed reads `reported` rather
     // than green or red: there is no money here to grade anyone on.
@@ -68,19 +90,38 @@ function DynamicsDimension({ dimension }: DynamicsDimensionProps) {
     return (
         <>
             <MainLayoutHeader>
-                <h1 className="text-xl">
-                    {PAGE_TITLE[dimension]} · {reportDate}
-                </h1>
+                <MainLayoutHeaderTitle meta={reportDate}>{PAGE_TITLE[dimension]}</MainLayoutHeaderTitle>
                 <DataAge takenAt={buyer?.lastTakenAt ?? null} now={now} />
-                <span className="flex-1" />
-                <RefreshButton />
+                <MainLayoutHeaderActions>
+                    <RefreshButton />
+                </MainLayoutHeaderActions>
             </MainLayoutHeader>
 
             <div className="flex flex-col gap-4">
                 {teams.length > 0 && <TeamTabs teams={teams} activeId={teamId} onSelect={selectTeam} />}
 
                 {teamTabs.length > 0 && (
-                    <BuyerTabs tabs={teamTabs} activeId={buyer?.id ?? null} onSelect={selectBuyer} />
+                    <section className="flex flex-col gap-2" aria-label="Team">
+                        <h2 className="text-muted-foreground text-xs">{monthLabel(reportDate)}</h2>
+
+                        <div className="flex flex-wrap gap-3">
+                            {teamTabs.map((tab) => {
+                                return (
+                                    <MemberCard
+                                        key={tab.id}
+                                        days={dimensionMemberDays(days, historyOf.get(tab.id) ?? [], today)}
+                                        reading={reportDate}
+                                        selected={tab.id === buyer?.id}
+                                        tab={tab}
+                                        today={today}
+                                        onSelect={() => {
+                                            selectBuyer(tab.id);
+                                        }}
+                                    />
+                                );
+                            })}
+                        </div>
+                    </section>
                 )}
 
                 {buyer ? (

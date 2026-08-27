@@ -2,6 +2,12 @@ import type { TooltipContentProps, TooltipProps, TooltipProviderProps, TooltipTr
 import { Tooltip as TooltipPrimitive } from '@base-ui/react/tooltip';
 import { cn } from '@/lib/utils/cn';
 
+// The app's one tooltip. It wears the SAME surface as every other overlay — the popover background,
+// the hairline border, the overlay shadow — rather than the inverted chip it used to be. An inverted
+// tooltip is its own third theme: it goes light when the app goes dark, it takes no token the rest of
+// the page is painted from, and anything richer than one line of text inside it (a figure in its zone
+// colour, a muted label) either disappeared or had to be re-coloured by hand at every call site.
+
 function TooltipProvider({ delay = 0, ...props }: TooltipProviderProps) {
     return <TooltipPrimitive.Provider data-slot="tooltip-provider" delay={delay} {...props} />;
 }
@@ -35,13 +41,13 @@ function TooltipContent({
                 <TooltipPrimitive.Popup
                     data-slot="tooltip-content"
                     className={cn(
-                        'motion-safe:data-open:animate-in motion-safe:data-open:fade-in-0 motion-safe:data-open:zoom-in-95 motion-safe:data-[state=delayed-open]:animate-in motion-safe:data-[state=delayed-open]:fade-in-0 motion-safe:data-[state=delayed-open]:zoom-in-95 motion-safe:data-closed:animate-out motion-safe:data-closed:fade-out-0 motion-safe:data-closed:zoom-out-95 motion-safe:data-[side=bottom]:slide-in-from-top-2 motion-safe:data-[side=left]:slide-in-from-right-2 motion-safe:data-[side=right]:slide-in-from-left-2 motion-safe:data-[side=top]:slide-in-from-bottom-2 shadow-overlay inline-flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-xs has-data-[slot=kbd]:pr-1.5 **:data-[slot=kbd]:relative **:data-[slot=kbd]:isolate **:data-[slot=kbd]:z-50 **:data-[slot=kbd]:rounded-sm motion-safe:duration-150 motion-safe:data-[side=inline-start]:slide-in-from-right-2 motion-safe:data-[side=inline-end]:slide-in-from-left-2 w-fit max-w-xs origin-(--transform-origin) bg-foreground text-background',
+                        'motion-safe:data-open:animate-in motion-safe:data-open:fade-in-0 motion-safe:data-open:zoom-in-95 motion-safe:data-[state=delayed-open]:animate-in motion-safe:data-[state=delayed-open]:fade-in-0 motion-safe:data-[state=delayed-open]:zoom-in-95 motion-safe:data-closed:animate-out motion-safe:data-closed:fade-out-0 motion-safe:data-closed:zoom-out-95 motion-safe:data-[side=bottom]:slide-in-from-top-2 motion-safe:data-[side=left]:slide-in-from-right-2 motion-safe:data-[side=right]:slide-in-from-left-2 motion-safe:data-[side=top]:slide-in-from-bottom-2 bg-popover text-popover-foreground border-border shadow-overlay inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs has-data-[slot=kbd]:pr-1.5 **:data-[slot=kbd]:relative **:data-[slot=kbd]:isolate **:data-[slot=kbd]:z-50 **:data-[slot=kbd]:rounded-sm motion-safe:duration-150 motion-safe:data-[side=inline-start]:slide-in-from-right-2 motion-safe:data-[side=inline-end]:slide-in-from-left-2 w-fit max-w-xs origin-(--transform-origin)',
                         className
                     )}
                     {...props}
                 >
                     {children}
-                    <TooltipPrimitive.Arrow className="size-2.5 translate-y-[calc(-50%-2px)] rotate-45 rounded-sm data-[side=inline-end]:top-1/2! data-[side=inline-end]:-left-1 data-[side=inline-end]:-translate-y-1/2 data-[side=inline-start]:top-1/2! data-[side=inline-start]:-right-1 data-[side=inline-start]:-translate-y-1/2 bg-foreground fill-foreground data-[side=bottom]:top-1 data-[side=left]:top-1/2! data-[side=left]:-right-1 data-[side=left]:-translate-y-1/2 data-[side=right]:top-1/2! data-[side=right]:-left-1 data-[side=right]:-translate-y-1/2 data-[side=top]:-bottom-2.5" />
+                    <TooltipPrimitive.Arrow className="size-2.5 translate-y-[calc(-50%-2px)] rotate-45 rounded-sm data-[side=inline-end]:top-1/2! data-[side=inline-end]:-left-1 data-[side=inline-end]:-translate-y-1/2 data-[side=inline-start]:top-1/2! data-[side=inline-start]:-right-1 data-[side=inline-start]:-translate-y-1/2 bg-popover fill-popover data-[side=bottom]:top-1 data-[side=left]:top-1/2! data-[side=left]:-right-1 data-[side=left]:-translate-y-1/2 data-[side=right]:top-1/2! data-[side=right]:-left-1 data-[side=right]:-translate-y-1/2 data-[side=top]:-bottom-2.5" />
                 </TooltipPrimitive.Popup>
             </TooltipPrimitive.Positioner>
         </TooltipPrimitive.Portal>

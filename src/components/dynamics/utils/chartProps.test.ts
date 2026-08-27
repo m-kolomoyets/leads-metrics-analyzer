@@ -64,6 +64,24 @@ describe('stripCards', () => {
         expect(cardFor(cards, 'cpi')?.value).toBe('10.00');
     });
 
+    it('colours the profit figure by its sign, and colours nothing else', () => {
+        const cards = stripCards(series);
+
+        // $400 revenue against $200 spend — a profit, and the only card wearing a colour.
+        expect(cardFor(cards, 'profit')?.valueTone).toBe('green');
+        expect(cardFor(cards, 'spend')?.valueTone).toBeUndefined();
+        expect(cardFor(cards, 'roi')?.valueTone).toBeUndefined();
+        expect(cardFor(cards, 'cpi')?.valueTone).toBeUndefined();
+    });
+
+    it('reads a loss as red, and breaking even as neither', () => {
+        const loss = stripCards([point('1', { spendPlus: 300, revenue: 100, installs: 4 })]);
+        const flat = stripCards([point('1', { spendPlus: 100, revenue: 100, installs: 4 })]);
+
+        expect(cardFor(loss, 'profit')?.valueTone).toBe('red');
+        expect(cardFor(flat, 'profit')?.valueTone).toBeUndefined();
+    });
+
     it('keeps an unmeasurable push as a gap in the series rather than as a zero', () => {
         const cards = stripCards([point('1', { spendPlus: 100, installs: 0 }), series[1]]);
 
@@ -307,21 +325,6 @@ describe('the edge cases it marks', () => {
                 return mark.flags.length === 0;
             })
         ).toBe(true);
-    });
-
-    it('fades the restated interval, in either mode', () => {
-        const faded = [false, true, false];
-
-        expect(
-            marks().marks.map((mark) => {
-                return mark.faded;
-            })
-        ).toEqual(faded);
-        expect(
-            marks({ mode: 'cumulative' }).marks.map((mark) => {
-                return mark.faded;
-            })
-        ).toEqual(faded);
     });
 
     it('badges the push that did the correcting, and no push after it', () => {

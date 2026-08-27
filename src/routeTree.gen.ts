@@ -38,9 +38,9 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const DesignIndexRoute = DesignIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => DesignRoute,
+  id: '/design/',
+  path: '/design/',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const PublicIndexRoute = PublicIndexRouteImport.update({
   id: '/',
@@ -205,6 +205,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   PublicRouteRoute: typeof PublicRouteRouteWithChildren
   UnauthenticatedRouteRoute: typeof UnauthenticatedRouteRouteWithChildren
+  DesignIndexRoute: typeof DesignIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -232,10 +233,10 @@ declare module '@tanstack/react-router' {
     }
     '/design/': {
       id: '/design/'
-      path: '/'
+      path: '/design'
       fullPath: '/design/'
       preLoaderRoute: typeof DesignIndexRouteImport
-      parentRoute: typeof DesignRoute
+      parentRoute: typeof rootRouteImport
     }
     '/_public/': {
       id: '/_public/'
@@ -373,6 +374,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   PublicRouteRoute: PublicRouteRouteWithChildren,
   UnauthenticatedRouteRoute: UnauthenticatedRouteRouteWithChildren,
+  DesignIndexRoute: DesignIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

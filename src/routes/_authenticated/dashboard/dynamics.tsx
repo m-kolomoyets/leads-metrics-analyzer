@@ -2,11 +2,14 @@ import type { MeData } from '@/services/auth/types';
 import { createFileRoute } from '@tanstack/react-router';
 import { rollupDimensionFor } from '@/lib/auth/dimensionRollup';
 import { checkIsRouteAllowed } from '@/lib/utils/auth/permissions';
+import { monthRange } from '@/lib/utils/calendarMonth';
 import { kyivDay } from '@/lib/utils/kyivDay';
 import {
     dynamicsDayQueryOptions,
     dynamicsDimensionDayQueryOptions,
+    dynamicsDimensionHistoryQueryOptions,
     dynamicsDimensionRosterQueryOptions,
+    dynamicsHistoryQueryOptions,
     dynamicsRosterQueryOptions,
 } from '@/services/dynamics/queries';
 import { Dynamics } from '@/modules/Dynamics';
@@ -50,6 +53,10 @@ export const Route = createFileRoute('/_authenticated/dashboard/dynamics')({
         // "Today" is a Kyiv question and it is answered viewer-side (ADR-0017); the server only ever
         // sees a concrete date.
         const reportDate = deps.day ?? kyivDay();
+        // The member cards' month grids. Awaited alongside the roster rather than left to Suspense:
+        // the cards ARE the buyer row, and a row that paints its names and then grows its months a
+        // beat later is the page rearranging itself under the reader's cursor.
+        const month = monthRange(reportDate);
         const dimension = rollupFor(auth.me);
 
         // The dollar-free branch preloads its own two reads and none of the trajectory's: a Designer
@@ -62,7 +69,10 @@ export const Route = createFileRoute('/_authenticated/dashboard/dynamics')({
                 );
             }
 
-            await queryClient.ensureQueryData(dynamicsDimensionRosterQueryOptions({ reportDate }));
+            await Promise.all([
+                queryClient.ensureQueryData(dynamicsDimensionRosterQueryOptions({ reportDate })),
+                queryClient.ensureQueryData(dynamicsDimensionHistoryQueryOptions(month)),
+            ]);
 
             return;
         }
@@ -73,8 +83,11 @@ export const Route = createFileRoute('/_authenticated/dashboard/dynamics')({
             void queryClient.prefetchQuery(dynamicsDayQueryOptions({ buyerId: deps.buyer, reportDate }));
         }
 
-        // The tab row is the page: it is awaited, so the frame paints with its buyers already in it.
-        await queryClient.ensureQueryData(dynamicsRosterQueryOptions({ reportDate }));
+        // The card row is the page: it is awaited, so the frame paints with its buyers already in it.
+        await Promise.all([
+            queryClient.ensureQueryData(dynamicsRosterQueryOptions({ reportDate })),
+            queryClient.ensureQueryData(dynamicsHistoryQueryOptions(month)),
+        ]);
     },
     component: DynamicsRoute,
 });

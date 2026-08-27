@@ -15,15 +15,15 @@ export const THEMES: ReadonlyArray<ThemeName> = ['light', 'dark'];
 
 export const SURFACE_BY_THEME: Record<ThemeName, string> = {
     light: '#ffffff',
-    dark: '#161616',
+    dark: '#08080a',
 };
 
 export const CHROME_TOKENS: ReadonlyArray<ColourToken> = [
-    { name: '--background', light: '#fafafa', dark: '#000000', usage: 'the page' },
-    { name: '--surface', light: '#ffffff', dark: '#161616', usage: 'inline: cards, panels, tables, sidebar' },
-    { name: '--surface-overlay', light: '#ffffff', dark: '#212121', usage: 'floating: popover, menu, dialog, sheet' },
-    { name: '--border', light: '#e4e4e4', dark: '#262626', usage: 'hairlines, table rules, dividers' },
-    { name: '--border-strong', light: '#d0d0d0', dark: '#3a3a3a', usage: 'input borders, header/total rules' },
+    { name: '--background', light: '#fafafa', dark: '#1b1b1f', usage: 'the page' },
+    { name: '--surface', light: '#ffffff', dark: '#08080a', usage: 'inline: cards, panels, tables, sidebar' },
+    { name: '--surface-overlay', light: '#ffffff', dark: '#17171a', usage: 'floating: popover, menu, dialog, sheet' },
+    { name: '--border', light: '#e4e4e4', dark: '#2a2a2f', usage: 'hairlines, table rules, dividers' },
+    { name: '--border-strong', light: '#d0d0d0', dark: '#3d3d43', usage: 'input borders, header/total rules' },
     { name: '--foreground', light: '#131313', dark: '#f2f2f2', usage: 'body text, figures' },
     { name: '--muted-foreground', light: '#5f5f5f', dark: '#9b9b9b', usage: 'labels, column heads' },
     { name: '--faint', light: '#8a8a8a', dark: '#6b6b6b', usage: 'disabled, placeholder' },

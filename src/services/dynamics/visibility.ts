@@ -1,6 +1,6 @@
 import type { SQL } from 'drizzle-orm';
 import type { VisibilityScope } from '@/lib/auth/scope';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, gte, lte } from 'drizzle-orm';
 import { snapshot, user } from '@/lib/db/schema';
 import { listSnapshotsFilter, snapshotRowFilter, userRowFilter } from '@/services/snapshots/visibility';
 
@@ -46,4 +46,12 @@ export const dynamicsReplacedFilter = (
         eq(snapshot.createdByUserId, buyerId),
         eq(snapshot.reportDate, reportDate)
     );
+};
+
+// Every visible buyer's active Snapshots across a range of report dates — the member cards' month
+// grids. Deliberately built on the same `listSnapshotsFilter` as the day read rather than beside it:
+// a replaced push is not a dot on anyone's month either (ADR-0018). Filters on `report_date`, never
+// `taken_at` (ADR-0016), so a day pushed after midnight still lands on the day it reports.
+export const dynamicsRangeTotalsFilter = (scope: VisibilityScope, from: string, to: string): SQL | undefined => {
+    return and(listSnapshotsFilter(scope), gte(snapshot.reportDate, from), lte(snapshot.reportDate, to));
 };

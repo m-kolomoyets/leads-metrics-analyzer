@@ -30,14 +30,11 @@ export type ChartFlag = {
 };
 
 // What a chart knows about one push beyond its figures. Parallel to the rows, one entry per push,
-// and read as the INTERVAL ending at that push — which is why `faded` and `flags` describe a stroke
-// while `badge` describes the point itself.
+// and read as the INTERVAL ending at that push — which is why `flags` describes a stroke while
+// `badge` describes the point itself.
 export type ChartMark = {
     // Keys of the flags raised on the interval ending here, in the legend's own order.
     flags: string[];
-    // The interval into this push is a clamped remainder rather than a measurement, so the stroke
-    // across it is weakened.
-    faded: boolean;
     // This push restated an earlier one, so it wears the correction badge — and only it does.
     badge: boolean;
 };

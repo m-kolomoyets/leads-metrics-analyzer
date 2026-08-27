@@ -35,7 +35,7 @@ const THEME_SCRIPT = `
 // (useRemoveInitialStyle).
 const INITIAL_STYLE = `
 :root { --initial-bg: #fafafa; }
-html.dark { --initial-bg: #000000; }
+html.dark { --initial-bg: #1b1b1f; }
 html { font-family: "Inter", sans-serif; }
 body { background-color: var(--initial-bg); margin: 0; position: relative; }
 `;
@@ -67,7 +67,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
                 { name: 'viewport', content: 'width=device-width, initial-scale=1.0' },
                 { name: 'color-scheme', content: 'light dark' },
                 { name: 'theme-color', content: '#fafafa', media: '(prefers-color-scheme: light)' },
-                { name: 'theme-color', content: '#000000', media: '(prefers-color-scheme: dark)' },
+                { name: 'theme-color', content: '#1b1b1f', media: '(prefers-color-scheme: dark)' },
                 { title: 'Adjoin' },
             ],
             links: [
@@ -78,6 +78,13 @@ export const Route = createRootRouteWithContext<RouterContext>()({
                 {
                     rel: 'stylesheet',
                     href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400..600&display=swap',
+                },
+                // Every digit in the app is set in this, at the SemiExpanded width (`wdth` 112.5):
+                // a figure is read digit by digit and a proportional face closes the ones and the
+                // sevens up until it cannot be. See `--font-numeric`.
+                {
+                    rel: 'stylesheet',
+                    href: 'https://fonts.googleapis.com/css2?family=Martian+Mono:wdth,wght@112.5,400..700&display=swap',
                 },
             ],
         };

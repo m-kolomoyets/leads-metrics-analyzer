@@ -1,8 +1,10 @@
 import type { SQL } from 'drizzle-orm';
-import type { Viewer } from '@/lib/auth/scope';
+import type { Viewer, VisibilityScope } from '@/lib/auth/scope';
 import type { DynamicsSnapshot } from '@/lib/domain/dynamics';
 import type { MeData } from '@/services/auth/types';
 import type {
+    DynamicsBuyerHistory,
+    DynamicsDimensionBuyerHistory,
     DynamicsDimensionDay,
     DynamicsDimensionRosterUser,
     DynamicsDimensionRow,
@@ -19,10 +21,22 @@ import { db } from '@/lib/db';
 import { appliedRulesetGeo, snapshot, snapshotFact, snapshotGeo, team, user } from '@/lib/db/schema';
 import { SNAPSHOT_NOT_FOUND } from '@/services/snapshots/constants';
 import { matchesNoRows, userRowFilter } from '@/services/snapshots/visibility';
-import { dynamicsDayInputSchema, dynamicsDimensionDayInputSchema, dynamicsRosterInputSchema } from './schemas';
+import {
+    dynamicsDayInputSchema,
+    dynamicsDimensionDayInputSchema,
+    dynamicsHistoryInputSchema,
+    dynamicsRosterInputSchema,
+} from './schemas';
 import { toDynamicsSnapshots } from './toDay';
+import { toDimensionHistory, toHistory } from './toHistory';
 import { toDimensionRoster, toRoster } from './toRoster';
-import { dynamicsDayFilter, dynamicsDayTotalsFilter, dynamicsReplacedFilter, visibleBuyerFilter } from './visibility';
+import {
+    dynamicsDayFilter,
+    dynamicsDayTotalsFilter,
+    dynamicsRangeTotalsFilter,
+    dynamicsReplacedFilter,
+    visibleBuyerFilter,
+} from './visibility';
 
 // The two reads behind the Dynamics page (ADR-0010, ADR-0017). Both go through `scopeFor(viewer)`
 // (ADR-0007) — no hand-rolled role check — and neither touches a `snapshot_fact` row: a whole day is
@@ -348,4 +362,95 @@ export const listDimensionDayFn = createServerFn({ method: 'GET' })
                 };
             }),
         };
+    });
+
+// The people a member card may be drawn for — the roster's own row-scope clause, asked for ids alone.
+// The history reads resolve it themselves rather than trusting a list of ids from the client: a
+// caller could otherwise ask for a month belonging to somebody they may not see.
+const visibleBuyerIds = async (scope: VisibilityScope): Promise<string[]> => {
+    const rows = await db
+        .select({ id: user.id })
+        .from(user)
+        .where(and(eq(user.status, 'active'), inArray(user.role, CAMPAIGN_ROLES), userRowFilter(scope)))
+        .orderBy(user.nickname);
+
+    return rows.map((row) => {
+        return row.id;
+    });
+};
+
+// The member cards' month grids: every visible buyer's day-by-day totals across one calendar month,
+// in ONE query rather than one per card (SPEC §6.2). A month of a team is a few hundred `snapshot`
+// rows, and the Frozen Geo Rollups are summed by the database, so the cost is the same shape as the
+// roster read — one round trip, no `snapshot_fact` row touched.
+export const listMonthHistoryFn = createServerFn({ method: 'GET' })
+    .inputValidator(dynamicsHistoryInputSchema)
+    .handler(async ({ data }): Promise<DynamicsBuyerHistory[]> => {
+        const me = await requireUser();
+        const scope = scopeFor(viewerFrom(me));
+
+        assertDimension(scope, DYNAMICS_DIMENSION);
+
+        if (matchesNoRows(scope)) {
+            return [];
+        }
+
+        const [buyerIds, pushes] = await Promise.all([
+            visibleBuyerIds(scope),
+            // `leftJoin` so a push that froze no rollup still reports its day: it is a day with a
+            // report and no total, which the grid paints differently from a day with no report.
+            db
+                .select({
+                    createdByUserId: snapshot.createdByUserId,
+                    reportDate: snapshot.reportDate,
+                    takenAt: snapshot.takenAt,
+                    profit: sum(snapshotGeo.profit),
+                    spendPlus: sum(snapshotGeo.spendPlus),
+                })
+                .from(snapshot)
+                .leftJoin(snapshotGeo, eq(snapshotGeo.snapshotId, snapshot.id))
+                .where(dynamicsRangeTotalsFilter(scope, data.from, data.to))
+                .groupBy(snapshot.id, snapshot.createdByUserId, snapshot.reportDate, snapshot.takenAt),
+        ]);
+
+        return toHistory(
+            buyerIds,
+            pushes.map((row) => {
+                return {
+                    ...row,
+                    // `sum` returns text, or null when the push froze no rollup; the cast is done
+                    // here rather than with `mapWith`, which would turn that null into a zero.
+                    profit: row.profit === null ? null : Number(row.profit),
+                    spendPlus: row.spendPlus === null ? null : Number(row.spendPlus),
+                };
+            })
+        );
+    });
+
+// The dollar-free month (#10). Same range, same row-scope, and not one figure selected: the grid can
+// only say whether a day was reported, so the dates are all that is read.
+export const listDimensionMonthHistoryFn = createServerFn({ method: 'GET' })
+    .inputValidator(dynamicsHistoryInputSchema)
+    .handler(async ({ data }): Promise<DynamicsDimensionBuyerHistory[]> => {
+        const me = await requireUser();
+        const viewer = viewerFrom(me);
+        const scope = scopeFor(viewer);
+
+        if (rollupDimensionFor(viewer) === null) {
+            throw new Error(ROLLUP_ONLY);
+        }
+
+        if (matchesNoRows(scope)) {
+            return [];
+        }
+
+        const [buyerIds, pushes] = await Promise.all([
+            visibleBuyerIds(scope),
+            db
+                .select({ createdByUserId: snapshot.createdByUserId, reportDate: snapshot.reportDate })
+                .from(snapshot)
+                .where(dynamicsRangeTotalsFilter(scope, data.from, data.to)),
+        ]);
+
+        return toDimensionHistory(buyerIds, pushes);
     });

@@ -9,11 +9,13 @@ import { hoursSince, kyivHour } from '@/lib/utils/kyivDay';
 // thresholds anywhere on this page.
 
 // The hour a report is expected by, Kyiv time: before it, a person with no push is simply early.
-const REPORT_DUE_HOUR = 10;
+// Exported so the card that PAINTS the missing state can say the same hour it was decided by — a
+// warning that will not say what it is waiting for is a warning nobody can act on.
+export const REPORT_DUE_HOUR = 10;
 
-// How old the latest push may be before the tab warns. Cumulative pushes mean an old one is not
+// How old the latest push may be before the card warns. Cumulative pushes mean an old one is not
 // wrong, only unreliable — hence amber, not red.
-const STALE_AFTER_HOURS = 3;
+export const STALE_AFTER_HOURS = 3;
 
 export type BuyerTabState =
     // No Snapshot today and it is past 10:00 Kyiv — red with a `?`.
@@ -84,6 +86,14 @@ function byState(a: BuyerTab, b: BuyerTab): number {
 
     if (gap !== 0) {
         return gap;
+    }
+
+    // Both sides must be in the SAME state before a total is compared. `profit` and `reported` share
+    // a rank, so a row holding both used to compare one person's money against a person who has no
+    // money dimension at all — and the answer flipped depending on which of the two the sort happened
+    // to hand over first, which is a row that reshuffles for no reason the reader can see.
+    if (a.state !== b.state) {
+        return a.nickname.localeCompare(b.nickname);
     }
 
     if (a.state === 'loss') {

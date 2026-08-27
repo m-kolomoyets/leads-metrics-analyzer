@@ -121,30 +121,33 @@
 }
 
 .dark {
-    /* Chrome — true black page, two grey surfaces above it. The page itself is #000, so a card is
-       read by its own lightness rather than by a border, and an overlay steps up once more. */
-    --background: #000000;
-    --surface: #161616;
-    --surface-overlay: #212121;
-    --border: #262626;
-    --border-strong: #3a3a3a;
+    /* Chrome — grey page, black cards on top of it. The stack runs *downward*: the page is the
+       lightest neutral and a card is cut out of it in near-black, so a card is still read by its own
+       lightness rather than by a border. An overlay is the one thing that steps back up, because a
+       popover has to separate from the card it was opened from, not sink further into it. */
+    --background: #1b1b1f;
+    --surface: #08080a;
+    --surface-overlay: #17171a;
+    --border: #2a2a2f;
+    --border-strong: #3d3d43;
     --foreground: #f2f2f2;
     --muted-foreground: #9b9b9b;
     --faint: #6b6b6b;
 
-    /* Accent — full-chroma blue; on a black chrome a de-saturated accent reads as another grey.
-       5.04:1 on --surface, 5.84:1 on --background. Ink, not white, on the fill: black is 5.84:1
-       there where white is only 3.59:1. */
+    /* Accent — full-chroma blue; on a near-black chrome a de-saturated accent reads as another grey.
+       5.99:1 on --surface, 5.02:1 on the grey --background. Ink, not white, on the fill: black is
+       5.84:1 there where white is only 3.59:1. */
     --accent: #4c82f7;
     --accent-foreground: #000000;
 
-    /* Measured against --surface: 6.04 / 8.17 / 5.19. */
+    /* Measured against --surface (#08080a): 6.68 / 9.03 / 5.74, neutral 7.20 — the black card lifts
+       all four a step over the old #161616. */
     --zone-green: #26a69a;
     --zone-yellow: #e0a33e;
     --zone-red: #ef5350;
     --zone-neutral: #9b9b9b;
 
-    /* Sales — measured against --surface: 6.65. */
+    /* Sales — measured against --surface: 7.35. */
     --sales: #a78bfa;
     --sales-tint: rgb(167 139 250 / 0.12);
 
@@ -155,7 +158,7 @@
     /* Elevation — deeper than in light mode, because the drop has black to fall onto. */
     --shadow-overlay: 0 4px 16px rgb(0 0 0 / 0.6);
 
-    /* On true black the halo has room to spread before it touches anything. */
+    /* On a near-black card the halo has room to spread before it touches anything. */
     --glow-rest: 65%;
     --glow-peak: 88%;
     --glow-strength: var(--glow-rest);
@@ -164,9 +167,12 @@
     --destructive-foreground: #000000;
 
     /* --- Chart redesign, additive. See the light block for what each name is for. --- */
-    --chart-surface: #101010;
-    --chart-grid: #262626;
-    --chart-grid-dotted: #2f2f2f;
+
+    /* The one place the stack steps *up* rather than down: the card is already at the floor, so an
+       inset plot has nowhere darker to go and reads as a panel by being a hair lighter instead. */
+    --chart-surface: #0e0e12;
+    --chart-grid: #232328;
+    --chart-grid-dotted: #2c2c32;
 
     /* On a near-black plot the halo is the depth cue rather than an accent, so it runs much hotter
        and spreads a little further. */
@@ -177,8 +183,13 @@
 }
 
 @theme inline {
-    /* One webfont. Aligned digits come from `tabular-nums`, not from a mono face. */
+    /* Two webfonts, and the split is words versus figures. Inter sets the prose; every DIGIT the app
+       prints is set in Martian Mono at the SemiExpanded width — a figure is read one digit at a time
+       and a proportional face closes the ones and the sevens up until a reader has to count columns.
+       Applied through `.tabular-nums` (see `@layer base`), which is already the app's mark for "this
+       is a number", so no call site has to opt in twice. */
     --font-sans: "Inter", sans-serif;
+    --font-numeric: "Martian Mono", ui-monospace, "SFMono-Regular", monospace;
 
     /* One step up on every rung of Tailwind's type scale (~+8%). Declared here rather than by
        resizing the root, so spacing and radius — both rem-based — stay exactly where they were. The
@@ -307,6 +318,24 @@
     animation: zone-glow-pulse 4.8s ease-in-out infinite;
 }
 
+/* The dot glow — the same idea at a thirtieth of the size, for the month grids on the member cards.
+   A dot is 8px, so the block glow's 28px halo would swallow its neighbours and the grid would read
+   as a smear; and thirty blocks breathing on one card is a page that flickers rather than one that
+   is quiet. So: tighter geometry, resting strength only, no animation. Same rule as the blocks about
+   *who* wears one — a graded day glows, an ungraded one does not, and an unreported day is the
+   ground the lit days are read against. */
+@utility glow-dot-green {
+    box-shadow: 0 0 6px 0 color-mix(in srgb, var(--zone-green) var(--glow-rest), transparent);
+}
+
+@utility glow-dot-yellow {
+    box-shadow: 0 0 6px 0 color-mix(in srgb, var(--zone-yellow) var(--glow-rest), transparent);
+}
+
+@utility glow-dot-red {
+    box-shadow: 0 0 6px 0 color-mix(in srgb, var(--zone-red) var(--glow-rest), transparent);
+}
+
 @media (prefers-reduced-motion: reduce) {
     .glow-zone-green,
     .glow-zone-yellow,
@@ -386,6 +415,16 @@
     :focus-visible {
         outline: 2px solid var(--accent);
         outline-offset: 1px;
+    }
+
+    /* Every number in the app wears `tabular-nums`, so `tabular-nums` is where the numeric face is
+       hung: one rule instead of a second class threaded through every readout, and impossible to
+       apply to one figure and forget on the one beside it. `font-stretch` picks the SemiExpanded
+       instance off the variable font — without it the browser draws the Normal width. Base layer, so
+       any `font-*` utility on the same element still outranks it. */
+    .tabular-nums {
+        font-family: var(--font-numeric);
+        font-stretch: 112.5%;
     }
 }
 

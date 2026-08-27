@@ -36,7 +36,21 @@ export type StripCard = {
     // The range the plot draws over — wider than the data, so the stroke stands inside its panel
     // instead of hanging over both edges.
     domain: [number, number];
+    // The colour the FIGURE is printed in, and only Profit ever asks for one: a profit that went
+    // negative is the one reading on the strip whose sign IS the verdict, and a leading minus is a
+    // single glyph on a card that gets a glance. Everything else stays `--foreground` (ADR-0019).
+    valueTone?: 'green' | 'red';
 };
+
+// Sign as colour, for the one metric whose sign carries a judgement. Zero is not a loss and gets no
+// colour; neither does an unmeasurable day, which has nothing to be positive or negative about.
+function signTone(value: number | null): 'green' | 'red' | undefined {
+    if (value === null || value === 0) {
+        return undefined;
+    }
+
+    return value > 0 ? 'green' : 'red';
+}
 
 export function stripCards(points: SeriesPoint[]): StripCard[] {
     const current = points.at(-1) ?? null;
@@ -45,12 +59,14 @@ export function stripCards(points: SeriesPoint[]): StripCard[] {
         const values = points.map((point) => {
             return metricValue(point.figures, metric);
         });
+        const latest = current === null ? null : metricValue(current.figures, metric);
 
         return {
             metric,
             label: METRIC_LABEL[metric],
-            value: METRIC_FORMAT[metric].value(current === null ? null : metricValue(current.figures, metric)),
+            value: METRIC_FORMAT[metric].value(latest),
             values,
+            valueTone: metric === 'profit' ? signTone(latest) : undefined,
             tones: hasZone(metric)
                 ? points.map((point): ChartTone => {
                       return zoneOfPoint(point, metric);
@@ -129,9 +145,8 @@ export type TrajectoryProps = {
 // The three edge cases, per push (SPEC §4.3). `deltasFor` is indexed by point: entry i describes the
 // interval ENDING at point i, which is the stroke drawn into it.
 //
-// The flags are raised in delta mode only — in cumulative mode they describe intervals the chart is
-// not drawing — but a restatement fades its interval in EITHER mode, because a clamped remainder is
-// not a measurement whichever question the toggle is asking.
+// The flags are raised in delta mode only: in cumulative mode they describe intervals the chart is
+// not drawing. A restatement is said on the point instead, in both modes, by the badge below.
 function marksOf(points: SeriesPoint[], mode: DynamicsMode): ChartMark[] {
     return deltasFor(points).map((delta): ChartMark => {
         return {
@@ -141,7 +156,6 @@ function marksOf(points: SeriesPoint[], mode: DynamicsMode): ChartMark[] {
                           return delta.flags[flag];
                       })
                     : [],
-            faded: delta.flags.corrected,
             // The push that did the correcting wears the badge, and the badge does not cascade onto
             // the pushes after it (ADR-0018).
             badge: delta.to.replacedAt !== null,

@@ -24,9 +24,14 @@ export const ZONE_LABEL: Record<Zone, string> = {
 // legend swatch and the line it describes can never drift apart.
 export const COST_DASH: Record<CostMetric, number[]> = {
     cpi: [],
-    cpr: [8, 4],
-    cps: [2, 4],
-    cpc: [12, 4, 2, 4],
+    // Every gap is doubled from where these patterns started. At the old widths the lines read as
+    // solid ones with nicks in them, which is the one thing a dash pattern must not do: the pattern
+    // is the ONLY channel telling the cost lines apart — colour is spoken for by the zone — and CPI,
+    // the line they are being told apart from, is solid. The marks are unchanged, so the four
+    // patterns keep their relative rhythm: a long dash, a dot, and a dash-dot.
+    cpr: [8, 8],
+    cps: [2, 8],
+    cpc: [12, 8, 2, 8],
 };
 
 // Which of the three edge cases an interval carries (SPEC §4.3). They live here rather than beside

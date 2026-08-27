@@ -110,7 +110,13 @@ const AXIS_PROPS = {
     tickMargin: 8,
     tick: {
         fill: 'var(--foreground)',
-        fontSize: 13,
+        // SVG text takes no class from the `.tabular-nums` base rule, so the numeric face is named
+        // here instead — an axis whose figures were set in a different face from the card's own
+        // headline is the one place the split would be visible as a mistake. A step smaller than the
+        // prose scale, because the face is wide and an axis is read at a glance, not audited.
+        fontFamily: 'var(--font-numeric)',
+        fontSize: 12,
+        fontStretch: '112.5%',
         fontWeight: 500,
         letterSpacing: 'var(--tracking-figure)',
     },
@@ -298,20 +304,12 @@ function TrajectoryCard({
     // Every nth stamp, so the labels stay evenly spaced instead of being dropped where they collide.
     const timeInterval = Math.max(0, Math.ceil(rows.length / TIME_LABELS) - 1);
 
-    // Which intervals were restated, parallel to the rows. A restated interval is a clamped
-    // remainder rather than a measurement, so every line is weakened across it — the figures it
-    // would have carried are already gaps, and a full-strength stroke joining the two ends would
-    // claim a step nobody traded through.
-    const faded = rows.map((_row, index) => {
-        return marks?.[index]?.faded === true;
-    });
-    const restated = faded.includes(true);
-
-    // A line is painted from a gradient when it has something to vary along its length: a grade at
-    // each push, a weakened interval, or both. A line with neither takes the flat accent, which is
-    // one fewer node for the browser to interpolate on every hover.
+    // A line is painted from a gradient when it has something to vary along its length, and a grade
+    // at each push is the only thing that ever does: a stroke is one line for its whole length, at
+    // one strength, or it reads as two lines spliced together. An ungraded line takes the flat
+    // accent, which is one fewer node for the browser to interpolate on every hover.
     function gradient(entry: ChartSeries) {
-        return entry.tones !== undefined || restated;
+        return entry.tones !== undefined;
     }
 
     function colorsOf(entry: ChartSeries): string[] {
@@ -404,17 +402,9 @@ function TrajectoryCard({
                                         y1="0"
                                         y2="0"
                                     >
-                                        {strokeStops(colorsOf(entry), faded).map((stop, index) => {
+                                        {strokeStops(colorsOf(entry)).map((stop) => {
                                             return (
-                                                <stop
-                                                    // Two stops can share an offset — that is how the
-                                                    // strength steps at a boundary without the colour
-                                                    // stepping with it — so the offset is not a key.
-                                                    key={index}
-                                                    offset={stop.offset}
-                                                    stopColor={stop.color}
-                                                    stopOpacity={stop.opacity}
-                                                />
+                                                <stop key={stop.offset} offset={stop.offset} stopColor={stop.color} />
                                             );
                                         })}
                                     </linearGradient>

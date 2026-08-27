@@ -35,11 +35,6 @@ export const ACTIVE_POINT_RADIUS = 5;
 // so the mark reads as "this one" without the point itself ever moving.
 export const ACTIVE_RING_RADIUS = 9;
 
-// What a restated interval is drawn at. A clamped remainder is not a measurement, so the stroke
-// across it is weakened rather than removed: the shape of the day stays readable, and the reader can
-// still see that the two pushes either side of it are joined.
-export const FADED_OPACITY = 0.55;
-
 // The restatement badge's ring and the flag lane's rules. Chrome ABOUT a push, never a verdict on
 // it, so it stays off the zone palette (ADR-0019) — a badge in green would read as praise.
 export const CHROME_STROKE = 'var(--muted-foreground)';
@@ -53,3 +48,18 @@ export const BADGE_RADIUS = 8;
 // them on the line would make them look like properties of the figure.
 export const FLAG_LANE_HEIGHT = 18;
 export const FLAG_GLYPH_SIZE = 11;
+
+// The small cards draw their shape as candles rather than a line. What follows is that plot's
+// geometry — see `utils/bars.ts` for what a candle means.
+
+// The shortest a candle may be drawn, as a fraction of the plot's own range. A flat interval is
+// still an interval, and a bar of no height reads as missing data rather than as "nothing moved".
+export const BAR_MIN_FRACTION = 0.05;
+
+// How much of each slot is air. Wide enough that the candles read as separate marks and not as a
+// filled area, narrow enough that a month of them still has body.
+export const BAR_CATEGORY_GAP = '32%';
+
+// How much wider than the candle its blurred light is drawn — the same trick the line's halo uses,
+// so a candle sits above its own glow instead of carrying a shadow.
+export const BAR_HALO_SPREAD = 4;
