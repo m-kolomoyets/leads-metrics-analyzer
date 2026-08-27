@@ -1,4 +1,4 @@
-import type { CostMetric, DeltaFlags } from '@/lib/domain/dynamics';
+import type { DeltaFlags } from '@/lib/domain/dynamics';
 
 // Which of the three edge cases a point carries.
 export type DeltaFlag = keyof DeltaFlags;
@@ -6,17 +6,6 @@ export type DeltaFlag = keyof DeltaFlags;
 // How tall the plot stands. The library sizes itself to this box, so the number is plain CSS pixels
 // rather than the viewBox units the hand-drawn version carried.
 export const CHART_HEIGHT = 320;
-
-// Cost lines are told apart by DASH, never by colour: colour is spoken for by the zone, and two
-// meanings on one channel is one meaning lost. CPI — the default line — is the solid one.
-// Canvas takes a dash array, and so does SVG's `stroke-dasharray` once joined — one shape, so the
-// legend swatch and the line it describes can never drift apart.
-export const COST_DASH: Record<CostMetric, number[]> = {
-    cpi: [],
-    cpr: [8, 4],
-    cps: [2, 4],
-    cpc: [12, 4, 2, 4],
-};
 
 // The restatement badge's ring, and the flag glyph's colour: a restatement is chrome about the push,
 // never the verdict on it, so it stays off the zone palette. The segment itself keeps its zone colours

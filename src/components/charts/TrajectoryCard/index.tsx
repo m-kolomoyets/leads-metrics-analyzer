@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import type { ChartSeries, ChartTone } from '../types';
-import { useId, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import {
     CartesianGrid,
     ComposedChart,
@@ -13,9 +13,16 @@ import {
     YAxis,
 } from 'recharts';
 import { cn } from '@/lib/utils/cn';
-import { ACTIVE_POINT_RADIUS, CURVE, HALO_SPREAD, STROKE_WIDTH, TONE_STROKE, UNGRADED_STROKE } from '../constants';
+import {
+    ACTIVE_POINT_RADIUS,
+    ACTIVE_RING_RADIUS,
+    CURVE,
+    HALO_SPREAD,
+    STROKE_WIDTH,
+    TONE_STROKE,
+    UNGRADED_STROKE,
+} from '../constants';
 import { toneStops } from '../utils/gradient';
-import { extentOf, niceTicks } from '../utils/ticks';
 
 // The day, at the size the day deserves. It draws several lines at once and tells them apart by
 // DASH, because the one colour channel it has is spent entirely on the zone (ADR-0019) — two
@@ -33,13 +40,26 @@ import { extentOf, niceTicks } from '../utils/ticks';
 // take the click if it stood still. So Recharts is left doing the only part it is better at (which
 // push is the pointer over) and the card is positioned, frozen and dismissed here.
 
-type TrajectoryRow = { label: string } & Record<string, number | string | null>;
+// One push, as the plot eats it. `index` is what the time axis is keyed on rather than `label`: two
+// pushes inside the same minute print the same clock, and a category axis keyed on a repeated label
+// would put the marker and the crosshair on the first of them whichever was pointed at.
+type TrajectoryRow = { index: number; label: string } & Record<string, number | string | null>;
 
 type TrajectoryCardProps = {
     rows: TrajectoryRow[];
     series: ChartSeries[];
+    // Both scales, already worked out: the round figures each prints and the range it draws over.
+    // Passed in rather than fitted here — nothing on a chart surface is computed during a render,
+    // so a wrong axis is caught by a test of the builder rather than by a reader (ADR-0025).
+    costTicks: number[];
+    figureTicks: number[];
+    costDomain: [number, number];
+    figureDomain: [number, number];
     costTick?: (value: number) => string;
     figureTick?: (value: number) => string;
+    // What the plot draws, in words, for a reader who cannot see it. Rendered into the SVG's own
+    // `<desc>`, which is where a screen reader looks for it.
+    description?: string;
     // Given the index of the push being pointed at. Deliberately not Recharts' payload: the payload
     // is cleared the moment the pointer leaves the SVG for the card, which is exactly when the card
     // still needs to be on screen.
@@ -97,13 +117,22 @@ function renderNothing() {
 // What the pointer is over, and whether it is being held still. `pinned` is separate from `index`
 // because moving onto the card is not the same as moving to another push: while the card is being
 // read — or its button aimed at — the reading behind it must not change under it.
+//
+// `left` is a WINDOW coordinate, not a plot one: the card is positioned `fixed` so that no ancestor
+// with `overflow: hidden` — the accordion panel the chart may be folded inside, the section card
+// around it — can clip a card that is deliberately allowed out of the plot.
 type Hover = { index: number; left: number };
 
 function TrajectoryCard({
     rows,
     series,
+    costTicks,
+    figureTicks,
+    costDomain,
+    figureDomain,
     costTick,
     figureTick,
+    description,
     renderTooltip,
     onSelectPoint,
     className,
@@ -120,36 +149,6 @@ function TrajectoryCard({
     const [pinned, setPinned] = useState(false);
     const [top, setTop] = useState(TOOLTIP_GAP);
 
-    // Round, evenly spaced ticks per axis, taken from what the series actually cover. Recharts' own
-    // defaults divide the raw extent, which is how an axis ends up reading 0.65 · 1.30 · 1.95.
-    const costTicks = niceTicks(
-        ...extentOf(
-            rows,
-            series
-                .filter((entry) => {
-                    return entry.axis === 'cost';
-                })
-                .map((entry) => {
-                    return entry.dataKey;
-                })
-        )
-    );
-    // Asked for the SAME number of rows as the cost axis. The horizontal grid is drawn once, from the
-    // left scale — a right scale with its own count would print labels between the lines rather than
-    // on them, and a reader would have to work out which rule each figure belonged to.
-    const figureTicks = niceTicks(
-        ...extentOf(
-            rows,
-            series
-                .filter((entry) => {
-                    return entry.axis === 'figure';
-                })
-                .map((entry) => {
-                    return entry.dataKey;
-                })
-        ),
-        costTicks.length
-    );
     // The card hangs off the MARKED POINT, not the pointer — and is measured rather than computed:
     // turning a value back into a pixel would mean reproducing Recharts' plot geometry (margins, two
     // axis widths, the time axis's height) here, and that copy would be wrong the first time any of
@@ -162,17 +161,46 @@ function TrajectoryCard({
                 return;
             }
             // The first marker belongs to the first series — a cost line, the graded one the reader
-            // is following.
-            const marker = plot.querySelector('.recharts-reference-dot circle');
+            // is following. The pulse rings are reference dots too, and bigger, so the marker is
+            // asked for by name rather than taken as the first dot on the plot.
+            const marker = plot.querySelector('.chart-point-marker circle');
             if (marker === null) {
                 return;
             }
-            const plotBox = plot.getBoundingClientRect();
             const markerBox = marker.getBoundingClientRect();
-            // Always above the point, and deliberately NOT clamped to the plot: a card this size
-            // squeezed inside an h-80 plot would sit on top of the very line it describes. Nothing
-            // clips it, so it is allowed out — the reader keeps the shape and the reading at once.
-            setTop(markerBox.top - plotBox.top - card.offsetHeight - TOOLTIP_GAP);
+            // Above the point, and deliberately NOT clamped to the plot: a card this size squeezed
+            // inside an h-80 plot would sit on top of the very line it describes. Nothing clips it,
+            // so it is allowed out — the reader keeps the shape and the reading at once.
+            const above = markerBox.top - card.offsetHeight - TOOLTIP_GAP;
+
+            // The window IS a real edge, though. A push near the top of the screen has no room above
+            // it, and a card half off the top is a card whose link cannot be pressed — so it drops
+            // under the point rather than being cut.
+            setTop(above < VIEWPORT_MARGIN ? markerBox.bottom + TOOLTIP_GAP : above);
+        },
+        [hover]
+    );
+
+    // The card is placed in WINDOW coordinates, and a wheel under a stationary pointer moves the plot
+    // without moving the pointer — so nothing else would tell the card its push had walked out from
+    // under it. It is dismissed rather than followed: the reading is a moment's answer, and a card
+    // chasing the page while the reader scrolls past it is noise.
+    useEffect(
+        function dismissOnScroll() {
+            if (hover === null) {
+                return;
+            }
+
+            function handleScroll() {
+                setHover(null);
+                setPinned(false);
+            }
+
+            window.addEventListener('scroll', handleScroll, { capture: true, passive: true });
+
+            return function stopListening() {
+                window.removeEventListener('scroll', handleScroll, { capture: true });
+            };
         },
         [hover]
     );
@@ -196,6 +224,7 @@ function TrajectoryCard({
                 <ResponsiveContainer height="100%" width="100%">
                     <ComposedChart
                         data={rows}
+                        desc={description}
                         margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
                         onClick={(state) => {
                             const index = indexOf(state.activeTooltipIndex);
@@ -212,7 +241,7 @@ function TrajectoryCard({
                             if (index === null || typeof x !== 'number') {
                                 return;
                             }
-                            // Anchored to the push, then pulled back inside the plot at either end.
+                            // Anchored to the push, then pulled back inside the window at either end.
                             // A card hanging half off the right edge is a card whose link cannot be
                             // clicked, which is the bug this whole arrangement exists to fix.
                             // Zero on the very first move, when the card has never been mounted — it
@@ -225,7 +254,7 @@ function TrajectoryCard({
                             // a card half off the screen is a card whose link cannot be clicked.
                             const wanted = plotLeft + x - card / 2;
                             const furthest = Math.max(VIEWPORT_MARGIN, window.innerWidth - card - VIEWPORT_MARGIN);
-                            const left = Math.min(Math.max(wanted, VIEWPORT_MARGIN), furthest) - plotLeft;
+                            const left = Math.min(Math.max(wanted, VIEWPORT_MARGIN), furthest);
                             setHover({ index, left });
                         }}
                     >
@@ -256,10 +285,18 @@ function TrajectoryCard({
                         {/* Horizontal only. A vertical rule would answer "which push is this", and the
                             crosshair the tooltip already brings answers that better. */}
                         <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
-                        <XAxis {...AXIS_PROPS} dataKey="label" interval={timeInterval} tickMargin={14} />
+                        <XAxis
+                            {...AXIS_PROPS}
+                            dataKey="index"
+                            interval={timeInterval}
+                            tickFormatter={(value: number) => {
+                                return rows[value]?.label ?? '';
+                            }}
+                            tickMargin={14}
+                        />
                         <YAxis
                             {...AXIS_PROPS}
-                            domain={[costTicks[0], costTicks.at(-1) ?? 0]}
+                            domain={costDomain}
                             tickFormatter={costTick}
                             ticks={costTicks}
                             width={60}
@@ -267,7 +304,7 @@ function TrajectoryCard({
                         />
                         <YAxis
                             {...AXIS_PROPS}
-                            domain={[figureTicks[0], figureTicks.at(-1) ?? 0]}
+                            domain={figureDomain}
                             orientation="right"
                             tickFormatter={figureTick}
                             ticks={figureTicks}
@@ -279,9 +316,7 @@ function TrajectoryCard({
                             part of this worth keeping. The cursor rule is drawn below instead, off
                             our own state, so it holds still when the card does. */}
                         <Tooltip content={renderNothing} cursor={false} />
-                        {hover && (
-                            <ReferenceLine stroke="var(--border-strong)" x={rows[hover.index]?.label} yAxisId="cost" />
-                        )}
+                        {hover && <ReferenceLine stroke="var(--border-strong)" x={hover.index} yAxisId="cost" />}
 
                         {series.flatMap((entry) => {
                             const stroke = entry.tones ? `url(#${prefix}${entry.dataKey})` : UNGRADED_STROKE;
@@ -325,13 +360,30 @@ function TrajectoryCard({
                             the SVG — so the point would vanish exactly as the reader reaches for the
                             card that point opened. */}
                         {hover &&
-                            series.map((entry) => {
+                            series.flatMap((entry) => {
                                 const value = rows[hover.index]?.[entry.dataKey];
                                 if (typeof value !== 'number') {
-                                    return null;
+                                    return [];
                                 }
                                 const color = pointColor(entry.tones, hover.index);
-                                return (
+                                return [
+                                    // The ring, breathing on the app's own 4.8s ambient clock and
+                                    // held still under `prefers-reduced-motion` — both live in the
+                                    // `chart-point-pulse` class, so the rhythm is set in one place
+                                    // for every ambient animation in the app rather than here.
+                                    // Under the point rather than around it: the point itself never
+                                    // moves, so the thing being pointed at stays where the pointer
+                                    // put it.
+                                    <ReferenceDot
+                                        key={`${entry.dataKey}-ring`}
+                                        className="chart-point-pulse"
+                                        fill={color}
+                                        r={ACTIVE_RING_RADIUS}
+                                        stroke="none"
+                                        x={hover.index}
+                                        y={value}
+                                        yAxisId={entry.axis}
+                                    />,
                                     <ReferenceDot
                                         key={`${entry.dataKey}-mark`}
                                         className="chart-point-marker"
@@ -339,11 +391,11 @@ function TrajectoryCard({
                                         r={ACTIVE_POINT_RADIUS}
                                         stroke="var(--card)"
                                         strokeWidth={2}
-                                        x={rows[hover.index]?.label}
+                                        x={hover.index}
                                         y={value}
                                         yAxisId={entry.axis}
-                                    />
-                                );
+                                    />,
+                                ];
                             })}
                     </ComposedChart>
                 </ResponsiveContainer>
@@ -351,7 +403,7 @@ function TrajectoryCard({
                 {hover && (
                     <div
                         ref={cardRef}
-                        className="pointer-events-auto absolute z-10"
+                        className="pointer-events-auto fixed z-50"
                         // Entering the card pins the reading behind it. Without this the pointer's
                         // own travel would walk the tooltip onto a neighbouring push and back out
                         // from under itself.

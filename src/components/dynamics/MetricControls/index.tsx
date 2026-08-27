@@ -1,9 +1,9 @@
 import type { CostMetric } from '@/lib/domain/dynamics';
-import type { FigureMetric } from '../../types';
+import type { FigureMetric } from '../types';
 import { COST_METRICS } from '@/lib/domain/dynamics';
 import { Toggle, ToggleGroup } from '@/components/ui/ToggleGroup';
-import { COST_DASH } from '../../constants';
-import { METRIC_LABEL } from '../../../utils/metrics';
+import { COST_DASH } from '../constants';
+import { METRIC_LABEL } from '../utils/metrics';
 
 // The chart's configurator (SPEC §6.6), which is two questions and not one: WHICH costs to draw on
 // the left axis — any number of them, so that group is multi-select — and WHICH single figure to hang

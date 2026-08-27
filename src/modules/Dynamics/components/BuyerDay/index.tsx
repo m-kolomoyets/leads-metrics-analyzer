@@ -1,5 +1,4 @@
-import type { FigureMetric } from '@/components/dynamics/TrajectoryChart/types';
-import type { DynamicsMode } from '@/components/dynamics/types';
+import type { DynamicsMode, FigureMetric } from '@/components/dynamics/types';
 import type { CostMetric, DynamicsMetric, SeriesPoint } from '@/lib/domain/dynamics';
 import { Suspense, useState } from 'react';
 import { useSuspenseQuery } from '@tanstack/react-query';
@@ -9,7 +8,7 @@ import { activeGeo } from '@/modules/Report/utils/activeGeo';
 import { ComparisonPanel } from '@/components/dynamics/ComparisonPanel';
 import { MetricStrip } from '@/components/dynamics/MetricStrip';
 import { MetricTiles } from '@/components/dynamics/MetricTiles';
-import { TrajectoryChart } from '@/components/dynamics/TrajectoryChart';
+import { Trajectory } from '@/components/dynamics/Trajectory';
 import { PendingArea } from '@/components/PendingArea';
 import { GeoTabs } from '@/components/report/GeoTabs';
 import { SectionCard } from '@/components/report/SectionCard';
@@ -59,7 +58,7 @@ function TrajectorySection({ points, mode }: { points: SeriesPoint[]; mode: Dyna
 
     return (
         <SectionCard label="Trajectory" className="flex flex-col gap-3">
-            <TrajectoryChart
+            <Trajectory
                 points={points}
                 mode={mode}
                 costMetrics={costMetrics}

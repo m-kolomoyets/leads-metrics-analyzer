@@ -1,7 +1,12 @@
-import type { ChartTone } from '@/components/charts/types';
-import type { DynamicsMetric, SeriesPoint } from '@/lib/domain/dynamics';
-import { hasZone, zoneOfPoint } from '@/lib/domain/dynamics';
-import { paddedDomain } from '@/components/charts/utils/ticks';
+import type { TrajectoryRow } from '@/components/charts/TrajectoryCard';
+import type { ChartSeries, ChartTone } from '@/components/charts/types';
+import type { CostMetric, DynamicsMetric, SeriesPoint } from '@/lib/domain/dynamics';
+import type { DynamicsMode, FigureMetric } from '../types';
+import { COST_METRICS, deltaPointsFor, hasZone, zoneOfPoint } from '@/lib/domain/dynamics';
+import { kyivClock } from '@/lib/utils/kyivDay';
+import { extentOf, niceTicks, paddedDomain } from '@/components/charts/utils/ticks';
+import { DASH } from '@/components/report/utils/format';
+import { COST_DASH } from '../constants';
 import { METRIC_FORMAT, METRIC_LABEL, metricValue } from './metrics';
 
 // The one seam between the Dynamics domain and the charts that draw it (spec #64). Everything the
@@ -54,4 +59,120 @@ export function stripCards(points: SeriesPoint[]): StripCard[] {
             domain: paddedDomain(values),
         };
     });
+}
+
+// How many rules the plot is ruled with. Both scales are asked for the same number, because the
+// horizontal grid is drawn once from the left one: a right scale free to pick its own count would
+// print its figures BETWEEN the rules, and a reader would have to work out which rule each belonged
+// to before they could read either.
+const AXIS_ROWS = 5;
+
+// One axis: the round figures it prints and the range it draws over, taken from the series that hang
+// on it. The domain is the ticks' own ends rather than the data's, so the topmost and bottommost
+// figures sit ON the plot's edges instead of somewhere inside them.
+function axisOf(
+    rows: TrajectoryRow[],
+    keys: readonly string[],
+    count: number
+): { ticks: number[]; domain: [number, number] } {
+    const [min, max] = extentOf(rows, keys);
+
+    // Nothing measurable on this axis at all — a day where every cost was unmeasurable, or a figure
+    // that is null throughout. A range is still needed for the plot to have a height.
+    if (!Number.isFinite(min) || !Number.isFinite(max)) {
+        return { ticks: [], domain: [0, 1] };
+    }
+
+    // A flat series has no span to divide, and an axis of one repeated figure is not a scale. It is
+    // given a magnitude to be read against — the value's own, or 1 when the value is 0 — so the line
+    // lands on the bottom rule with room drawn above it.
+    const top = max > min ? max : min + (Math.abs(min) || 1);
+    const ticks = niceTicks(min, top, count);
+
+    return { ticks, domain: [ticks[0] ?? min, ticks.at(-1) ?? top] };
+}
+
+// The clock the time axis reads, in the same zone every other stamp on the page is printed in.
+function clockOf(takenAt: string): string {
+    const instant = new Date(takenAt);
+
+    return Number.isNaN(instant.getTime()) ? DASH : kyivClock(instant);
+}
+
+export type TrajectoryInput = {
+    // One Geo's trajectory, oldest first — `buildSeries` output, always cumulative.
+    points: SeriesPoint[];
+    mode: DynamicsMode;
+    // The cost lines on the left axis, and the single figure on the right.
+    costMetrics: CostMetric[];
+    figure: FigureMetric;
+};
+
+export type TrajectoryProps = {
+    // The pushes the chart actually draws — the mode applied. The tooltip is opened on one of these,
+    // so the transform lives here rather than in the card: a card reading totals while the plot drew
+    // intervals is the exact confusion the toggle was added to remove.
+    points: SeriesPoint[];
+    rows: TrajectoryRow[];
+    series: ChartSeries[];
+    costTicks: number[];
+    figureTicks: number[];
+    costDomain: [number, number];
+    figureDomain: [number, number];
+};
+
+// Everything the whole-day card draws, worked out once. The card takes this and renders it; nothing
+// on it is computed during a render, so a wrong axis or a misplaced grade is caught by a test rather
+// than by a reader (spec #64).
+export function trajectoryProps({ points, mode, costMetrics, figure }: TrajectoryInput): TrajectoryProps {
+    // The only difference the toggle makes: `deltaPointsFor` hands back the same shape holding
+    // intervals instead of totals, and everything below reads it without caring which it got.
+    const plotted: SeriesPoint[] = mode === 'delta' ? deltaPointsFor(points) : points;
+    // Drawn in a fixed order so two cost lines never swap dashes when a checkbox is cleared.
+    const costs = COST_METRICS.filter((metric) => {
+        return costMetrics.includes(metric);
+    });
+    const drawn: DynamicsMetric[] = [...costs, figure];
+
+    const rows: TrajectoryRow[] = plotted.map((point, index) => {
+        const row: TrajectoryRow = { index, label: clockOf(point.takenAt) };
+
+        for (const metric of drawn) {
+            row[metric] = metricValue(point.figures, metric);
+        }
+
+        return row;
+    });
+
+    const series: ChartSeries[] = costs.map((metric): ChartSeries => {
+        return {
+            dataKey: metric,
+            label: METRIC_LABEL[metric],
+            // Graded against each Snapshot's OWN frozen thresholds (ADR-0002/0015), so a preset
+            // edited at noon never repaints the morning.
+            tones: plotted.map((point): ChartTone => {
+                return zoneOfPoint(point, metric);
+            }),
+            dash: COST_DASH[metric],
+            axis: 'cost',
+        };
+    });
+
+    // The right axis carries no grade: there are no thresholds for money or for ROI, so a graded
+    // Revenue would be a verdict nobody wrote (ADR-0019). It draws in the accent instead.
+    series.push({ dataKey: figure, label: METRIC_LABEL[figure], axis: 'figure' });
+
+    const cost = axisOf(rows, costs, AXIS_ROWS);
+    // Asked for the row count the cost axis settled on, so both land on the same rules.
+    const figures = axisOf(rows, [figure], cost.ticks.length || AXIS_ROWS);
+
+    return {
+        points: plotted,
+        rows,
+        series,
+        costTicks: cost.ticks,
+        figureTicks: figures.ticks,
+        costDomain: cost.domain,
+        figureDomain: figures.domain,
+    };
 }

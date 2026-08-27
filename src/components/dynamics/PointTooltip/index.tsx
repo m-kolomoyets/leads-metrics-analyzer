@@ -1,6 +1,5 @@
 import type { SeriesPoint } from '@/lib/domain/dynamics';
-import type { DynamicsMode } from '../../../types';
-import type { ChartMetric } from '../../types';
+import type { ChartMetric, DynamicsMode } from '../types';
 import { Link } from '@tanstack/react-router';
 import { ArrowUpRightIcon } from 'lucide-react';
 import { compareFigures, hasZone, thresholdPairOf, zoneOfPoint } from '@/lib/domain/dynamics';
@@ -8,8 +7,8 @@ import { kyivClock } from '@/lib/utils/kyivDay';
 import { DASH, int, usd } from '@/components/report/utils/format';
 import { Button } from '@/components/ui/Button';
 import { ZoneMeter } from '@/components/ZoneMeter';
-import { ZONE_LABEL, ZONE_STROKE } from '../../../constants';
-import { METRIC_FORMAT, METRIC_LABEL } from '../../../utils/metrics';
+import { ZONE_LABEL, ZONE_STROKE } from '../constants';
+import { METRIC_FORMAT, METRIC_LABEL } from '../utils/metrics';
 
 // The tooltip exists for one reason: PLAN BESIDE FACT. A figure on its own says how the day went; a
 // figure beside the thresholds that graded it and the bases it was divided from says why, and says

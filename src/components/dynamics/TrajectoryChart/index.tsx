@@ -1,9 +1,9 @@
 import type { DeepPartial, TimeChartOptions } from 'lightweight-charts';
 import type { CostMetric, SeriesPoint } from '@/lib/domain/dynamics';
-import type { ChartPalette, DynamicsMode } from '../types';
+import type { ChartMetric, ChartPalette, DynamicsMode, FigureMetric } from '../types';
 import type { ZoneSeriesApi } from '../ZoneSeries/types';
 import type { DeltaFlag } from './constants';
-import type { ActivePoint, ChartMetric, FigureMetric } from './types';
+import type { ActivePoint } from './types';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { COST_METRICS, deltaPointsFor, deltasFor, hasZone, zoneOfPoint } from '@/lib/domain/dynamics';
@@ -11,14 +11,15 @@ import { cn } from '@/lib/utils/cn';
 import { kyivClock } from '@/lib/utils/kyivDay';
 import { DASH } from '@/components/report/utils/format';
 import { Accordion, AccordionHeader, AccordionItem, AccordionPanel, AccordionTrigger } from '@/components/ui/Accordion';
-import { CHART_HEIGHT, COST_DASH, FLAG_GLYPH, FLAG_HINT, FLAG_LABEL, FLAG_STROKE } from './constants';
+import { COST_DASH } from '../constants';
+import { CHART_HEIGHT, FLAG_GLYPH, FLAG_HINT, FLAG_LABEL, FLAG_STROKE } from './constants';
 import { chartOptionsFor } from '../utils/chartOptions';
 import { METRIC_FORMAT, METRIC_LABEL, metricValue } from '../utils/metrics';
 import { flagsFor, seriesDataFor, timesOf } from './utils/series';
 import { useChartInstance } from '../hooks/useChartInstance';
 import { useChartPalette } from '../hooks/useChartPalette';
-import { MetricControls } from './components/MetricControls';
-import { PointTooltip } from './components/PointTooltip';
+import { MetricControls } from '../MetricControls';
+import { PointTooltip } from '../PointTooltip';
 import { ZoneSeries } from '../ZoneSeries';
 
 // The trajectory chart (SPEC §6.6), drawn by Lightweight Charts with ONE part of the painting kept:

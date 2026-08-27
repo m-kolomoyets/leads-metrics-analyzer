@@ -30,3 +30,7 @@ export const HALO_SPREAD = 6;
 // The point marking the push a tooltip is open on, and the ring that breathes under it. No other
 // push is marked: the line is the shape, and a dot at every push competes with it.
 export const ACTIVE_POINT_RADIUS = 5;
+
+// The ring under that point. Wider than the point at rest and wider still at the top of its breath,
+// so the mark reads as "this one" without the point itself ever moving.
+export const ACTIVE_RING_RADIUS = 9;

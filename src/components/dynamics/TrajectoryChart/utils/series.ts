@@ -1,9 +1,8 @@
 import type { UTCTimestamp } from 'lightweight-charts';
 import type { SeriesPoint } from '@/lib/domain/dynamics';
 import type { Zone } from '@/lib/domain/types';
-import type { DynamicsMode } from '../../types';
+import type { ChartMetric, DynamicsMode } from '../../types';
 import type { ZonePoint } from '../../ZoneSeries/types';
-import type { ChartMetric } from '../types';
 import { deltasFor, hasZone, zoneOfPoint } from '@/lib/domain/dynamics';
 import { FLAG_GLYPH } from '../constants';
 import { metricValue } from '../../utils/metrics';
