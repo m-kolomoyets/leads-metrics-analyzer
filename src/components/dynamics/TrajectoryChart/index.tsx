@@ -9,7 +9,6 @@ import { useNavigate } from '@tanstack/react-router';
 import { COST_METRICS, deltaPointsFor, deltasFor, hasZone, zoneOfPoint } from '@/lib/domain/dynamics';
 import { cn } from '@/lib/utils/cn';
 import { kyivClock } from '@/lib/utils/kyivDay';
-import { SectionCard } from '@/components/report/SectionCard';
 import { DASH } from '@/components/report/utils/format';
 import { Accordion, AccordionHeader, AccordionItem, AccordionPanel, AccordionTrigger } from '@/components/ui/Accordion';
 import { CHART_HEIGHT, COST_DASH, FLAG_GLYPH, FLAG_HINT, FLAG_LABEL, FLAG_STROKE } from './constants';
@@ -20,7 +19,6 @@ import { useChartInstance } from '../hooks/useChartInstance';
 import { useChartPalette } from '../hooks/useChartPalette';
 import { MetricControls } from './components/MetricControls';
 import { PointTooltip } from './components/PointTooltip';
-import { SparklineStrip } from '../SparklineStrip';
 import { ZoneSeries } from '../ZoneSeries';
 
 // The trajectory chart (SPEC §6.6), drawn by Lightweight Charts with ONE part of the painting kept:
@@ -54,7 +52,10 @@ const TOOLTIP_INSET = 180;
 
 // Where the tooltip is pinned, in the plot's own pixels. `x` is the card's anchor, pulled back from
 // the edges so it cannot be clipped; `pointX` is the push itself, which is where the pulse belongs.
-type ActiveAt = ActivePoint & { x: number; pointX: number; y: number };
+// `key` is the selection the card was opened under: the strip beside this chart and the controls
+// inside it both change which lines are drawn, and a card describing a line that is no longer on the
+// plot is dropped rather than left standing.
+type ActiveAt = ActivePoint & { key: string; x: number; pointX: number; y: number };
 
 function clockOf(takenAt: string): string {
     const instant = new Date(takenAt);
@@ -73,6 +74,13 @@ type TrajectoryChartProps = {
     // mode toggle is applied here, so the sparklines beside it keep reading the day as it happened.
     points: SeriesPoint[];
     mode: DynamicsMode;
+    // Which lines to draw, owned by the caller. The Metric strip is a sibling of this chart rather
+    // than a part of it, and two controls pointing at one selection means the selection cannot live
+    // inside either of them.
+    costMetrics: CostMetric[];
+    figure: FigureMetric;
+    onCostMetricsChange: (metrics: CostMetric[]) => void;
+    onFigureChange: (metric: FigureMetric) => void;
 };
 
 // The system's options, with only what makes this chart itself laid over them: the horizontal
@@ -97,12 +105,17 @@ function trajectoryOptionsFor(palette: ChartPalette): DeepPartial<TimeChartOptio
     };
 }
 
-function TrajectoryChart({ points, mode }: TrajectoryChartProps) {
+function TrajectoryChart({
+    points,
+    mode,
+    costMetrics,
+    figure,
+    onCostMetricsChange,
+    onFigureChange,
+}: TrajectoryChartProps) {
     const navigate = useNavigate();
     const palette = useChartPalette();
-    const [costMetrics, setCostMetrics] = useState<CostMetric[]>(['cpi']);
-    const [figure, setFigure] = useState<FigureMetric>('revenue');
-    const [active, setActive] = useState<ActiveAt | null>(null);
+    const [opened, setOpened] = useState<ActiveAt | null>(null);
     // Which push the keyboard has in hand. Separate from `active`: a pointer leaving the plot closes
     // the tooltip, and it must not also throw away where the keyboard was.
     const [focused, setFocused] = useState(0);
@@ -132,37 +145,26 @@ function TrajectoryChart({ points, mode }: TrajectoryChartProps) {
     const times = timesOf(plotted);
     const flags = flagsFor(points, mode);
     const drawn: ChartMetric[] = [...costMetrics, figure];
+    const drawnKey = drawn.join(',');
+    const active = opened !== null && opened.key === drawnKey ? opened : null;
     // Serialised rather than passed by identity: `plotted` is rebuilt every render, and depending on
     // it would tear the chart down and rebuild it on every unrelated state change.
-    const dataKey = `${mode}:${drawn.join(',')}:${plotted
+    const dataKey = `${mode}:${drawnKey}:${plotted
         .map((point) => {
             return point.snapshotId;
         })
         .join(',')}`;
 
     function toggleCost(metric: CostMetric) {
-        setCostMetrics((current) => {
-            return current.includes(metric)
-                ? current.filter((one) => {
+        onCostMetricsChange(
+            costMetrics.includes(metric)
+                ? costMetrics.filter((one) => {
                       return one !== metric;
                   })
                 : COST_METRICS.filter((one) => {
-                      return one === metric || current.includes(one);
-                  });
-        });
-    }
-
-    // A sparkline is a jump, not an addition: it answers "show me THAT one", so a cost click replaces
-    // the cost selection rather than piling a second dashed line onto it.
-    function selectFromStrip(metric: ChartMetric) {
-        setActive(null);
-
-        if (hasZone(metric)) {
-            setCostMetrics([metric]);
-            return;
-        }
-
-        setFigure(metric);
+                      return one === metric || costMetrics.includes(one);
+                  })
+        );
     }
 
     // Where a push sits on screen right now, asked of the chart rather than remembered: the plot pans
@@ -196,6 +198,7 @@ function TrajectoryChart({ points, mode }: TrajectoryChartProps) {
         return {
             index,
             metric,
+            key: drawnKey,
             x: Math.min(Math.max(pointX, inset), Math.max(paneRight - inset, inset)),
             pointX,
             y,
@@ -218,7 +221,7 @@ function TrajectoryChart({ points, mode }: TrajectoryChartProps) {
 
     function moveTo(index: number) {
         setFocused(index);
-        setActive(locate(index, drawn[0]));
+        setOpened(locate(index, drawn[0]));
     }
 
     // The keyboard path across a canvas: arrows walk the day, Home and End jump to its ends, Enter
@@ -245,7 +248,7 @@ function TrajectoryChart({ points, mode }: TrajectoryChartProps) {
         }
 
         if (event.key === 'Escape') {
-            setActive(null);
+            setOpened(null);
         }
     }
 
@@ -369,7 +372,7 @@ function TrajectoryChart({ points, mode }: TrajectoryChartProps) {
                     return;
                 }
 
-                setActive(locate(Math.round(param.logical), drawn[0]));
+                setOpened(locate(Math.round(param.logical), drawn[0]));
             }
 
             chart.subscribeCrosshairMove(handleMove);
@@ -442,145 +445,136 @@ function TrajectoryChart({ points, mode }: TrajectoryChartProps) {
     const focusedValue = metricValue(focusedPoint.figures, drawn[0]);
 
     return (
-        <SectionCard label="Trajectory" className="flex flex-col gap-3">
-            {/* Folded away by default (`defaultValue` left empty): the chart is the deepest read on the
-                page and the tables under it are the everyday one, so it opens on request rather than
-                pushing them below the fold every time. The strip below stays out of the panel — it is
-                the day at a glance, and hiding it would leave a collapsed card saying nothing. */}
-            <Accordion
-                value={open}
-                onValueChange={(next) => {
-                    setOpen(next);
-                }}
-            >
-                <AccordionItem value="trajectory">
-                    <AccordionHeader>
-                        <AccordionTrigger className="text-sm font-semibold tracking-widest uppercase">
-                            Trajectory
-                        </AccordionTrigger>
-                    </AccordionHeader>
+        // Folded away by default (`defaultValue` left empty): the chart is the deepest read on the
+        // page and the tables under it are the everyday one, so it opens on request rather than
+        // pushing them below the fold every time. The strip is a sibling of this whole accordion and
+        // stays out of the panel — it is the day at a glance, and hiding it would leave a collapsed
+        // card saying nothing.
+        <Accordion
+            value={open}
+            onValueChange={(next) => {
+                setOpen(next);
+            }}
+        >
+            <AccordionItem value="trajectory">
+                <AccordionHeader>
+                    <AccordionTrigger className="text-sm font-semibold tracking-widest uppercase">
+                        Trajectory
+                    </AccordionTrigger>
+                </AccordionHeader>
 
-                    <AccordionPanel>
-                        <div className="flex flex-col gap-3 pt-3">
-                            <MetricControls
-                                costMetrics={costMetrics}
-                                figure={figure}
-                                onToggleCost={toggleCost}
-                                onSelectFigure={setFigure}
-                            />
+                <AccordionPanel>
+                    <div className="flex flex-col gap-3 pt-3">
+                        <MetricControls
+                            costMetrics={costMetrics}
+                            figure={figure}
+                            onToggleCost={toggleCost}
+                            onSelectFigure={onFigureChange}
+                        />
 
-                            {/* The plot is one focusable widget rather than a canvas nobody can reach:
+                        {/* The plot is one focusable widget rather than a canvas nobody can reach:
                                 `application` tells a screen reader the arrow keys belong to it, and the
                                 live region below says what they landed on. */}
-                            <div
-                                className="relative w-full"
-                                style={{ height: CHART_HEIGHT }}
-                                onMouseLeave={() => {
-                                    setPinned(false);
-                                    setActive(null);
-                                }}
-                            >
-                                <div ref={containerRef} className="h-full w-full" aria-hidden={true} />
+                        <div
+                            className="relative w-full"
+                            style={{ height: CHART_HEIGHT }}
+                            onMouseLeave={() => {
+                                setPinned(false);
+                                setOpened(null);
+                            }}
+                        >
+                            <div ref={containerRef} className="h-full w-full" aria-hidden={true} />
 
-                                {/* The keyboard's handle on a canvas: a real button laid over the plot,
+                            {/* The keyboard's handle on a canvas: a real button laid over the plot,
                                     transparent to the pointer so panning and the crosshair still reach
                                     the chart, but in the tab order and carrying the arrow keys. */}
-                                <button
-                                    type="button"
-                                    aria-label={`${mode === 'delta' ? 'Between-report' : 'Cumulative'} trajectory of ${plotted[0].geo} across ${plotted.length} pushes. Arrow keys walk the pushes, Enter opens a report.`}
-                                    className="pointer-events-none absolute inset-0 rounded-lg"
-                                    onKeyDown={handleKeyDown}
-                                    onFocus={() => {
-                                        moveTo(focused);
-                                    }}
-                                    onBlur={() => {
-                                        setActive(null);
-                                    }}
-                                />
+                            <button
+                                type="button"
+                                aria-label={`${mode === 'delta' ? 'Between-report' : 'Cumulative'} trajectory of ${plotted[0].geo} across ${plotted.length} pushes. Arrow keys walk the pushes, Enter opens a report.`}
+                                className="pointer-events-none absolute inset-0 rounded-lg"
+                                onKeyDown={handleKeyDown}
+                                onFocus={() => {
+                                    moveTo(focused);
+                                }}
+                                onBlur={() => {
+                                    setOpened(null);
+                                }}
+                            />
 
-                                {/* The pulse rides the DOM rather than the canvas: animating it in the
+                            {/* The pulse rides the DOM rather than the canvas: animating it in the
                                     renderer would mean repainting every series on every frame, while a
                                     positioned ring costs one compositor layer and honours reduced
                                     motion for free. The canvas halo underneath stays put, so the point
                                     still reads as active when the animation is off. */}
-                                {active !== null && (
-                                    <span
-                                        aria-hidden={true}
-                                        className="motion-safe:animate-ping pointer-events-none absolute size-8 -translate-x-1/2 -translate-y-1/2 rounded-full opacity-40 [animation-duration:1.6s]"
-                                        style={{
-                                            left: active.pointX,
-                                            top: active.y,
-                                            background: activeColor,
-                                        }}
+                            {active !== null && (
+                                <span
+                                    aria-hidden={true}
+                                    className="motion-safe:animate-ping pointer-events-none absolute size-8 -translate-x-1/2 -translate-y-1/2 rounded-full opacity-40 [animation-duration:1.6s]"
+                                    style={{
+                                        left: active.pointX,
+                                        top: active.y,
+                                        background: activeColor,
+                                    }}
+                                />
+                            )}
+
+                            {active !== null && (
+                                <div
+                                    onMouseEnter={() => {
+                                        setPinned(true);
+                                    }}
+                                    onMouseLeave={() => {
+                                        setPinned(false);
+                                    }}
+                                    className={cn(
+                                        // Fades in on arrival, and SLIDES between pushes rather
+                                        // than teleporting: at this size a jump reads as a
+                                        // flicker, and the eye loses which point it belongs to.
+                                        'motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95 motion-safe:transition-[left] absolute z-10 -translate-x-1/2 motion-safe:duration-150 motion-safe:ease-out',
+                                        // Pinned to the plot edge FURTHEST from the point rather
+                                        // than hung off the point itself: the card is taller than
+                                        // the gap above a high push, and the panel clips whatever
+                                        // leaves it, so anchoring to the point cut the card in half.
+                                        active.y < CHART_HEIGHT / 2 ? 'bottom-1' : 'top-1'
+                                    )}
+                                    style={{ left: active.x }}
+                                >
+                                    <PointTooltip
+                                        point={plotted[active.index]}
+                                        previous={plotted[active.index - 1] ?? null}
+                                        metric={active.metric}
+                                        mode={mode}
+                                        position={active.index + 1}
+                                        total={plotted.length}
                                     />
-                                )}
-
-                                {active !== null && (
-                                    <div
-                                        onMouseEnter={() => {
-                                            setPinned(true);
-                                        }}
-                                        onMouseLeave={() => {
-                                            setPinned(false);
-                                        }}
-                                        className={cn(
-                                            // Fades in on arrival, and SLIDES between pushes rather
-                                            // than teleporting: at this size a jump reads as a
-                                            // flicker, and the eye loses which point it belongs to.
-                                            'motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95 motion-safe:transition-[left] absolute z-10 -translate-x-1/2 motion-safe:duration-150 motion-safe:ease-out',
-                                            // Pinned to the plot edge FURTHEST from the point rather
-                                            // than hung off the point itself: the card is taller than
-                                            // the gap above a high push, and the panel clips whatever
-                                            // leaves it, so anchoring to the point cut the card in half.
-                                            active.y < CHART_HEIGHT / 2 ? 'bottom-1' : 'top-1'
-                                        )}
-                                        style={{ left: active.x }}
-                                    >
-                                        <PointTooltip
-                                            point={plotted[active.index]}
-                                            previous={plotted[active.index - 1] ?? null}
-                                            metric={active.metric}
-                                            mode={mode}
-                                            position={active.index + 1}
-                                            total={plotted.length}
-                                        />
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* What the keyboard has in hand, said out loud. Without it the arrow keys
-                                would move a highlight a screen-reader user cannot see. */}
-                            <p className="sr-only" aria-live="polite">
-                                {`${METRIC_LABEL[drawn[0]]} ${spokenValue(drawn[0], focusedValue)} at ${clockOf(focusedPoint.takenAt)}, push ${focused + 1} of ${plotted.length}`}
-                            </p>
-
-                            {presentFlags.length > 0 && (
-                                <ul className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-xs">
-                                    {presentFlags.map((flag) => {
-                                        return (
-                                            <li
-                                                key={flag}
-                                                className="flex items-center gap-1.5"
-                                                title={FLAG_HINT[flag]}
-                                            >
-                                                <span aria-hidden={true} style={{ color: FLAG_STROKE[flag] }}>
-                                                    {FLAG_GLYPH[flag]}
-                                                </span>
-                                                {FLAG_LABEL[flag]}
-                                            </li>
-                                        );
-                                    })}
-                                </ul>
+                                </div>
                             )}
                         </div>
-                    </AccordionPanel>
-                </AccordionItem>
-            </Accordion>
 
-            {/* The strip reads the day as it happened whatever the toggle says — it is the map, and
-                the chart above it is the territory. */}
-            <SparklineStrip points={points} selected={[...costMetrics, figure]} onSelect={selectFromStrip} />
-        </SectionCard>
+                        {/* What the keyboard has in hand, said out loud. Without it the arrow keys
+                                would move a highlight a screen-reader user cannot see. */}
+                        <p className="sr-only" aria-live="polite">
+                            {`${METRIC_LABEL[drawn[0]]} ${spokenValue(drawn[0], focusedValue)} at ${clockOf(focusedPoint.takenAt)}, push ${focused + 1} of ${plotted.length}`}
+                        </p>
+
+                        {presentFlags.length > 0 && (
+                            <ul className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                                {presentFlags.map((flag) => {
+                                    return (
+                                        <li key={flag} className="flex items-center gap-1.5" title={FLAG_HINT[flag]}>
+                                            <span aria-hidden={true} style={{ color: FLAG_STROKE[flag] }}>
+                                                {FLAG_GLYPH[flag]}
+                                            </span>
+                                            {FLAG_LABEL[flag]}
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        )}
+                    </div>
+                </AccordionPanel>
+            </AccordionItem>
+        </Accordion>
     );
 }
 

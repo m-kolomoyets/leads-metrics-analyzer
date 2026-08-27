@@ -1,15 +1,18 @@
+import type { FigureMetric } from '@/components/dynamics/TrajectoryChart/types';
 import type { DynamicsMode } from '@/components/dynamics/types';
-import type { SeriesPoint } from '@/lib/domain/dynamics';
-import { Suspense } from 'react';
+import type { CostMetric, DynamicsMetric, SeriesPoint } from '@/lib/domain/dynamics';
+import { Suspense, useState } from 'react';
 import { useSuspenseQuery } from '@tanstack/react-query';
-import { buildSeries } from '@/lib/domain/dynamics';
+import { buildSeries, hasZone } from '@/lib/domain/dynamics';
 import { dynamicsDayQueryOptions } from '@/services/dynamics/queries';
 import { activeGeo } from '@/modules/Report/utils/activeGeo';
 import { ComparisonPanel } from '@/components/dynamics/ComparisonPanel';
 import { MetricTiles } from '@/components/dynamics/MetricTiles';
+import { SparklineStrip } from '@/components/dynamics/SparklineStrip';
 import { TrajectoryChart } from '@/components/dynamics/TrajectoryChart';
 import { PendingArea } from '@/components/PendingArea';
 import { GeoTabs } from '@/components/report/GeoTabs';
+import { SectionCard } from '@/components/report/SectionCard';
 import { geoTabs } from '../../utils/frame';
 import { DetailTables } from '../DetailTables';
 
@@ -33,6 +36,44 @@ type BuyerDayProps = {
     // Set in the page header and spent here, on the chart and nothing else.
     mode: DynamicsMode;
 };
+
+// The Trajectory card: the plot and the Metric strip under it, two siblings inside one section.
+//
+// The selection lives here rather than in either of them because both speak about it — the strip
+// jumps the chart to a metric, and the chart's own controls change the same lines. The card owns the
+// answer; neither child does.
+function TrajectorySection({ points, mode }: { points: SeriesPoint[]; mode: DynamicsMode }) {
+    const [costMetrics, setCostMetrics] = useState<CostMetric[]>(['cpi']);
+    const [figure, setFigure] = useState<FigureMetric>('revenue');
+
+    // A sparkline is a jump, not an addition: it answers "show me THAT one", so a cost click replaces
+    // the cost selection rather than piling a second dashed line onto it.
+    function selectFromStrip(metric: DynamicsMetric) {
+        if (hasZone(metric)) {
+            setCostMetrics([metric]);
+            return;
+        }
+
+        setFigure(metric);
+    }
+
+    return (
+        <SectionCard label="Trajectory" className="flex flex-col gap-3">
+            <TrajectoryChart
+                points={points}
+                mode={mode}
+                costMetrics={costMetrics}
+                figure={figure}
+                onCostMetricsChange={setCostMetrics}
+                onFigureChange={setFigure}
+            />
+
+            {/* The strip reads the day as it happened whatever the toggle says — it is the map, and
+                the chart above it is the territory. */}
+            <SparklineStrip points={points} selected={[...costMetrics, figure]} onSelect={selectFromStrip} />
+        </SectionCard>
+    );
+}
 
 // Everything below the geo row, which is a chart only once there is a trajectory to draw.
 //
@@ -59,7 +100,7 @@ function ChartArea({ points, mode }: { points: SeriesPoint[]; mode: DynamicsMode
     return (
         <>
             <ComparisonPanel points={points} />
-            <TrajectoryChart points={points} mode={mode} />
+            <TrajectorySection points={points} mode={mode} />
         </>
     );
 }
