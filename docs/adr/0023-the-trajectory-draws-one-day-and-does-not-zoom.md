@@ -10,13 +10,13 @@ day — a handful of pushes, not a price history. Both questions a lead brings t
 answered without moving it: _which way is it bending_ is read off the shape, and _what was it at
 17:00_ is read off the tooltip.
 
-Panning came free with Lightweight Charts, which is the only reason the current chart has it. Free
-is not the same as earned: nothing in the spec asks for it, and a day that fits on screen has
-nothing to pan to.
+Panning came free with Lightweight Charts, which was the only reason the chart ever had it. Free is
+not the same as earned: nothing in the spec asks for it, and a day that fits on screen has nothing
+to pan to.
 
 ## Consequences
 
-- A capability the current chart has is being removed on purpose. If a buyer ever pushes often
+- A capability the chart used to have was removed on purpose. If a buyer ever pushes often
   enough that a day stops fitting, this decision is the first thing to revisit — and a `<Brush>`
   under the plot is the cheap answer, at the cost of chrome the design does not have.
 - The chart no longer needs to keep a viewport, which removes a whole class of state: no saved

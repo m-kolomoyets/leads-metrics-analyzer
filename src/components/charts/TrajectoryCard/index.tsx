@@ -161,8 +161,8 @@ function TrajectoryCard({
     onSelectPoint,
     className,
 }: TrajectoryCardProps) {
-    // `useId` output is unique per instance, so two of these on one page — which is exactly what the
-    // comparison route renders — cannot collide on a gradient and steal each other's colours.
+    // `useId` output is unique per instance, so two of these on one page cannot collide on a
+    // gradient and steal each other's colours.
     const prefix = useId();
     const plotRef = useRef<HTMLDivElement>(null);
     // Measured rather than assumed: the card is the caller's, and this component has no idea how

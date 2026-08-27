@@ -51,7 +51,8 @@ control, link. Never a background wash, never a border on a resting element, nev
 
 Tokens are `--zone-green`, `--zone-yellow`, `--zone-red`, `--zone-neutral`.
 
-Amber is the invented one — Lightweight Charts is binary and ships no third colour, so these values
+Amber is the invented one — the charting library the triad was first drawn on is binary and ships
+no third colour, so these values
 are not inherited and **must be measured, not eyeballed**: ≥4.5:1 against their own surface, and
 distinguishable from both teal and red under deuteranopia. Light-mode amber is the tightest.
 

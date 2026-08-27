@@ -3,7 +3,7 @@ import { FADED_OPACITY, TONE_STROKE } from '../constants';
 
 // A zone-graded stroke, as SVG gradient stops. One stop per point, placed at the fraction of the
 // plot's width that point sits at, so the colour changes exactly where the verdict does — the same
-// thing `ZoneSeries` paints on canvas, expressed as a gradient the browser interpolates.
+// thing the retired canvas series painted by hand, expressed as a gradient the browser interpolates.
 //
 // The interpolation is the honest part: a cost does not snap from green to red between two pushes,
 // it passes through the threshold somewhere in between, and a blend says so where a hard edge would

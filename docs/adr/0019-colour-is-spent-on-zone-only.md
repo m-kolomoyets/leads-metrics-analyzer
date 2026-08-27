@@ -20,9 +20,11 @@ product where a colour gradient carries the meaning.
 Every non-data colour is contrast stolen from the judgement. Spending none of it is not minimalism
 for its own sake; it is the only way the triad reads at a glance.
 
-The look this converges on is TradingView's, which is not a coincidence — the charts already are
-[Lightweight Charts](https://tradingview.github.io/lightweight-charts/), and its own defaults follow
-the same rule (achromatic `#D6DCDE` grid, `#2B2B43` scale borders, colour only on the series).
+The look this converges on is TradingView's, which is not a coincidence — the charts were drawn by
+[Lightweight Charts](https://tradingview.github.io/lightweight-charts/) when this was decided, and
+its own defaults follow the same rule (achromatic `#D6DCDE` grid, `#2B2B43` scale borders, colour
+only on the series). The library has since left ([ADR-0022](0022-recharts-renders-the-redesigned-
+charts.md)); the rule it agreed with did not.
 
 ## Considered options
 

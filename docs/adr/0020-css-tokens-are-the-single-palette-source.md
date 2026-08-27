@@ -1,12 +1,16 @@
 # CSS custom properties are the single palette source; canvas reads them, never the reverse
 
 Every colour, radius, font and size in this app is declared once, as a CSS custom property in
-`src/styles/index.css`, under `:root` and `.dark`. The charts are canvas and cannot read a custom
-property — `ctx.strokeStyle = 'var(--danger)'` silently paints nothing — so they read the *resolved*
-values through one bridge, `useChartPalette`, which resolves tokens with `getComputedStyle` and
-re-reads them when the theme class on `<html>` changes.
+`src/styles/index.css`, under `:root` and `.dark`. Nothing is ever declared in TypeScript and
+mirrored into CSS.
 
-The bridge is one-directional. No colour is ever declared in TypeScript and mirrored into CSS.
+**The canvas half of this ADR is retired.** It was written while the charts were canvas, which
+cannot read a custom property — `ctx.strokeStyle = 'var(--danger)'` silently paints nothing — so
+they read the *resolved* values through one bridge, `useChartPalette` (`getComputedStyle`, re-read
+on a theme flip). The charts are SVG now ([ADR-0022](0022-recharts-renders-the-redesigned-
+charts.md)): `var(--zone-green)` resolves in an SVG attribute like anywhere else, so the bridge was
+deleted along with the library. The direction below is what still binds — CSS declares, everything
+else reads.
 
 ## Why
 
@@ -27,12 +31,9 @@ stack while every number beside them rendered in Inter.
 
 ## Consequences
 
-- `ChartPalette` covers the whole appearance surface the library exposes, not the subset a given
-  chart happened to need.
-- Both charts spread a shared `chartOptionsFor(palette)` factory rather than hand-rolling their own
-  options literal. A third chart added later inherits the system instead of re-deriving it, which is
-  the failure mode this exists to prevent.
-- A hardcoded colour anywhere near a chart is a defect. If a value is needed on canvas and has no
-  token, the fix is to add the token, not the hex.
-- The palette is still resolved at runtime, so the first paint before the bridge reads uses
-  `FALLBACK`. That constant must be kept honest against the dark theme's real values.
+- A hardcoded colour anywhere near a chart is a defect. If a value is needed and has no token, the
+  fix is to add the token, not the hex.
+- On the canvas charts this cost a bridge (`ChartPalette`, a shared `chartOptionsFor` factory and a
+  `FALLBACK` for the first paint), and every appearance field left off it fell through to the
+  library's own design system. On SVG all of that is gone: a chart writes `var(--zone-green)` into
+  an attribute and the cascade does the rest.

@@ -2,7 +2,7 @@
 
 `src/components/charts/` takes numbers, grades and formatted strings. It imports nothing from
 `src/lib/domain/`. Knowing that a CPI is graded against a Snapshot's frozen thresholds is the
-calling page's job — `src/modules/ChartsLab/utils/rows.ts` is the adapter that does it.
+calling page's job — `src/components/dynamics/utils/chartProps.ts` is the adapter that does it.
 
 ## Why
 

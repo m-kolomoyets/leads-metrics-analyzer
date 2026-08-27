@@ -14,7 +14,6 @@ import { Route as PublicRouteRouteImport } from './routes/_public/route'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as DesignIndexRouteImport } from './routes/design/index'
 import { Route as PublicIndexRouteImport } from './routes/_public/index'
-import { Route as DesignChartsRouteImport } from './routes/design/charts'
 import { Route as UnauthenticatedResetPasswordIndexRouteImport } from './routes/_unauthenticated/reset-password/index'
 import { Route as UnauthenticatedLoginIndexRouteImport } from './routes/_unauthenticated/login/index'
 import { Route as UnauthenticatedActivateIndexRouteImport } from './routes/_unauthenticated/activate/index'
@@ -47,11 +46,6 @@ const PublicIndexRoute = PublicIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PublicRouteRoute,
-} as any)
-const DesignChartsRoute = DesignChartsRouteImport.update({
-  id: '/charts',
-  path: '/charts',
-  getParentRoute: () => DesignRoute,
 } as any)
 const UnauthenticatedResetPasswordIndexRoute =
   UnauthenticatedResetPasswordIndexRouteImport.update({
@@ -115,7 +109,6 @@ const AuthenticatedDashboardReportSnapshotIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof PublicIndexRoute
-  '/design/charts': typeof DesignChartsRoute
   '/design/': typeof DesignIndexRoute
   '/dashboard/archive': typeof AuthenticatedDashboardArchiveRoute
   '/dashboard/dynamics': typeof AuthenticatedDashboardDynamicsRoute
@@ -130,7 +123,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof PublicIndexRoute
-  '/design/charts': typeof DesignChartsRoute
   '/design': typeof DesignIndexRoute
   '/dashboard/archive': typeof AuthenticatedDashboardArchiveRoute
   '/dashboard/dynamics': typeof AuthenticatedDashboardDynamicsRoute
@@ -148,7 +140,6 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/_public': typeof PublicRouteRouteWithChildren
   '/_unauthenticated': typeof UnauthenticatedRouteRouteWithChildren
-  '/design/charts': typeof DesignChartsRoute
   '/_public/': typeof PublicIndexRoute
   '/design/': typeof DesignIndexRoute
   '/_authenticated/dashboard/archive': typeof AuthenticatedDashboardArchiveRoute
@@ -166,7 +157,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/design/charts'
     | '/design/'
     | '/dashboard/archive'
     | '/dashboard/dynamics'
@@ -181,7 +171,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/design/charts'
     | '/design'
     | '/dashboard/archive'
     | '/dashboard/dynamics'
@@ -198,7 +187,6 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/_public'
     | '/_unauthenticated'
-    | '/design/charts'
     | '/_public/'
     | '/design/'
     | '/_authenticated/dashboard/archive'
@@ -255,13 +243,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof PublicIndexRouteImport
       parentRoute: typeof PublicRouteRoute
-    }
-    '/design/charts': {
-      id: '/design/charts'
-      path: '/charts'
-      fullPath: '/design/charts'
-      preLoaderRoute: typeof DesignChartsRouteImport
-      parentRoute: typeof DesignRoute
     }
     '/_unauthenticated/reset-password/': {
       id: '/_unauthenticated/reset-password/'
