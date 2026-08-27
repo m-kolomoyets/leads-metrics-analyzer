@@ -181,7 +181,10 @@ function AccountBlock({
 
             {open && (
                 <div className="mt-4 flex flex-col gap-4">
-                    <div className="flex flex-wrap gap-3">
+                    {/* Three zone buckets, plus the sales block when there is one. A grid rather
+                        than a wrap with a 12rem floor per block: the floor is what made a narrow
+                        viewport scroll sideways instead of stacking. */}
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                         {BUCKET_ZONES.map((zone) => {
                             return (
                                 <BucketBlock

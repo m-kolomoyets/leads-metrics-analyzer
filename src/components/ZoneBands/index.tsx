@@ -20,7 +20,9 @@ type ZoneBandsProps = {
 // already speaks in colour everywhere else only made the line longer.
 function ZoneBands({ greenBelow, redAbove, format, greenLabel, yellowLabel, redLabel, className }: ZoneBandsProps) {
     return (
-        <div className={cn('text-muted-foreground flex items-center gap-1.5 text-sm tabular-nums', className)}>
+        <div
+            className={cn('text-muted-foreground flex flex-wrap items-center gap-1.5 text-sm tabular-nums', className)}
+        >
             <ZoneSign zone="green" label={greenLabel} sign="<" />
             <span>{format(greenBelow)}</span>
             <ZoneSign zone="yellow" label={yellowLabel} sign="≤" className="ml-0.5" />

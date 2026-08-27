@@ -18,7 +18,7 @@ type SectionCardProps = {
 
 function SectionCard({ title, label, actions, className, children }: SectionCardProps) {
     return (
-        <section className={cn('bg-surface border-border rounded-md border p-4', className)} aria-label={label}>
+        <section className={cn('bg-surface border-border min-w-0 rounded-md border p-4', className)} aria-label={label}>
             {(title || actions) && (
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                     {title && (

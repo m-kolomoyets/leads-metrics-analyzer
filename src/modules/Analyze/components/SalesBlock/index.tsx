@@ -42,7 +42,7 @@ function SalesBlock({ campaigns, locale, copiedKey, onCopy, copyKey }: SalesBloc
     ];
 
     return (
-        <Card className={cn('min-w-48 flex-1 gap-3 p-3', SALES_CARD_CLASS)}>
+        <Card className={cn('min-w-0 gap-3 p-3', SALES_CARD_CLASS)}>
             <StatusChip
                 zone="neutral"
                 glyph="$"

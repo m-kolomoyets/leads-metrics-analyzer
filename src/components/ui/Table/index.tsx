@@ -19,7 +19,14 @@ import { cn } from '@/lib/utils/cn';
 
 function Table({ className, containerClassName, density = 'default', ...props }: TableProps) {
     return (
-        <div data-slot="table-container" className={cn('relative w-full overflow-auto', containerClassName)}>
+        // The scroll lives HERE, and only here: `min-w-0` so the container may be narrower than the
+        // table inside it, `overflow-x-auto` so the table scrolls under its own header rather than
+        // widening the page. A table is the one thing on these pages allowed to be wider than the
+        // viewport — a report has as many columns as the buyer uploaded.
+        <div
+            data-slot="table-container"
+            className={cn('relative w-full min-w-0 max-w-full overflow-x-auto overflow-y-visible', containerClassName)}
+        >
             <table
                 data-slot="table"
                 data-density={density}

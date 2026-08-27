@@ -75,28 +75,29 @@ function GeoStat({ geo, rollup, thresholds, waste, wasteZone, action, locale }: 
                     {flagEmoji(geo)} {geo}
                 </span>
                 <span className="bg-border h-9 w-px" />
-                <span className="text-muted-foreground text-sm">
+                <span className="text-muted-foreground min-w-0 text-sm">
                     CPC <Metric value={metrics.cpc} pair={thresholds?.clicks} /> · CPI{' '}
                     <Metric value={metrics.cpi} pair={thresholds?.installs} /> · CPR{' '}
                     <Metric value={metrics.cpr} pair={thresholds?.regs} /> · CPS{' '}
                     <Metric value={metrics.cps} pair={thresholds?.sales} />
                 </span>
-                {action && (
-                    <>
-                        <span className="flex-1" />
-                        {action}
-                    </>
-                )}
+                {action && <span className="ml-auto">{action}</span>}
             </div>
 
-            <div className="flex flex-wrap gap-4">
-                <div
-                    className={cn(
-                        'flex min-w-64 flex-1 flex-col gap-3 rounded-md border px-5 py-4',
-                        ZONE_CARD_CLASS[roi]
-                    )}
-                >
-                    <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
+            {/* Two panels, one over the other until there is room for two abreast. They used to be
+                flex items with a 16rem floor, which on a narrow viewport is not a wrap instruction
+                but an overflow: the pair could not shrink past 32rem and pushed the page sideways.
+                A grid drops to one column instead, and `min-w-0` lets each panel be as narrow as the
+                column it is in. */}
+            <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2">
+                <div className={cn('flex min-w-0 flex-col gap-3 rounded-md border px-5 py-4', ZONE_CARD_CLASS[roi])}>
+                    {/* Tracks wide enough to HOLD a figure, wrapping to as many as fit. Fixed
+                        column counts were the bug in the screenshot: a `1fr` track floors at zero
+                        width, so `$1,372.82 USD` simply overflowed its cell and painted across the
+                        figure beside it. `auto-fit` + an 11rem floor means a track is never narrower
+                        than the widest figure it has to carry, and what does not fit drops to the
+                        next row — still on the same tracks, so the rows line up. */}
+                    <div className="grid grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] items-start gap-x-6 gap-y-4">
                         {/* Spend and the Geo Total are facts, not judgements, so neither is
                             painted: they read `--foreground` and the currency is demoted beside the
                             figure rather than folded into it. Profit and ROI are graded, and are the
@@ -139,31 +140,41 @@ function GeoStat({ geo, rollup, thresholds, waste, wasteZone, action, locale }: 
 
                 <div
                     className={cn(
-                        'flex min-w-64 flex-1 flex-wrap items-center gap-x-8 gap-y-3 rounded-md border px-5 py-4',
+                        // Packed to the top with a hairline gap, not spread to the panel's height: the
+                        // panel is as tall as the graded one beside it, and `justify-between` spent
+                        // all of that borrowed height on a gap between two lines that belong together.
+                        'flex min-w-0 flex-col items-stretch justify-start gap-1 rounded-md border px-5 py-4',
                         ZONE_CARD_CLASS[wasteTone]
                     )}
                 >
-                    <Figure
-                        label={ui('wasteTitle', locale)}
-                        value={waste === null ? DASH : usd(waste)}
-                        unit={waste === null ? undefined : 'USD'}
-                        size="lg"
-                        className={ZONE_TEXT_CLASS[wasteTone]}
-                    />
+                    {/* The figures lead, the plan they were graded against sits at the panel's top
+                        right — read left to right, that is "here is the waste" then "here is the band
+                        it is being held to", on one line instead of stacked a panel-height apart. It
+                        drops under the figures only when the panel is too narrow to hold both. */}
+                    <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-6 gap-y-2">
+                        {/* One item, not two tracks: the waste and its share of Spend⁺ are the same
+                            reading said twice — dollars, then what those dollars were out of — so
+                            they stay side by side with a gap between them. */}
+                        <div className="flex min-w-0 flex-wrap items-start gap-x-10 gap-y-3">
+                            <Figure
+                                label={ui('wasteTitle', locale)}
+                                value={waste === null ? DASH : usd(waste)}
+                                unit={waste === null ? undefined : 'USD'}
+                                size="lg"
+                                className={ZONE_TEXT_CLASS[wasteTone]}
+                            />
 
-                    {/* The share is a judgement, so it is written big and in its zone's colour —
-                        the panel's border says the same thing from the outside and the figure is
-                        what the reader actually lands on. The band beside it is the plan that figure
-                        was graded against, written in the same dots the zone editors use and sat on
-                        the same line, pushed to the panel's right edge so the figure and its plan
-                        bracket the row rather than crowding each other. */}
-                    <div className="flex min-w-56 flex-1 flex-wrap items-end gap-x-4 gap-y-1">
-                        <Figure
-                            label={ui('wastePctOfSpend', locale)}
-                            value={wastePct === null ? DASH : percent(wastePct)}
-                            size="lg"
-                            className={wastePct === null ? 'text-muted-foreground' : ZONE_TEXT_CLASS[wasteTone]}
-                        />
+                            {/* The share is a judgement, so it is written big and in its zone's
+                                colour — the panel's border says the same thing from the outside and
+                                the figure is what the reader actually lands on. */}
+                            <Figure
+                                label={ui('wastePctOfSpend', locale)}
+                                value={wastePct === null ? DASH : percent(wastePct)}
+                                size="lg"
+                                className={wastePct === null ? 'text-muted-foreground' : ZONE_TEXT_CLASS[wasteTone]}
+                            />
+                        </div>
+
                         {wasteZone && (
                             <ZoneBands
                                 greenBelow={wasteZone.gy}
@@ -172,7 +183,7 @@ function GeoStat({ geo, rollup, thresholds, waste, wasteZone, action, locale }: 
                                 greenLabel={zoneLabel('green', locale)}
                                 yellowLabel={zoneLabel('yellow', locale)}
                                 redLabel={zoneLabel('red', locale)}
-                                className="ml-auto pb-1"
+                                className="ml-auto justify-end text-xs"
                             />
                         )}
                     </div>

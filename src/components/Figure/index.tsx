@@ -30,7 +30,7 @@ function Figure({ label, value, unit, size = 'md', meta, className }: FigureProp
     return (
         <div className="flex flex-col gap-0.5">
             <span className="text-muted-foreground text-xs tracking-widest uppercase">{label}</span>
-            <span className="flex items-baseline gap-1.5">
+            <span className="flex items-baseline gap-1.5 whitespace-nowrap">
                 <span className={cn('font-semibold tabular-nums', size === 'lg' ? 'text-xl' : 'text-base', className)}>
                     {value}
                 </span>

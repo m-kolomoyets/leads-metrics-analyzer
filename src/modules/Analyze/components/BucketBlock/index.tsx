@@ -28,7 +28,7 @@ function BucketBlock({ zone, campaigns, locale, copiedKey, onCopy, copyKey }: Bu
         .join(', ');
 
     return (
-        <div className={cn('flex min-w-48 flex-1 flex-col gap-3 rounded-md border p-3', ZONE_PANEL_CLASS[zone])}>
+        <div className={cn('flex min-w-0 flex-col gap-3 rounded-md border p-3', ZONE_PANEL_CLASS[zone])}>
             <StatusChip
                 zone={zone}
                 glyph={ZONE_GLYPH[zone]}
