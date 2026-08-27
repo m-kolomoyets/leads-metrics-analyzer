@@ -7,9 +7,9 @@ function SidebarAvatar({ className, name, avatarUrl }: SidebarAvatarProps) {
     const userInitials = getNameInitials(name);
 
     return (
-        <Avatar className={cn('h-8 w-8 rounded-lg', className)}>
+        <Avatar className={cn('size-7 rounded-sm', className)}>
             <AvatarImage src={avatarUrl} alt={name} />
-            <AvatarFallback className="rounded-lg">{userInitials}</AvatarFallback>
+            <AvatarFallback className="rounded-sm text-xs">{userInitials}</AvatarFallback>
         </Avatar>
     );
 }

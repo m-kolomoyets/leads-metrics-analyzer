@@ -4,8 +4,13 @@ import { Suspense, useState } from 'react';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi, Link } from '@tanstack/react-router';
 import { visibleUsersQueryOptions } from '@/services/reports/queries';
-import { MainLayoutHeader } from '@/components/layouts/MainLayoutHeader';
-import { LOCALES, ui } from '@/components/report/utils/i18n';
+import {
+    MainLayoutHeader,
+    MainLayoutHeaderActions,
+    MainLayoutHeaderTitle,
+} from '@/components/layouts/MainLayoutHeader';
+import { LocaleSwitch } from '@/components/LocaleSwitch';
+import { ui } from '@/components/report/utils/i18n';
 import { Button } from '@/components/ui/Button';
 import { resolveRange, todayISO } from './utils/range';
 import { FeedList } from './components/FeedList';
@@ -44,7 +49,7 @@ function Dashboard() {
     return (
         <>
             <MainLayoutHeader>
-                <h1 className="text-xl">{ui('feed', locale)}</h1>
+                <MainLayoutHeaderTitle>{ui('feed', locale)}</MainLayoutHeaderTitle>
 
                 {/* The range travels with the link, so moving between the two surfaces never costs a
                     re-pick (spec story 21). Both pages validate the same three params. */}
@@ -52,24 +57,9 @@ function Dashboard() {
                     {ui('archive', locale)}
                 </Button>
 
-                <span className="flex-1" />
-                <div className="flex gap-1" role="group" aria-label="Language">
-                    {LOCALES.map((code) => {
-                        return (
-                            <Button
-                                key={code}
-                                type="button"
-                                size="xs"
-                                variant={code === locale ? 'default' : 'ghost'}
-                                onClick={() => {
-                                    setLocale(code);
-                                }}
-                            >
-                                {code.toUpperCase()}
-                            </Button>
-                        );
-                    })}
-                </div>
+                <MainLayoutHeaderActions>
+                    <LocaleSwitch locale={locale} onSelect={setLocale} />
+                </MainLayoutHeaderActions>
             </MainLayoutHeader>
 
             <div className="flex flex-col gap-4">

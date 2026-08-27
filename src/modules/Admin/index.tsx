@@ -1,7 +1,7 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 import { teamsQueryOptions, usersQueryOptions } from '@/services/admin/queries';
-import { MainLayoutHeader } from '@/components/layouts/MainLayoutHeader';
+import { MainLayoutHeader, MainLayoutHeaderTitle } from '@/components/layouts/MainLayoutHeader';
 import { Separator } from '@/components/ui/Separator';
 import { TeamsSection } from './components/TeamsSection';
 import { UsersSection } from './components/UsersSection';
@@ -20,7 +20,7 @@ function Admin() {
     return (
         <>
             <MainLayoutHeader>
-                <h1 className="text-xl">Admin</h1>
+                <MainLayoutHeaderTitle>Admin</MainLayoutHeaderTitle>
             </MainLayoutHeader>
             <div className="flex flex-col gap-8">
                 <UsersSection users={users} teams={teams} currentUserId={currentUserId} />

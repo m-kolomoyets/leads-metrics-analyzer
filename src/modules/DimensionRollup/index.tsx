@@ -3,7 +3,7 @@ import { getRouteApi } from '@tanstack/react-router';
 import { LayersIcon } from 'lucide-react';
 import { rollupDimensionFor } from '@/lib/auth/dimensionRollup';
 import { dimensionRollupQueryOptions } from '@/services/snapshots/queries';
-import { MainLayoutHeader } from '@/components/layouts/MainLayoutHeader';
+import { MainLayoutHeader, MainLayoutHeaderTitle } from '@/components/layouts/MainLayoutHeader';
 import { RollupTable } from '@/components/report/RollupTable';
 import { DIMENSION_LABEL } from '@/components/report/RollupTable/constants';
 import { rollupRows } from '@/components/report/RollupTable/utils/rows';
@@ -35,7 +35,7 @@ function DimensionRollup() {
     return (
         <>
             <MainLayoutHeader>
-                <h1 className="text-xl">{DIMENSION_TITLE[dimension]}</h1>
+                <MainLayoutHeaderTitle>{DIMENSION_TITLE[dimension]}</MainLayoutHeaderTitle>
             </MainLayoutHeader>
 
             {rows.length === 0 ? (

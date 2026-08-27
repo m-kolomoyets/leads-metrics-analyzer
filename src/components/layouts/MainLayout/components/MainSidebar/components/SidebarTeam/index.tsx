@@ -14,17 +14,18 @@ function SidebarTeam() {
     return (
         <SidebarMenu>
             <SidebarMenuItem>
+                {/* A mark, not a card: the boxed tile a stock sidebar puts the logo in is a second
+                    surface inside chrome, and the app has exactly two (ADR-0021). The icon sits at
+                    the same 16px every nav row below it does, so the whole column has one measure. */}
                 <SidebarMenuButton
-                    size="lg"
+                    className="h-10 gap-2.5"
                     render={
                         <Link to="/dashboard">
-                            <span className="bg-sidebar flex aspect-square size-7 items-center justify-center rounded-sm border">
-                                <ChartNoAxesCombinedIcon className="size-4" aria-hidden={true} />
-                            </span>
-                            <span className="grid flex-1 text-left text-sm leading-tight">
-                                <span className="truncate font-medium">Adjoin</span>
+                            <ChartNoAxesCombinedIcon aria-hidden={true} />
+                            <span className="grid flex-1 text-left leading-tight">
+                                <span className="truncate text-sm font-semibold tracking-widest uppercase">Adjoin</span>
                                 {teamName ? (
-                                    <span className="truncate text-xs text-muted-foreground">{teamName}</span>
+                                    <span className="text-muted-foreground truncate text-xs">{teamName}</span>
                                 ) : null}
                             </span>
                         </Link>

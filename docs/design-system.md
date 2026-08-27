@@ -11,16 +11,18 @@ numbers currently satisfying them.
 
 ## Chrome — achromatic
 
-Two surfaces, two borders. Neutral greys, no cast. Dark mode's page is true black, so a card is
-read by its own lightness before its border is read at all.
+Two surfaces, two borders. Neutral greys, a faint cool cast in dark mode. Dark mode's stack runs
+downward: the page is grey and a card is cut out of it in near-black, so a card is read by its own
+lightness before its border is read at all. The overlay is the one step back up, because a popover
+has to separate from the card it was opened from rather than sink further into it.
 
 | token | dark | light | used for |
 | --- | --- | --- | --- |
-| `--background` | `#000000` | `#fafafa` | the page |
-| `--surface` | `#161616` | `#ffffff` | inline: cards, panels, tables, sidebar |
-| `--surface-overlay` | `#212121` | `#ffffff` | floating: popover, menu, dialog, sheet, tooltip, toast |
-| `--border` | `#262626` | `#e4e4e4` | hairlines, table rules, dividers |
-| `--border-strong` | `#3a3a3a` | `#d0d0d0` | input borders, header/total rules |
+| `--background` | `#1b1b1f` | `#fafafa` | the page |
+| `--surface` | `#08080a` | `#ffffff` | inline: cards, panels, tables, sidebar |
+| `--surface-overlay` | `#17171a` | `#ffffff` | floating: popover, menu, dialog, sheet, tooltip, toast |
+| `--border` | `#2a2a2f` | `#e4e4e4` | hairlines, table rules, dividers |
+| `--border-strong` | `#3d3d43` | `#d0d0d0` | input borders, header/total rules |
 | `--foreground` | `#f2f2f2` | `#131313` | body text, figures |
 | `--muted-foreground` | `#9b9b9b` | `#5f5f5f` | labels, column heads, secondary figures |
 | `--faint` | `#6b6b6b` | `#8a8a8a` | disabled, placeholder |
@@ -60,7 +62,7 @@ Measured (contrast against `--surface`; ΔE is a Viénot deuteranopia simulation
 
 | theme | teal | amber | red | ΔE amber–red | ΔE amber–teal |
 | --- | --- | --- | --- | --- | --- |
-| dark | 6.04 | 8.17 | 5.19 | 22.7 | 71.5 |
+| dark | 6.68 | 9.03 | 5.74 | 22.7 | 71.5 |
 | light | 4.72 | 4.64 | 7.04 | 20.0 | 62.3 |
 
 Light mode is where the constraint bites: amber cannot be both ≥4.5:1 on white and lighter than a
@@ -174,6 +176,27 @@ State changes only, 120–160ms. Two ambient exceptions, both slow, low-amplitud
 clock so the page has one rhythm rather than two: an unreviewed problem account pulses its border
 opacity, and a zone glow breathes between `--glow-rest` and `--glow-peak`. Strength only — no
 geometry moves, so nothing reflows. Everything respects `prefers-reduced-motion`.
+
+## The frame — sidebar and header
+
+Chrome is one material on two sides of the page: `--surface`, ruled with `--border`, at the same
+density as the tables it frames. Neither side invents a vocabulary of its own.
+
+The **sidebar** is three bands under one hairline each — mark, work, account. The nav row is 32px
+with 15px text and a 16px icon, so it sits *under* the page it navigates to rather than over it; a
+group carries the same 12px uppercase tracked column head the tables use (`Reports`, `System`), and
+it folds away with the rail. The selected row is `--hover-strong`, medium weight, and a 2px
+`--foreground` marker down its leading edge — three achromatic signals, no accent
+([ADR-0019](adr/0019-colour-is-spent-on-zone-only.md)). It opens collapsed to the icon rail; the
+`sidebar_state` cookie remembers a reader who expands it.
+
+The **header** is `components/layouts/MainLayoutHeader`, sticky, 48px, one `--border` rule under it,
+and three slots in a fixed order: the rail toggle, `MainLayoutHeaderTitle`, `MainLayoutHeaderActions`.
+The title is 17px/600 with anything qualifying it — a report date, a buyer — beside it in
+`--muted-foreground` rather than baked into the heading. Pages used to hand-roll this with a
+`flex-1` spacer and a size each, which is how one page ended up at 20px and the next at 17px; the
+layout belongs to the component and a page only says what goes in it. The language switch is one
+`LocaleSwitch` (a `Segmented`) on all four bilingual pages, not four button rows.
 
 ## Rows of choices
 

@@ -194,7 +194,10 @@ function SidebarGroupLabel({ className, render, ...props }: SidebarGroupLabelPro
         props: mergeProps<'div'>(
             {
                 className: cn(
-                    'text-sidebar-foreground/70 flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium motion-safe:transition-[margin,opacity] motion-safe:duration-200 motion-safe:ease-linear [&>svg]:size-4 [&>svg]:shrink-0 group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0',
+                    // The same column head the tables use: 12px, uppercase, tracked, muted. A group of rows
+                    // with no head is a list; with one it is a section, and the sidebar has two jobs
+                    // in it that are not the same job.
+                    'text-muted-foreground flex h-7 shrink-0 items-center px-2 text-xs font-medium tracking-widest uppercase motion-safe:transition-[margin,opacity] motion-safe:duration-200 motion-safe:ease-linear [&>svg]:size-4 [&>svg]:shrink-0 group-data-[collapsible=icon]:-mt-7 group-data-[collapsible=icon]:opacity-0',
                     className
                 ),
             },
@@ -246,7 +249,7 @@ function SidebarInset({ className, ...props }: SidebarInsetProps) {
         <main
             data-slot="sidebar-inset"
             className={cn(
-                'relative flex w-full flex-1 flex-col bg-transparent md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-lg md:peer-data-[variant=inset]:bg-background md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2',
+                'relative flex w-full min-w-0 flex-1 flex-col bg-transparent md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-lg md:peer-data-[variant=inset]:bg-background md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2',
                 className
             )}
             {...props}
@@ -366,10 +369,10 @@ function SidebarMenuSkeleton({ className, showIcon = false, ...props }: SidebarM
         <div
             data-slot="sidebar-menu-skeleton"
             data-sidebar="menu-skeleton"
-            className={cn('h-9 group-data-[state=expanded]:gap-2 rounded-md px-2 flex items-center', className)}
+            className={cn('h-8 group-data-[state=expanded]:gap-2 rounded-sm px-2 flex items-center', className)}
             {...props}
         >
-            {showIcon && <Skeleton className="size-5 rounded-md" data-sidebar="menu-skeleton-icon" />}
+            {showIcon && <Skeleton className="size-4 rounded-sm" data-sidebar="menu-skeleton-icon" />}
             <Skeleton
                 className="h-4 flex-1 max-w-(--skeleton-width)"
                 data-sidebar="menu-skeleton-text"

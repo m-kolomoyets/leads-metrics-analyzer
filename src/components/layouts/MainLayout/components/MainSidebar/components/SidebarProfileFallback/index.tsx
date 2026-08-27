@@ -5,8 +5,8 @@ function SidebarProfileFallback() {
     return (
         <SidebarMenu>
             <SidebarMenuItem>
-                <div className="flex items-center group-data-[state=expanded]:gap-2 h-16 px-2 motion-safe:transition-[width,height,padding] group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:px-0">
-                    <Skeleton className="size-8 rounded-full shrink-0" />
+                <div className="flex items-center group-data-[state=expanded]:gap-2 h-11 px-2 motion-safe:transition-[width,height,padding] group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:px-0">
+                    <Skeleton className="size-7 rounded-sm shrink-0" />
                     <div className="grid flex-1 text-left text-sm leading-tight gap-2">
                         <Skeleton className="w-1/2 h-3" />
                         <Skeleton className="w-3/4 h-3" />

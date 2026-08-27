@@ -7,7 +7,12 @@ import { creativesFor } from '@/lib/domain/creatives';
 import { analyzeSnapshot } from '@/lib/domain/snapshot';
 import { snapshotBundleQueryOptions } from '@/services/snapshots/queries';
 import { bundleFromSnapshot } from '@/services/snapshots/toBundle';
-import { MainLayoutHeader } from '@/components/layouts/MainLayoutHeader';
+import {
+    MainLayoutHeader,
+    MainLayoutHeaderActions,
+    MainLayoutHeaderTitle,
+} from '@/components/layouts/MainLayoutHeader';
+import { LocaleSwitch } from '@/components/LocaleSwitch';
 import { AccountSummary } from '@/components/report/AccountSummary';
 import { CreativeTable } from '@/components/report/CreativeTable';
 import { GeoStat } from '@/components/report/GeoStat';
@@ -16,8 +21,7 @@ import { OffersTable } from '@/components/report/OffersTable';
 import { OsTable } from '@/components/report/OsTable';
 import { ProblemAccounts } from '@/components/report/ProblemAccounts';
 import { SectionCard } from '@/components/report/SectionCard';
-import { LOCALES, ui } from '@/components/report/utils/i18n';
-import { Button } from '@/components/ui/Button';
+import { ui } from '@/components/report/utils/i18n';
 import { activeGeo } from './utils/activeGeo';
 import { BackButton } from './components/BackButton';
 
@@ -80,27 +84,10 @@ function Report() {
         <>
             <MainLayoutHeader>
                 <BackButton from={search.from} locale={locale} />
-                <h1 className="text-xl">
-                    {ui('report', locale)} · {view.snapshot.reportDate}
-                </h1>
-                <span className="flex-1" />
-                <div className="flex gap-1" role="group" aria-label="Language">
-                    {LOCALES.map((code) => {
-                        return (
-                            <Button
-                                key={code}
-                                type="button"
-                                size="xs"
-                                variant={code === locale ? 'default' : 'ghost'}
-                                onClick={() => {
-                                    setLocale(code);
-                                }}
-                            >
-                                {code.toUpperCase()}
-                            </Button>
-                        );
-                    })}
-                </div>
+                <MainLayoutHeaderTitle meta={view.snapshot.reportDate}>{ui('report', locale)}</MainLayoutHeaderTitle>
+                <MainLayoutHeaderActions>
+                    <LocaleSwitch locale={locale} onSelect={setLocale} />
+                </MainLayoutHeaderActions>
             </MainLayoutHeader>
 
             <div className="flex flex-col gap-4">

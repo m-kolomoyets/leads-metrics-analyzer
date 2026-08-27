@@ -6,7 +6,11 @@ import { PlusIcon } from 'lucide-react';
 import { presetsQueryOptions } from '@/services/presets/queries';
 import { PresetCreator } from '@/modules/Analyze/components/PresetCreator';
 import { ThresholdEditor } from '@/modules/Analyze/components/ThresholdEditor';
-import { MainLayoutHeader } from '@/components/layouts/MainLayoutHeader';
+import {
+    MainLayoutHeader,
+    MainLayoutHeaderActions,
+    MainLayoutHeaderTitle,
+} from '@/components/layouts/MainLayoutHeader';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -51,12 +55,13 @@ function Presets() {
     return (
         <>
             <MainLayoutHeader>
-                <h1 className="text-xl">Presets</h1>
-                <span className="flex-1" />
-                <Button size="sm" onClick={openCreate}>
-                    <PlusIcon className="size-4" />
-                    New preset
-                </Button>
+                <MainLayoutHeaderTitle>Presets</MainLayoutHeaderTitle>
+                <MainLayoutHeaderActions>
+                    <Button size="sm" onClick={openCreate}>
+                        <PlusIcon className="size-4" />
+                        New preset
+                    </Button>
+                </MainLayoutHeaderActions>
             </MainLayoutHeader>
 
             <Card>

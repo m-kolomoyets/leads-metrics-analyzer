@@ -1,7 +1,7 @@
 import type { SidebarNavigationProps } from './types';
 import { getRouteApi } from '@tanstack/react-router';
 import { hasPermissions } from '@/lib/utils/auth/permissions';
-import { SidebarGroup, SidebarMenu, SidebarMenuItem } from '@/components/Sidebar';
+import { SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuItem } from '@/components/Sidebar';
 import { useSidebarContext } from '@/components/Sidebar/context/SidebarContext';
 import { SidebarNavigationLink } from './components/SidebarNavigationLink';
 
@@ -9,7 +9,7 @@ const routeApi = getRouteApi('/_authenticated');
 
 // The rows themselves come from the caller: the main group in <SidebarContent>, the Admin row in
 // <SidebarFooter>. Same permission filter either way — a role that cannot open a route never sees it.
-function SidebarNavigation({ items, className }: SidebarNavigationProps) {
+function SidebarNavigation({ items, label, className }: SidebarNavigationProps) {
     const { setOpenMobile } = useSidebarContext();
     const role = routeApi.useRouteContext({
         select(context) {
@@ -29,6 +29,10 @@ function SidebarNavigation({ items, className }: SidebarNavigationProps) {
 
     return (
         <SidebarGroup className={className}>
+            {/* Hidden when the rail is collapsed to icons — a tracked word has nothing to say at
+                48px, and the primitive folds its own height away rather than leaving a gap. */}
+            <SidebarGroupLabel>{label}</SidebarGroupLabel>
+
             <SidebarMenu>
                 {visible.map((item) => {
                     return (
@@ -39,7 +43,7 @@ function SidebarNavigation({ items, className }: SidebarNavigationProps) {
                             }}
                         >
                             <SidebarNavigationLink tooltipText={item.label} {...item.linkProps}>
-                                <item.Icon className="size-5" />
+                                <item.Icon />
                                 {item.label}
                             </SidebarNavigationLink>
                         </SidebarMenuItem>

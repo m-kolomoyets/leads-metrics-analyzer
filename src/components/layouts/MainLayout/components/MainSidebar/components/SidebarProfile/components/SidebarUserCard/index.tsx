@@ -15,11 +15,13 @@ function SidebarUserCard({ className }: SidebarUserCardProps) {
     const roleLabel = ROLES_CONFIG[me.role].label;
 
     return (
-        <div className={cn('flex items-center gap-2 py-1.5 text-left text-sm', className)}>
+        <div className={cn('flex min-w-0 items-center gap-2.5 py-1.5 text-left', className)}>
             <SidebarAvatar name={me.email} />
-            <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">{me.email}</span>
-                <span className="truncate text-xs mb-1 text-muted-foreground">{roleLabel}</span>
+            {/* The role is a label, so it is set like every other label on the page: 12px, muted,
+                tracked. The address above it is the identity and takes the weight. */}
+            <div className="grid min-w-0 flex-1 text-left leading-tight">
+                <span className="truncate text-sm font-medium">{me.email}</span>
+                <span className="text-muted-foreground truncate text-xs tracking-wide uppercase">{roleLabel}</span>
             </div>
         </div>
     );

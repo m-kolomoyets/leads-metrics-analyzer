@@ -9,7 +9,12 @@ import { accountsFor } from '@/lib/domain/accounts';
 import { creativesFor } from '@/lib/domain/creatives';
 import { mergeParsed } from '@/lib/domain/parse';
 import { presetsQueryOptions, sharedSettingsQueryOptions } from '@/services/presets/queries';
-import { MainLayoutHeader } from '@/components/layouts/MainLayoutHeader';
+import {
+    MainLayoutHeader,
+    MainLayoutHeaderActions,
+    MainLayoutHeaderTitle,
+} from '@/components/layouts/MainLayoutHeader';
+import { LocaleSwitch } from '@/components/LocaleSwitch';
 import { PendingArea } from '@/components/PendingArea';
 import { AccountSummary } from '@/components/report/AccountSummary';
 import { CreativeTable } from '@/components/report/CreativeTable';
@@ -19,9 +24,8 @@ import { OffersTable } from '@/components/report/OffersTable';
 import { OsTable } from '@/components/report/OsTable';
 import { ProblemAccounts } from '@/components/report/ProblemAccounts';
 import { SectionCard } from '@/components/report/SectionCard';
-import { LOCALES, ui } from '@/components/report/utils/i18n';
+import { ui } from '@/components/report/utils/i18n';
 import { Accordion, AccordionHeader, AccordionItem, AccordionPanel, AccordionTrigger } from '@/components/ui/Accordion';
-import { Button } from '@/components/ui/Button';
 import {
     Combobox,
     ComboboxContent,
@@ -300,7 +304,7 @@ function Analyze() {
         return (
             <>
                 <MainLayoutHeader>
-                    <h1 className="text-xl">Analyze</h1>
+                    <MainLayoutHeaderTitle>Analyze</MainLayoutHeaderTitle>
                 </MainLayoutHeader>
                 <PendingArea label="Restoring your last upload…" />
             </>
@@ -310,30 +314,20 @@ function Analyze() {
     return (
         <>
             <MainLayoutHeader>
-                <h1 className="text-xl">Analyze</h1>
-                <span className="flex-1" />
-                <div className="flex gap-1" role="group" aria-label="Language">
-                    {LOCALES.map((code) => {
-                        return (
-                            <Button
-                                key={code}
-                                type="button"
-                                size="xs"
-                                variant={code === locale ? 'default' : 'ghost'}
-                                onClick={() => {
-                                    void navigate({
-                                        search: (current) => {
-                                            return { ...current, locale: code };
-                                        },
-                                        replace: true,
-                                    });
-                                }}
-                            >
-                                {code.toUpperCase()}
-                            </Button>
-                        );
-                    })}
-                </div>
+                <MainLayoutHeaderTitle>Analyze</MainLayoutHeaderTitle>
+                <MainLayoutHeaderActions>
+                    <LocaleSwitch
+                        locale={locale}
+                        onSelect={(code) => {
+                            void navigate({
+                                search: (current) => {
+                                    return { ...current, locale: code };
+                                },
+                                replace: true,
+                            });
+                        }}
+                    />
+                </MainLayoutHeaderActions>
             </MainLayoutHeader>
 
             <div className="flex flex-col gap-6">
