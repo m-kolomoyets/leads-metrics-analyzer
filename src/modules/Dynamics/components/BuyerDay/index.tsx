@@ -7,8 +7,8 @@ import { buildSeries, hasZone } from '@/lib/domain/dynamics';
 import { dynamicsDayQueryOptions } from '@/services/dynamics/queries';
 import { activeGeo } from '@/modules/Report/utils/activeGeo';
 import { ComparisonPanel } from '@/components/dynamics/ComparisonPanel';
+import { MetricStrip } from '@/components/dynamics/MetricStrip';
 import { MetricTiles } from '@/components/dynamics/MetricTiles';
-import { SparklineStrip } from '@/components/dynamics/SparklineStrip';
 import { TrajectoryChart } from '@/components/dynamics/TrajectoryChart';
 import { PendingArea } from '@/components/PendingArea';
 import { GeoTabs } from '@/components/report/GeoTabs';
@@ -46,7 +46,7 @@ function TrajectorySection({ points, mode }: { points: SeriesPoint[]; mode: Dyna
     const [costMetrics, setCostMetrics] = useState<CostMetric[]>(['cpi']);
     const [figure, setFigure] = useState<FigureMetric>('revenue');
 
-    // A sparkline is a jump, not an addition: it answers "show me THAT one", so a cost click replaces
+    // A card on the strip is a jump, not an addition: it answers "show me THAT one", so a cost click replaces
     // the cost selection rather than piling a second dashed line onto it.
     function selectFromStrip(metric: DynamicsMetric) {
         if (hasZone(metric)) {
@@ -70,7 +70,7 @@ function TrajectorySection({ points, mode }: { points: SeriesPoint[]; mode: Dyna
 
             {/* The strip reads the day as it happened whatever the toggle says — it is the map, and
                 the chart above it is the territory. */}
-            <SparklineStrip points={points} selected={[...costMetrics, figure]} onSelect={selectFromStrip} />
+            <MetricStrip points={points} selected={[...costMetrics, figure]} onSelect={selectFromStrip} />
         </SectionCard>
     );
 }

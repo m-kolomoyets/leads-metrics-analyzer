@@ -353,3 +353,45 @@ _Avoid_: Orphan revenue, untracked revenue, unattributed revenue
 A Keitaro main-report row with an empty `OS`. Discarded everywhere — not a fact about any
 Campaign.
 _Avoid_: Bot row, junk row, noise
+
+### Reading surfaces
+
+The names for how a figure is *drawn*. Every term here is presentation only — none of them changes
+a number, and a reader who cannot see any of it loses no fact.
+
+**Trajectory Card**:
+The whole-day chart, and nothing else — no figures, no summary. It draws one day at a fixed range
+and does not zoom (ADR-0023). Not the Trajectory itself — that is the ordered Series of pushes this
+card is a view of.
+_Avoid_: Big chart, main chart, line chart
+
+**Metric Card**:
+One metric as a figure and a shape at once — the reading on the left, the day that produced it on
+the right. Four of them make the strip under the Trajectory Card, and the strip is a *control*: it
+says which metric is worth drawing, and clicking one switches the chart.
+_Avoid_: Sparkline card, stat card, tile
+
+**Zone Gradient**:
+A cost line whose stroke changes colour where its Zone changes, blending between the verdict at the
+start of an interval and the verdict at its end. The one place a colour gradient carries meaning
+(ADR-0019). The blend is deliberate: a cost does not snap from green to red between two pushes, and
+a hard edge would claim a precision the data has not got.
+_Avoid_: Coloured line, rainbow line, heat line
+
+**Graded Card**:
+A Metric Card for a metric that *has* thresholds — a cost. It wears the Zone Gradient and a dotted
+grid; the panel it sits in is the same one every card has. Money and ROI have no thresholds (SPEC §6.6),
+so their lines and their Halos draw in the accent instead: not a verdict, and visibly not one.
+_Avoid_: Coloured card, alert card, warning card
+
+**Halo**:
+The blurred copy of a line drawn beneath it, in that line's own colours — zone hues for a graded
+line, accent for an ungraded one. Pure depth: it hugs the stroke and nothing else. An ambient wash
+over the whole plot was tried and rejected — it buried the shape the reader came for.
+_Avoid_: Glow, shadow, bloom
+
+**Fill**:
+The soft colour pooled at the floor of a Metric Card's plot, in the line's colours, fading out
+upward. Decor, and deliberately weaker than the Halo: it gives the panel somewhere to stand and
+says nothing the line above it has not already said.
+_Avoid_: Area, area chart, background gradient

@@ -6,3 +6,9 @@ minimumReleaseAge: 1440
 # NOTE: If release age is undefined, verify the dependency manually.
 # Once verified, comment out or set to true this line to allow the installation.
 minimumReleaseAgeIgnoreMissingTime: false
+
+# recharts 3 peers react-is ^19, but prop-types (via eslint-plugin-react) hoists react-is@16 and pnpm
+# resolves the peer to it. The mismatch is the documented cause of recharts rendering blank under
+# React 19 (recharts#6857). Pin it to the React the app actually runs.
+overrides:
+  react-is: 19.2.7

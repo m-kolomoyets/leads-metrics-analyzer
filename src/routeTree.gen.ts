@@ -9,11 +9,12 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as DesignRouteImport } from './routes/design'
 import { Route as UnauthenticatedRouteRouteImport } from './routes/_unauthenticated/route'
 import { Route as PublicRouteRouteImport } from './routes/_public/route'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as DesignIndexRouteImport } from './routes/design/index'
 import { Route as PublicIndexRouteImport } from './routes/_public/index'
+import { Route as DesignChartsRouteImport } from './routes/design/charts'
 import { Route as UnauthenticatedResetPasswordIndexRouteImport } from './routes/_unauthenticated/reset-password/index'
 import { Route as UnauthenticatedLoginIndexRouteImport } from './routes/_unauthenticated/login/index'
 import { Route as UnauthenticatedActivateIndexRouteImport } from './routes/_unauthenticated/activate/index'
@@ -25,11 +26,6 @@ import { Route as AuthenticatedDashboardDynamicsRouteImport } from './routes/_au
 import { Route as AuthenticatedDashboardArchiveRouteImport } from './routes/_authenticated/dashboard/archive'
 import { Route as AuthenticatedDashboardReportSnapshotIdRouteImport } from './routes/_authenticated/dashboard/report/$snapshotId'
 
-const DesignRoute = DesignRouteImport.update({
-  id: '/design',
-  path: '/design',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const UnauthenticatedRouteRoute = UnauthenticatedRouteRouteImport.update({
   id: '/_unauthenticated',
   getParentRoute: () => rootRouteImport,
@@ -42,10 +38,20 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DesignIndexRoute = DesignIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DesignRoute,
+} as any)
 const PublicIndexRoute = PublicIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PublicRouteRoute,
+} as any)
+const DesignChartsRoute = DesignChartsRouteImport.update({
+  id: '/charts',
+  path: '/charts',
+  getParentRoute: () => DesignRoute,
 } as any)
 const UnauthenticatedResetPasswordIndexRoute =
   UnauthenticatedResetPasswordIndexRouteImport.update({
@@ -109,7 +115,8 @@ const AuthenticatedDashboardReportSnapshotIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof PublicIndexRoute
-  '/design': typeof DesignRoute
+  '/design/charts': typeof DesignChartsRoute
+  '/design/': typeof DesignIndexRoute
   '/dashboard/archive': typeof AuthenticatedDashboardArchiveRoute
   '/dashboard/dynamics': typeof AuthenticatedDashboardDynamicsRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
@@ -123,7 +130,8 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof PublicIndexRoute
-  '/design': typeof DesignRoute
+  '/design/charts': typeof DesignChartsRoute
+  '/design': typeof DesignIndexRoute
   '/dashboard/archive': typeof AuthenticatedDashboardArchiveRoute
   '/dashboard/dynamics': typeof AuthenticatedDashboardDynamicsRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -140,8 +148,9 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/_public': typeof PublicRouteRouteWithChildren
   '/_unauthenticated': typeof UnauthenticatedRouteRouteWithChildren
-  '/design': typeof DesignRoute
+  '/design/charts': typeof DesignChartsRoute
   '/_public/': typeof PublicIndexRoute
+  '/design/': typeof DesignIndexRoute
   '/_authenticated/dashboard/archive': typeof AuthenticatedDashboardArchiveRoute
   '/_authenticated/dashboard/dynamics': typeof AuthenticatedDashboardDynamicsRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
@@ -157,7 +166,8 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/design'
+    | '/design/charts'
+    | '/design/'
     | '/dashboard/archive'
     | '/dashboard/dynamics'
     | '/admin/'
@@ -171,6 +181,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/design/charts'
     | '/design'
     | '/dashboard/archive'
     | '/dashboard/dynamics'
@@ -187,8 +198,9 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/_public'
     | '/_unauthenticated'
-    | '/design'
+    | '/design/charts'
     | '/_public/'
+    | '/design/'
     | '/_authenticated/dashboard/archive'
     | '/_authenticated/dashboard/dynamics'
     | '/_authenticated/admin/'
@@ -205,18 +217,10 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   PublicRouteRoute: typeof PublicRouteRouteWithChildren
   UnauthenticatedRouteRoute: typeof UnauthenticatedRouteRouteWithChildren
-  DesignRoute: typeof DesignRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/design': {
-      id: '/design'
-      path: '/design'
-      fullPath: '/design'
-      preLoaderRoute: typeof DesignRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_unauthenticated': {
       id: '/_unauthenticated'
       path: ''
@@ -238,12 +242,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/design/': {
+      id: '/design/'
+      path: '/'
+      fullPath: '/design/'
+      preLoaderRoute: typeof DesignIndexRouteImport
+      parentRoute: typeof DesignRoute
+    }
     '/_public/': {
       id: '/_public/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof PublicIndexRouteImport
       parentRoute: typeof PublicRouteRoute
+    }
+    '/design/charts': {
+      id: '/design/charts'
+      path: '/charts'
+      fullPath: '/design/charts'
+      preLoaderRoute: typeof DesignChartsRouteImport
+      parentRoute: typeof DesignRoute
     }
     '/_unauthenticated/reset-password/': {
       id: '/_unauthenticated/reset-password/'
@@ -374,7 +392,6 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   PublicRouteRoute: PublicRouteRouteWithChildren,
   UnauthenticatedRouteRoute: UnauthenticatedRouteRouteWithChildren,
-  DesignRoute: DesignRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

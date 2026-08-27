@@ -94,6 +94,30 @@
     --sidebar-accent-foreground: var(--foreground);
     --sidebar-border: var(--border);
     --sidebar-ring: var(--accent);
+
+    /* --- Chart redesign, additive (ADR-0025). Nothing above changes; these are new names the
+       new chart primitives read, so every existing screen renders exactly as it did. --- */
+
+    /* The plot's own surface: a hair off the card it sits in, so the chart reads as an inset panel
+       rather than as ink floating on the card. */
+    --chart-surface: #f7f7f7;
+
+    /* The grid. Two weights, because the redesign draws a solid horizontal grid and a dotted one on
+       the graded card, and a dotted line at the solid line's opacity reads twice as loud. */
+    --chart-grid: #ededed;
+    --chart-grid-dotted: #e0e0e0;
+
+    /* The halo: the line's own stroke, redrawn wider and blurred beneath it. It hugs the stroke and
+       nothing else — an ambient wash across the whole plot turns the panel to haze and buries the
+       shape the reader came for. Light takes the fainter one: glow on white reads as smudge. */
+    --chart-halo-opacity: 0.32;
+    --chart-halo-blur: 8px;
+
+    /* The decorative fill under a small card's line: the line's own colours pooled at the floor of
+       the plot and faded out upward. Decor, not a second reading — the shape above it is the fact,
+       and this only gives the panel somewhere to stand. */
+    --chart-fill-opacity: 0.3;
+    --chart-fill-blur: 14px;
 }
 
 .dark {
@@ -138,6 +162,18 @@
 
     /* The shadcn aliases inherit from :root; only this one differs — white on #ef5350 is 3.49:1. */
     --destructive-foreground: #000000;
+
+    /* --- Chart redesign, additive. See the light block for what each name is for. --- */
+    --chart-surface: #101010;
+    --chart-grid: #262626;
+    --chart-grid-dotted: #2f2f2f;
+
+    /* On a near-black plot the halo is the depth cue rather than an accent, so it runs much hotter
+       and spreads a little further. */
+    --chart-halo-opacity: 0.7;
+    --chart-halo-blur: 10px;
+    --chart-fill-opacity: 0.42;
+    --chart-fill-blur: 16px;
 }
 
 @theme inline {
@@ -157,6 +193,18 @@
 
     /* Ours are the only three steps. Tailwind ships its own scale, so the namespace is cleared
        first or its larger steps keep working. `rounded-full` is unaffected; it is a literal. */
+    --color-chart-surface: var(--chart-surface);
+    --color-chart-grid: var(--chart-grid);
+    --color-chart-grid-dotted: var(--chart-grid-dotted);
+
+    /* Two rungs above --text-3xl, for the one figure a card exists to show. The template's headline
+       number is far larger than anything the current ramp reaches. */
+    --text-4xl: 2.5rem;
+    --text-5xl: 3.25rem;
+
+    /* The template sets its digits wide. Inter's default tracking closes them up at display sizes,
+       which is right for words and wrong for a number being read digit by digit. */
+    --tracking-figure: 0.02em;
     --radius-*: initial;
     --radius-sm: calc(var(--radius) * 0.5);
     --radius-md: var(--radius);
@@ -264,6 +312,34 @@
     .glow-zone-yellow,
     .glow-zone-red,
     .glow-sales {
+        animation: none;
+    }
+}
+
+/* The push a tooltip is open on breathes, on the same 4.8s clock as every other ambient rhythm here.
+   Opacity and scale only, on a ring that sits under the point — the point itself never moves, so the
+   thing being pointed at stays exactly where the pointer put it. */
+@keyframes chart-point-pulse {
+    0%,
+    100% {
+        opacity: 0.35;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.05;
+        transform: scale(1.9);
+    }
+}
+
+.chart-point-pulse {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: chart-point-pulse 4.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .chart-point-pulse {
         animation: none;
     }
 }
