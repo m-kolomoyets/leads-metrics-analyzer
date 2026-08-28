@@ -34,6 +34,25 @@ the hand-verified golden set).
 All other OS values (`Android`, `iOS`, `OS X`, `GNU/Linux`, …) are **kept** and appear as their own
 rows in the OS table — no "Other" bucket.
 
+## Merging several uploads
+
+Exports are **cumulative**: every pull restates the day so far. So a batch of files is merged by
+**superseding at row grain**, never by concatenation — the last file carrying a row's key wins, and
+the earlier pulls of that key are dropped ([ADR-0026](../adr/0026-an-upload-supersedes-it-never-sums.md)).
+
+| Type | Row key |
+|---|---|
+| **Facebook** | `Reporting starts` × `Reporting ends` × Geo × Account × Campaign × Creative |
+| **Keitaro main** | Geo × Account × Campaign × Creative × Offer × OS |
+| **Keitaro clicks** | Geo × Account × Campaign × Creative × OS |
+
+- A key only one file carries still stacks — splitting a day per account or per geo keeps working,
+  and a month of FB exports stacks because the reporting window is in the key.
+- Duplicate keys *inside* one file are kept and summed; only a **later file** supersedes.
+- Files merge oldest-export-first, by the file's own timestamp, not by drop order.
+- Rows dropped as restated are counted into a `superseded-rows` warning and shown under the
+  dropzones, so the file list's row counts and the tables can be reconciled.
+
 ## Prototype → change
 
 - Prototype's only OS handling dropped non-Android/iOS from the OS *table* while still counting
@@ -47,6 +66,9 @@ rows in the OS table — no "Other" bucket.
   ([04](04-verdict-engine.md)) a date-range mismatch otherwise becomes a silent kill recommendation.
 - Analysis is **single-day**; `Date` is nonetheless kept in the fact grain so multi-day trend
   views are additive later, not a rewrite.
+- Prototype concatenated every uploaded file, so re-uploading a later export of the same day added
+  its cumulative figures onto the earlier pull's. **Change:** merge supersedes at row grain
+  ([ADR-0026](../adr/0026-an-upload-supersedes-it-never-sums.md)).
 
 ## Geo normalisation
 

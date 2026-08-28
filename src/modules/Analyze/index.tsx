@@ -116,12 +116,26 @@ function Analyze() {
     const isCalculating = gradedFiles !== files;
     // Files are parsed once at ingest; here we only merge their rows (cheap) and grade. A preset/shared
     // edit re-runs `analyzeParsed` but never Papa.parse — the reference's parse-once, grade-many split.
+    //
+    // Oldest export first, because merging is not concatenation: a report restates the day so far, so
+    // the LAST pull of a line wins and the earlier pulls of it are dropped (ADR-0017). The order the
+    // files were dropped in says nothing about when they were exported, so the file's own timestamp
+    // decides — dropping the 12:00 export after the 18:00 one must not resurrect the older figures.
     const parsed = mergeParsed(
-        gradedFiles.map((file) => {
-            return file.parsed;
-        })
+        [...gradedFiles]
+            .sort((a, b) => {
+                return a.lastModified - b.lastModified;
+            })
+            .map((file) => {
+                return file.parsed;
+            })
     );
     const result = gradedFiles.length ? analyzeParsed(parsed, ruleset) : null;
+    // How much the merge dropped as already-restated, so the file list's row counts and the tables can
+    // be reconciled by anyone who notices they disagree.
+    const supersededRows = parsed.warnings.reduce((total, warning) => {
+        return warning.kind === 'superseded-rows' ? total + warning.rows : total;
+    }, 0);
 
     const geos = (result?.geos ?? []).map((geo) => {
         return geo.geo;
@@ -334,6 +348,18 @@ function Analyze() {
                 {restoredAt !== null && <DraftBanner savedAt={restoredAt} onClear={clearDraft} />}
 
                 <FileDropzones files={files} onChange={replaceFiles} />
+
+                {/* A re-upload of a report already loaded restates its lines rather than adding to
+                    them, so rows the file list counted are not in the tables below. Said here, once,
+                    with the number: a silent drop and a silent double-count read the same from
+                    outside — as figures nobody can reconcile against the files. */}
+                {supersededRows > 0 && (
+                    <p className="text-muted-foreground text-sm">
+                        {supersededRows} row{supersededRows === 1 ? '' : 's'} restated by a later export
+                        {' — '}
+                        the newest pull of each line is used, never the sum of the pulls.
+                    </p>
+                )}
 
                 {/* The grade is a render behind the zones, so say so rather than leave the previous
                     upload's tables standing under a file list that has already changed. */}

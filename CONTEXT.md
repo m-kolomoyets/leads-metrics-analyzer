@@ -349,6 +349,14 @@ Geo Total, and only when its `OS` is mobile: these campaigns buy mobile installs
 cannot have come from the Spend under analysis (ADR-0012).
 _Avoid_: Orphan revenue, untracked revenue, unattributed revenue
 
+**Restated Row**:
+A row an earlier upload already carried, superseded by the same row in a later one. Exports are
+cumulative — every pull restates the day so far — so two pulls of one line are one measurement told
+twice, never two measurements to add. The last upload carrying a row's key wins and the earlier
+copies are dropped; a key only one file carries still stacks, which is what keeps a day split across
+several exports working (ADR-0026). How many rows were dropped this way is always stated on screen.
+_Avoid_: Duplicate row, overwritten row, deduped row
+
 **Invalid Row**:
 A Keitaro main-report row with an empty `OS`. Discarded everywhere — not a fact about any
 Campaign.
@@ -358,6 +366,14 @@ _Avoid_: Bot row, junk row, noise
 
 The names for how a figure is *drawn*. Every term here is presentation only — none of them changes
 a number, and a reader who cannot see any of it loses no fact.
+
+**Member Card**:
+One team member in the buyer row: their nickname, the day's profit beside it, and one line per market
+under it — the Geo and what that market made. Every figure on it comes from that buyer's **latest**
+push, so the header is the sum of the lines below it and both say what the last report said, never a
+running tally across the day's pushes (ADR-0017). The whole card is one control; the accent border
+says which person the page is reading.
+_Avoid_: Buyer tab, member tile, roster row
 
 **Trajectory Card**:
 The whole-day chart, and nothing else — no figures, no summary. It draws one day at a fixed range

@@ -61,7 +61,11 @@ export type KtClicksRow = {
 export type ParseWarning =
     | { kind: 'unknown-geo'; type: FileType; name: string }
     // `reason` is a human sentence naming the offending column/row situation, shown next to the file.
-    | { kind: 'unknown-file-type'; headers: string[]; reason: string };
+    | { kind: 'unknown-file-type'; headers: string[]; reason: string }
+    // A later export restated lines an earlier one already carried, and the earlier copies were
+    // dropped rather than added on top. `rows` is how many of them, so the count in the file list and
+    // the figures in the tables can be reconciled by a reader who notices the gap.
+    | { kind: 'superseded-rows'; type: FileType; rows: number };
 
 export type ParsedFiles = {
     fb: FbRow[];
@@ -370,26 +374,105 @@ export function parseFile(text: string): { type: FileType | null; parsed: Partia
     return { type: null, parsed: { warnings: [{ kind: 'unknown-file-type', headers, reason: unknownReason(csv) }] } };
 }
 
+// The grain a row is identified BY, so a re-export can be told from a new slice of the same day.
+// Every column the join keys on is in it, and nothing else: two rows with the same key are the same
+// line of the same report, restated.
+//
+// An export is cumulative — each pull restates the day so far (ADR-0017) — so two pulls of one line
+// must never be added together. FB rows carry their own reporting window, so a second DAY is a
+// different key and still stacks; Keitaro's exports carry no date at all, which is exactly why a
+// same-grain Keitaro row can only be a restatement of the one before it.
+const fbKey = (row: FbRow): string => {
+    return [row.reportStart, row.reportEnd, row.geo, row.account, row.campaign, row.creative].join('\u0000');
+};
+
+const ktMainKey = (row: KtMainRow): string => {
+    return [row.geo ?? '', row.account, row.campaign, row.creative, row.offer, row.os].join('\u0000');
+};
+
+const ktClicksKey = (row: KtClicksRow): string => {
+    return [row.geo ?? '', row.account, row.campaign, row.creative, row.os].join('\u0000');
+};
+
+// One type's rows across every file, with LATER files superseding earlier ones line by line.
+//
+// Within a single file the rows are kept as they came: an export may legitimately repeat a grain,
+// and collapsing those would understate the file itself. Across files it is the opposite — the same
+// grain twice is one line pulled twice, and summing it is what made an 18:00 re-upload read as
+// double the day.
+//
+// `perFile` must arrive OLDEST FIRST; the caller owns that order, because only it knows when each
+// file was exported.
+const supersede = <TRow>(perFile: TRow[][], keyOf: (row: TRow) => string): { rows: TRow[]; superseded: number } => {
+    // Which file each key was last seen in, so the winner is decided before anything is emitted.
+    const lastFileOf = new Map<string, number>();
+
+    perFile.forEach((rows, file) => {
+        for (const row of rows) {
+            lastFileOf.set(keyOf(row), file);
+        }
+    });
+
+    const rows: TRow[] = [];
+    let superseded = 0;
+
+    perFile.forEach((fileRows, file) => {
+        for (const row of fileRows) {
+            if (lastFileOf.get(keyOf(row)) === file) {
+                rows.push(row);
+                continue;
+            }
+
+            superseded += 1;
+        }
+    });
+
+    return { rows, superseded };
+};
+
 // Merge already-parsed per-file partials into one batch, routing each row by its type bucket. Cheap
-// (array concat only, no Papa.parse) — the heavy `parseFile` runs once per file at ingest, and its
-// result is merged here on every recompute (perf: parse-once, grade-many — mirrors the reference).
+// (no Papa.parse) — the heavy `parseFile` runs once per file at ingest, and its result is merged here
+// on every recompute (perf: parse-once, grade-many — mirrors the reference).
+//
+// Merging is NOT concatenation: reports are cumulative, so the last export of a line wins and the
+// earlier pulls of it are dropped. Order matters — `partials` are read oldest first.
 export function mergeParsed(partials: Partial<ParsedFiles>[]): ParsedFiles {
-    const out: ParsedFiles = { fb: [], ktMain: [], ktClicks: [], warnings: [] };
-    for (const parsed of partials) {
-        if (parsed.fb) {
-            out.fb.push(...parsed.fb);
-        }
-        if (parsed.ktMain) {
-            out.ktMain.push(...parsed.ktMain);
-        }
-        if (parsed.ktClicks) {
-            out.ktClicks.push(...parsed.ktClicks);
-        }
-        if (parsed.warnings) {
-            out.warnings.push(...parsed.warnings);
+    const fb = supersede(
+        partials.map((parsed) => {
+            return parsed.fb ?? [];
+        }),
+        fbKey
+    );
+    const ktMain = supersede(
+        partials.map((parsed) => {
+            return parsed.ktMain ?? [];
+        }),
+        ktMainKey
+    );
+    const ktClicks = supersede(
+        partials.map((parsed) => {
+            return parsed.ktClicks ?? [];
+        }),
+        ktClicksKey
+    );
+
+    const warnings: ParseWarning[] = partials.flatMap((parsed) => {
+        return parsed.warnings ?? [];
+    });
+
+    // Said out loud, per type: rows quietly disappearing between the file list's counts and the
+    // tables is the same page-that-lies the summing was.
+    for (const [type, merged] of [
+        ['fb', fb],
+        ['kt-main', ktMain],
+        ['kt-clicks', ktClicks],
+    ] as const) {
+        if (merged.superseded > 0) {
+            warnings.push({ kind: 'superseded-rows', type, rows: merged.superseded });
         }
     }
-    return out;
+
+    return { fb: fb.rows, ktMain: ktMain.rows, ktClicks: ktClicks.rows, warnings };
 }
 
 // Ingest a batch of uploaded files, routing each by detected type. Files of the same type merge.

@@ -1,4 +1,5 @@
-import { detectType, num, parseFiles } from './parse';
+import type { FbRow, KtMainRow } from './parse';
+import { detectType, mergeParsed, num, parseFiles } from './parse';
 
 describe('num', () => {
     it('strips $ and whitespace', () => {
@@ -135,5 +136,95 @@ describe('parseFiles hygiene', () => {
         expect(out.ktMain).toHaveLength(1);
         expect(out.ktMain[0].geo).toBe('IN');
         expect(out.ktMain[0].revenue).toBe(120);
+    });
+});
+
+// One FB line, as a pull of it would arrive. Only the figures differ between two pulls of the same
+// line — every keying column is identical, which is what makes it a restatement rather than a slice.
+const fb = (over: Partial<FbRow> = {}): FbRow => {
+    return {
+        geo: 'SG',
+        account: 'acc1',
+        campaign: 'c1',
+        creative: 'cr1',
+        spend: 100,
+        impressions: 1000,
+        reportStart: '2026-08-26',
+        reportEnd: '2026-08-26',
+        ...over,
+    };
+};
+
+const ktMain = (over: Partial<KtMainRow> = {}): KtMainRow => {
+    return {
+        campaign: 'c1',
+        account: 'acc1',
+        creative: 'cr1',
+        offer: '363',
+        offerName: 'WWL',
+        os: 'Android',
+        installs: 3,
+        regs: 2,
+        sales: 1,
+        revenue: 120,
+        geo: 'SG',
+        unfiredMacro: false,
+        untagged: false,
+        ...over,
+    };
+};
+
+describe('mergeParsed', () => {
+    it('takes the last pull of a line rather than adding the pulls together', () => {
+        const out = mergeParsed([{ fb: [fb({ spend: 100 })] }, { fb: [fb({ spend: 260 })] }]);
+
+        expect(out.fb).toHaveLength(1);
+        expect(out.fb[0].spend).toBe(260);
+    });
+
+    it('still stacks lines the later pull does not restate', () => {
+        const out = mergeParsed([
+            { fb: [fb({ campaign: 'c1', spend: 100 })] },
+            { fb: [fb({ campaign: 'c2', spend: 40 })] },
+        ]);
+
+        expect(out.fb).toHaveLength(2);
+        expect(
+            out.fb.reduce((total, row) => {
+                return total + row.spend;
+            }, 0)
+        ).toBe(140);
+    });
+
+    it('treats another day as another line — a month of exports still stacks', () => {
+        const out = mergeParsed([
+            { fb: [fb({ reportStart: '2026-08-25', reportEnd: '2026-08-25', spend: 90 })] },
+            { fb: [fb({ reportStart: '2026-08-26', reportEnd: '2026-08-26', spend: 100 })] },
+        ]);
+
+        expect(out.fb).toHaveLength(2);
+    });
+
+    it('supersedes Keitaro lines on their own grain — the export carries no date to key on', () => {
+        const out = mergeParsed([
+            { ktMain: [ktMain({ revenue: 120, sales: 1 })] },
+            { ktMain: [ktMain({ revenue: 300, sales: 3 })] },
+        ]);
+
+        expect(out.ktMain).toHaveLength(1);
+        expect(out.ktMain[0].revenue).toBe(300);
+        expect(out.ktMain[0].sales).toBe(3);
+    });
+
+    it('keeps repeated grains WITHIN one file — only a later file supersedes', () => {
+        const out = mergeParsed([{ fb: [fb({ spend: 100 }), fb({ spend: 60 })] }]);
+
+        expect(out.fb).toHaveLength(2);
+    });
+
+    it('says how many rows an older pull lost, rather than dropping them silently', () => {
+        const out = mergeParsed([{ fb: [fb(), fb({ campaign: 'c2' })] }, { fb: [fb({ spend: 260 })] }]);
+
+        expect(out.warnings).toContainEqual({ kind: 'superseded-rows', type: 'fb', rows: 1 });
     });
 });
