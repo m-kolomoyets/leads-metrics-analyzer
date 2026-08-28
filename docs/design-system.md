@@ -19,7 +19,7 @@ has to separate from the card it was opened from rather than sink further into i
 | token | dark | light | used for |
 | --- | --- | --- | --- |
 | `--background` | `#1b1b1f` | `#fafafa` | the page |
-| `--surface` | `#08080a` | `#ffffff` | inline: cards, panels, tables, sidebar |
+| `--surface` | `#08080a` | `#ffffff` | inline: cards, panels, tables, navbar |
 | `--surface-overlay` | `#17171a` | `#ffffff` | floating: popover, menu, dialog, sheet, tooltip, toast |
 | `--border` | `#2a2a2f` | `#e4e4e4` | hairlines, table rules, dividers |
 | `--border-strong` | `#3d3d43` | `#d0d0d0` | input borders, header/total rules |
@@ -138,15 +138,15 @@ DOM text beside it.
 | `--hover` | `rgb(255 255 255 / 0.08)` | `rgb(90 90 90 / 0.1)` |
 | `--hover-strong` | `rgb(255 255 255 / 0.14)` | `rgb(90 90 90 / 0.16)` |
 
-One wash for every hover — button, menu item, select option, sidebar row — and one step up for the
+One wash for every hover — button, menu item, select option, nav tab — and one step up for the
 row that is actually selected. Translucent on purpose: it reads the same over `--surface`,
-`--surface-overlay` and the sidebar, so no surface needs a hover token of its own. `--muted` is an
+`--surface-overlay` and the navbar, so no surface needs a hover token of its own. `--muted` is an
 alias of `--surface` and is therefore **not** a hover: a secondary button hovering onto it changed
 nothing at all, which is the bug these two tokens exist to fix.
 
-Navigation and menus spend no accent. The accent is the focus ring, a chosen metric and a link — a
-selected sidebar row reads `--hover-strong`, so "where I am" and "what I am pointing at" differ in
-weight rather than in hue.
+Navigation and menus spend no accent. The accent is the focus ring, a chosen metric and a link — the
+active nav tab reads medium weight and a `--foreground` underline, so "where I am" and "what I am
+pointing at" differ in weight rather than in hue.
 
 ## Icons
 
@@ -177,21 +177,23 @@ clock so the page has one rhythm rather than two: an unreviewed problem account 
 opacity, and a zone glow breathes between `--glow-rest` and `--glow-peak`. Strength only — no
 geometry moves, so nothing reflows. Everything respects `prefers-reduced-motion`.
 
-## The frame — sidebar and header
+## The frame — navbar and header
 
-Chrome is one material on two sides of the page: `--surface`, ruled with `--border`, at the same
-density as the tables it frames. Neither side invents a vocabulary of its own.
+Chrome is one material stacked above the page: `--surface`, ruled with `--border`, at the same
+density as the tables it frames. Neither band invents a vocabulary of its own.
 
-The **sidebar** is three bands under one hairline each — mark, work, account. The nav row is 32px
-with 15px text and a 16px icon, so it sits *under* the page it navigates to rather than over it; a
-group carries the same 12px uppercase tracked column head the tables use (`Reports`, `System`), and
-it folds away with the rail. The selected row is `--hover-strong`, medium weight, and a 2px
-`--foreground` marker down its leading edge — three achromatic signals, no accent
-([ADR-0019](adr/0019-colour-is-spent-on-zone-only.md)). It opens collapsed to the icon rail; the
-`sidebar_state` cookie remembers a reader who expands it.
+The **navbar** (`components/layouts/MainLayout/components/MainNavbar`) is two bands under one
+hairline each, sticky at the top of every screen. The upper band, 44px, is identity: the `Adjoin`
+mark and the team beside it, the account dropdown at the trailing end. The lower band, 40px, is the
+tab row — the reports first, then `Admin` past a hairline, because Admin is a different job and most
+roles cannot open it at all. A role that cannot open a route never sees its tab. The active tab is
+medium weight and a 2px `--foreground` underline on the band's own bottom edge — achromatic signals,
+no accent ([ADR-0019](adr/0019-colour-is-spent-on-zone-only.md)). The row scrolls inside itself
+rather than wrapping, so the bar is the same height on every screen.
 
-The **header** is `components/layouts/MainLayoutHeader`, sticky, 48px, one `--border` rule under it,
-and three slots in a fixed order: the rail toggle, `MainLayoutHeaderTitle`, `MainLayoutHeaderActions`.
+The **header** is `components/layouts/MainLayoutHeader`, sticky at `--navbar-height` so it parks
+directly under the bar, 48px, one `--border` rule under it, and two slots in a fixed order:
+`MainLayoutHeaderTitle`, `MainLayoutHeaderActions`.
 The title is 17px/600 with anything qualifying it — a report date, a buyer — beside it in
 `--muted-foreground` rather than baked into the heading. Pages used to hand-roll this with a
 `flex-1` spacer and a size each, which is how one page ended up at 20px and the next at 17px; the
@@ -202,7 +204,7 @@ layout belongs to the component and a page only says what goes in it. The langua
 
 Geo tabs, buyer tabs, team tabs and the chart's mode toggle are one primitive, `ui/Segmented`. A
 resting item is flat text in `--muted-foreground`; the chosen one wears `--hover-strong` and
-`--foreground` — the same "where I am" wash the selected sidebar row wears, one step up from the
+`--foreground` — the same "where I am" wash the app spends on a selected row, one step up from the
 `--hover` every item shares. No tray, no border, no accent fill: the accent here is the focus ring
 and nothing else. `mode="toggle"` swaps `role="tab"`/`aria-selected` for `aria-pressed` and changes
 nothing about the paint.

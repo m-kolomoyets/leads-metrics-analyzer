@@ -50,7 +50,7 @@
     --sales-tint: rgb(109 40 217 / 0.08);
 
     /* Interaction wash — the one hover/selected surface in the app. Semi-transparent so it reads the
-       same over --surface, --popover and the sidebar without a token per surface. */
+       same over --surface, --popover and the navbar without a token per surface. */
     --hover: rgb(90 90 90 / 0.1);
     --hover-strong: rgb(90 90 90 / 0.16);
 
@@ -82,18 +82,6 @@
     --destructive-foreground: #ffffff;
     --input: var(--border-strong);
     --ring: var(--accent);
-    --sidebar: var(--surface);
-    --sidebar-foreground: var(--foreground);
-    --sidebar-primary: var(--accent);
-    --sidebar-primary-foreground: var(--accent-foreground);
-
-    /* The sidebar's hover state is the same achromatic wash every other control uses. The accent is
-       not spent on navigation at all any more — the selected row reads `--hover-strong`, one step up
-       from hover, so "where I am" and "what I am pointing at" differ in weight rather than in hue. */
-    --sidebar-accent: var(--hover);
-    --sidebar-accent-foreground: var(--foreground);
-    --sidebar-border: var(--border);
-    --sidebar-ring: var(--accent);
 
     /* --- Chart redesign, additive (ADR-0025). Nothing above changes; these are new names the
        new chart primitives read, so every existing screen renders exactly as it did. --- */
@@ -251,14 +239,6 @@
     --color-border-strong: var(--border-strong);
     --color-input: var(--input);
     --color-ring: var(--ring);
-    --color-sidebar: var(--sidebar);
-    --color-sidebar-foreground: var(--sidebar-foreground);
-    --color-sidebar-primary: var(--sidebar-primary);
-    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-    --color-sidebar-accent: var(--sidebar-accent);
-    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-    --color-sidebar-border: var(--sidebar-border);
-    --color-sidebar-ring: var(--sidebar-ring);
 
     /* Self-referential on purpose: this generates `shadow-overlay`, whose value points at the
        :root token above. The theme copy lands in `@layer theme`, which the unlayered :root
@@ -401,6 +381,29 @@
     }
 }
 
+/* The navbar's live height, in one place both sticky bands read. Registered rather than a plain
+   custom property for one reason: only a registered property has a type, and only a typed property
+   can be interpolated — the page header sticks at `top: var(--navbar-height)`, and unregistered it
+   would snap the 2.75rem in a single frame while the bar above it animates. */
+@property --navbar-height {
+    syntax: "<length>";
+    inherits: true;
+    /* stylelint-disable-next-line length-zero-no-unit -- @property demands a typed initial value */
+    initial-value: 0px;
+}
+
+.navbar-height-transition {
+    transition-property: --navbar-height;
+    transition-duration: 200ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .navbar-height-transition {
+        transition-property: none;
+    }
+}
+
 @layer base {
     * {
         @apply border-border;
@@ -435,5 +438,125 @@
     .focus-ring-within:focus-within {
         outline: 2px solid var(--accent);
         outline-offset: 1px;
+    }
+}
+
+/* The heatmap cell's hover: a wash INSIDE the box, never a filter over it. An inset shadow paints on
+   top of the background and under the content, so the square darkens and the figures on it keep the
+   contrast they were picked for — `brightness()` would drag the text along with the fill. Mixed from
+   `--foreground`, so it darkens in the light theme and lightens in the dark one without either being
+   spelled out. */
+@utility heat-shade {
+    box-shadow: inset 0 0 0 999px color-mix(in srgb, var(--foreground) 10%, transparent);
+}
+
+/* The day picker's month transition. Single-token class names, deliberately: react-day-picker hands
+   these to `classList.add`/`remove`, which rejects anything with a space in it — so the animation
+   cannot be spelled as a string of utilities and lives here as one class per state instead.
+
+   The outgoing month is torn down on `animationend`, so a reader who asked for less motion gets a
+   1ms animation rather than none: an animation that never runs is an old month that never leaves. */
+@layer components {
+    .month-enter-right {
+        animation: month-slide-in-right 200ms ease-out forwards;
+    }
+
+    .month-exit-left {
+        animation: month-slide-out-left 200ms ease-out forwards;
+    }
+
+    .month-enter-left {
+        animation: month-slide-in-left 200ms ease-out forwards;
+    }
+
+    .month-exit-right {
+        animation: month-slide-out-right 200ms ease-out forwards;
+    }
+
+    .month-caption-enter {
+        animation: month-fade-in 200ms ease-out forwards;
+    }
+
+    .month-caption-exit {
+        animation: month-fade-out 200ms ease-out forwards;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .month-enter-right,
+        .month-exit-left,
+        .month-enter-left,
+        .month-exit-right,
+        .month-caption-enter,
+        .month-caption-exit {
+            animation-duration: 1ms;
+        }
+    }
+}
+
+@keyframes month-slide-in-right {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes month-slide-out-left {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+
+    to {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+}
+
+@keyframes month-slide-in-left {
+    from {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes month-slide-out-right {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+@keyframes month-fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes month-fade-out {
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
     }
 }

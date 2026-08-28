@@ -1,31 +1,26 @@
 import type { MainLayoutHeaderActionsProps, MainLayoutHeaderProps, MainLayoutHeaderTitleProps } from './types';
 import { cn } from '@/lib/utils/cn';
-import { SidebarTrigger } from '@/components/Sidebar';
-import { Separator } from '@/components/ui/Separator';
 
-// The page's one bar, and the sidebar's opposite number: same height as the sidebar's own header
-// band, same `--border` hairline under it, same `--surface` it is cut from. The two together frame
-// the page on two sides in one material rather than each inventing its own chrome.
+// The page's one bar, and the navbar's opposite number: same `--border` hairline under it, same
+// `--surface` it is cut from. The two stacked bands frame the page in one material rather than each
+// inventing its own chrome.
 //
-// It STICKS. Every page under it scrolls something long — a month of pushes, a feed, a table — and a
-// title that scrolls away takes the reader's place in the app with it.
+// It STICKS, parked at `--navbar-height` so it comes to rest directly under the bar instead of
+// sliding beneath it. Every page under it scrolls something long — a month of pushes, a feed, a
+// table — and a title that scrolls away takes the reader's place in the app with it.
 //
-// Three slots, always in this order: the rail toggle, the title, the actions. Pages used to hand-roll
-// that with a `flex-1` spacer and a title size each, which is how one page ended up at 20px and the
-// next at 17px; here the layout is the component's and a page only says what goes in it.
+// Two slots, always in this order: the title, the actions. Pages used to hand-roll that with a
+// `flex-1` spacer and a title size each, which is how one page ended up at 20px and the next at
+// 17px; here the layout is the component's and a page only says what goes in it.
 function MainLayoutHeader({ children, className, ...rest }: MainLayoutHeaderProps) {
     return (
         <header
             className={cn(
-                'bg-surface border-border sticky top-0 z-20 -mx-6 -mt-6 flex h-12 items-center gap-3 border-b px-6',
+                'bg-surface border-border sticky top-[var(--navbar-height,0px)] z-20 -mx-6 -mt-6 flex h-12 items-center gap-3 border-b px-6',
                 className
             )}
             {...rest}
         >
-            <div className="flex shrink-0 items-center gap-2">
-                <SidebarTrigger />
-                <Separator orientation="vertical" className="h-4" />
-            </div>
             {children}
         </header>
     );

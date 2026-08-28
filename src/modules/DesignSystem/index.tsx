@@ -96,7 +96,7 @@ function DesignSystem() {
             <Section
                 id="interaction"
                 title="Colour — interaction"
-                description="One translucent grey wash for every hover, one step up for the selected row. Translucent on purpose: it reads the same over --surface, --popover and the sidebar, so no surface needs a hover token of its own. Nothing in navigation is accented any more."
+                description="One translucent grey wash for every hover, one step up for the selected row. Translucent on purpose: it reads the same over --surface, --popover and the navbar, so no surface needs a hover token of its own. Nothing in navigation is accented any more."
             >
                 <ThemeSplit className="grid gap-3 sm:grid-cols-2">
                     {(theme) => {
@@ -119,7 +119,7 @@ function DesignSystem() {
                                     <div className="bg-surface border-border rounded-md border p-3">
                                         <p className="text-xs font-medium">--surface · inline</p>
                                         <p className="text-muted-foreground text-xs">
-                                            cards, panels, tables, sidebar — border, no shadow
+                                            cards, panels, tables, navbar — border, no shadow
                                         </p>
                                     </div>
                                     <div className="bg-surface-overlay border-border shadow-overlay rounded-md border p-3">

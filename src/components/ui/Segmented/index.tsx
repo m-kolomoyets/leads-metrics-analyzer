@@ -4,8 +4,8 @@ import { useSafeContext } from '@/hooks/useSafeContext';
 import { SegmentedContext } from './context/SegmentedContext';
 
 // The one row-of-choices control in the app: geo tabs, buyer tabs, team tabs, chart mode. Flat text
-// until chosen, and the chosen one wears `--hover-strong` — the same "where I am" wash the sidebar's
-// selected row wears, one step up from the hover it shares with everything else.
+// until chosen, and the chosen one wears `--hover-strong` — the same "where I am" wash the app spends
+// on a selected row, one step up from the hover it shares with everything else.
 //
 // No tray, no borders, no accent. A resting item is a label; a bordered chip per option turned the
 // picker into the loudest thing on a page whose figures are the point, and a filled accent chip made

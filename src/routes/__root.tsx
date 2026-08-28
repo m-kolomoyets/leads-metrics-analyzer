@@ -102,7 +102,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                 <style id="initial-style" dangerouslySetInnerHTML={{ __html: INITIAL_STYLE }} />
             </head>
             <body className="text-foreground bg-background antialiased relative">
-                <div id="root" className="flex flex-col h-dvh isolate">
+                <div id="root" className="flex flex-col min-h-dvh isolate">
                     {children}
                 </div>
                 <Scripts />

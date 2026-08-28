@@ -20,7 +20,7 @@ export const SURFACE_BY_THEME: Record<ThemeName, string> = {
 
 export const CHROME_TOKENS: ReadonlyArray<ColourToken> = [
     { name: '--background', light: '#fafafa', dark: '#1b1b1f', usage: 'the page' },
-    { name: '--surface', light: '#ffffff', dark: '#08080a', usage: 'inline: cards, panels, tables, sidebar' },
+    { name: '--surface', light: '#ffffff', dark: '#08080a', usage: 'inline: cards, panels, tables, navbar' },
     { name: '--surface-overlay', light: '#ffffff', dark: '#17171a', usage: 'floating: popover, menu, dialog, sheet' },
     { name: '--border', light: '#e4e4e4', dark: '#2a2a2f', usage: 'hairlines, table rules, dividers' },
     { name: '--border-strong', light: '#d0d0d0', dark: '#3d3d43', usage: 'input borders, header/total rules' },
@@ -44,7 +44,7 @@ export const ZONE_TOKENS: ReadonlyArray<ColourToken> = [
 ];
 
 // Not a colour so much as a treatment: one translucent grey wash, used for every hover and every
-// selected row in the app. Translucent so it reads the same over --surface, --popover and the sidebar.
+// selected row in the app. Translucent so it reads the same over --surface, --popover and the navbar.
 export const INTERACTION_TOKENS: ReadonlyArray<ColourToken> = [
     {
         name: '--hover',
