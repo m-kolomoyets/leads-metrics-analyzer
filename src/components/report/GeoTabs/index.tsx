@@ -1,16 +1,6 @@
+import { flagEmoji } from '@/lib/utils/flagEmoji';
 import { usdRound } from '@/components/report/utils/format';
 import { Segmented, SegmentedItem } from '@/components/ui/Segmented';
-
-// ISO-2 → flag emoji via Unicode regional-indicator offset. Returns null for anything that is not two
-// A–Z letters (unknown/aggregate geo), so the label falls back to the raw code.
-function flagEmoji(geo: string): string | null {
-    if (!/^[A-Za-z]{2}$/.test(geo)) {
-        return null;
-    }
-    const base = 0x1f1e6 - 0x41; // regional indicator 'A' minus ASCII 'A'
-    const code = geo.toUpperCase();
-    return String.fromCodePoint(base + code.charCodeAt(0), base + code.charCodeAt(1));
-}
 
 type GeoTabsProps = {
     geos: string[];

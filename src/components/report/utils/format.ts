@@ -45,6 +45,14 @@ const signedDecimalFormat = new Intl.NumberFormat(NUMBER_LOCALE, {
     signDisplay: 'always',
 });
 
+const usdCompactSignedFormat = new Intl.NumberFormat(NUMBER_LOCALE, {
+    style: 'currency',
+    currency: 'USD',
+    notation: 'compact',
+    maximumFractionDigits: 1,
+    signDisplay: 'always',
+});
+
 const percentFormats = [0, 1, 2].map((digits) => {
     return new Intl.NumberFormat(NUMBER_LOCALE, {
         style: 'percent',
@@ -71,6 +79,12 @@ export function usdSigned(value: number): string {
 // A whole-dollar amount (compact chrome: tab spend, summary revenue): $1,234.
 export function usdRound(value: number): string {
     return usdRoundFormat.format(value);
+}
+
+// A signed dollar amount at a glance, shortened: +$1.2K / -$840. For a cell too small to hold
+// `+$1,234.56` and too important to hold nothing — the exact figure is one hover away.
+export function usdCompactSigned(value: number): string {
+    return usdCompactSignedFormat.format(value);
 }
 
 // A cost-per metric: em dash when the denominator was zero (metric "not shown", not zero).
