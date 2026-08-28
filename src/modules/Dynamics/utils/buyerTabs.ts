@@ -1,4 +1,4 @@
-import type { DynamicsDimensionRosterUser } from '@/services/dynamics/types';
+import type { DynamicsDimensionRosterUser, RosterGeoProfit } from '@/services/dynamics/types';
 import { hoursSince, kyivHour } from '@/lib/utils/kyivDay';
 
 // The buyer tab row's arithmetic (SPEC §6.2) — the page's primary signal surface, kept pure so the
@@ -37,6 +37,9 @@ export type BuyerTabState =
 // carries no dollar dimension, so no total was ever selected for them (#10).
 export type RosterTabUser = DynamicsDimensionRosterUser & {
     totalProfit?: number | null;
+    // The same push's markets, unsummed — the card's breakdown. Absent for the same viewers whose
+    // total is absent: no dollar dimension, so no market figures were selected either (#10).
+    geoProfits?: RosterGeoProfit[];
 };
 
 export type BuyerTab = RosterTabUser & {

@@ -1,17 +1,17 @@
-import type { DynamicsHistoryDay } from '@/services/dynamics/types';
+import type { DynamicsHistoryDay, RosterGeoProfit } from '@/services/dynamics/types';
 
-// The member card's month grid, one dot at a time (SPEC §6.2). Pure, so the grading rule is testable
-// without a DOM (ADR-0005).
+// The day picker's heatmap, one square at a time. Pure, so the grading rule is testable without a
+// DOM (ADR-0005).
 //
 // The grid is built from the CALENDAR month, never from the days that happen to carry a Snapshot: a
-// buyer who reported four days out of thirty must show twenty-six holes, and a row of four dots
+// month with four reported days out of thirty must show twenty-six holes, and a row of four squares
 // would read as a perfect month.
 
 // Where a day's colour comes from. Grey is said twice, deliberately: `unreported` is nobody pushing,
 // `ungraded` is a push there is no way to grade — a day with no spend, or one whose Snapshot froze no
 // rollup. Collapsing them would let a reported day be mistaken for a missing one.
-export type MemberDayState =
-    // Later this month — no dot yet, only the slot it will occupy.
+export type HeatDayState =
+    // Later this month — no square yet, only the slot it will occupy.
     | 'future'
     // The month has passed this day and nothing was pushed for it.
     | 'unreported'
@@ -21,15 +21,18 @@ export type MemberDayState =
     | 'yellow'
     | 'red';
 
-export type MemberDay = {
+export type HeatDay = {
     date: string;
-    state: MemberDayState;
+    state: HeatDayState;
     // Absent for every state but the graded three plus `ungraded` — a day nobody reported has no
     // figures at all, which is not the same as figures of zero.
     profit: number | null;
     spendPlus: number;
     // Percent points, null when there was no Spend⁺ to divide by.
     roi: number | null;
+    // The markets behind the day, biggest mover first. Empty on a day with no report — the same
+    // absence the figures carry, said in the one channel a calendar cell has room for.
+    geos: RosterGeoProfit[];
 };
 
 // The ROI a day has to clear to read green. This is a MAGNITUDE threshold, and it is the only one on
@@ -43,11 +46,11 @@ export type MemberDay = {
 const GREEN_ABOVE_ROI = 20;
 
 // A day with no push of its own: either it has not happened yet, or nobody reported it.
-function blankState(date: string, today: string): MemberDayState {
+function blankState(date: string, today: string): HeatDayState {
     return date > today ? 'future' : 'unreported';
 }
 
-function stateOf(day: DynamicsHistoryDay): MemberDayState {
+function stateOf(day: DynamicsHistoryDay): HeatDayState {
     // A push that froze no rollup: there is no total to grade, which is not a total of zero.
     if (day.profit === null) {
         return 'ungraded';
@@ -66,16 +69,16 @@ function stateOf(day: DynamicsHistoryDay): MemberDayState {
     return (day.profit / day.spendPlus) * 100 > GREEN_ABOVE_ROI ? 'green' : 'yellow';
 }
 
-// The whole month, in order, for one buyer. `today` is the day the page is reading — everything after
+// The whole month, in order. `today` is the day the page is reading — everything after
 // it is a slot rather than a hole, so the grid keeps one width all month.
-export function memberDays(month: string[], history: DynamicsHistoryDay[], today: string): MemberDay[] {
+export function heatDays(month: string[], history: DynamicsHistoryDay[], today: string): HeatDay[] {
     const byDate = new Map(
         history.map((day) => {
             return [day.reportDate, day];
         })
     );
 
-    return month.map((date): MemberDay => {
+    return month.map((date): HeatDay => {
         const day = byDate.get(date);
 
         if (!day) {
@@ -85,6 +88,7 @@ export function memberDays(month: string[], history: DynamicsHistoryDay[], today
                 profit: null,
                 spendPlus: 0,
                 roi: null,
+                geos: [],
             };
         }
 
@@ -94,18 +98,19 @@ export function memberDays(month: string[], history: DynamicsHistoryDay[], today
             profit: day.profit,
             spendPlus: day.spendPlus,
             roi: day.profit === null || day.spendPlus <= 0 ? null : (day.profit / day.spendPlus) * 100,
+            geos: day.geos,
         };
     });
 }
 
 // The dollar-free month (#10). Every reported day is `ungraded`, because that is exactly what it is:
 // a push this viewer holds no dimension to grade.
-export function dimensionMemberDays(month: string[], reportedDates: string[], today: string): MemberDay[] {
+export function dimensionHeatDays(month: string[], reportedDates: string[], today: string): HeatDay[] {
     const reported = new Set(reportedDates);
 
-    return month.map((date): MemberDay => {
-        const state: MemberDayState = reported.has(date) ? 'ungraded' : blankState(date, today);
+    return month.map((date): HeatDay => {
+        const state: HeatDayState = reported.has(date) ? 'ungraded' : blankState(date, today);
 
-        return { date, state, profit: null, spendPlus: 0, roi: null };
+        return { date, state, profit: null, spendPlus: 0, roi: null, geos: [] };
     });
 }

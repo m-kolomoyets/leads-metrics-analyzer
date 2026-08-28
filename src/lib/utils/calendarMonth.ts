@@ -14,8 +14,6 @@ const partsOf = (day: string): [number, number] => {
     return [year, month];
 };
 
-const monthLabelFormat = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'long', year: 'numeric' });
-
 const dayLabelFormat = new Intl.DateTimeFormat('en-US', {
     timeZone: 'UTC',
     weekday: 'short',
@@ -47,11 +45,6 @@ export function monthDays(day: string): string[] {
     return Array.from({ length: daysInMonth(day) }, (_, index) => {
         return `${prefix}-${pad2(index + 1)}`;
     });
-}
-
-// "September 2026" — the heading over a month grid.
-export function monthLabel(day: string): string {
-    return monthLabelFormat.format(new Date(`${day}T00:00:00Z`));
 }
 
 // "Tue, Sep 15" — one dot's date, spelled out in its tooltip and its accessible label.

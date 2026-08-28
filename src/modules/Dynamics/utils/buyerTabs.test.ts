@@ -15,6 +15,7 @@ const person = (over: Partial<DynamicsRosterUser> & { id: string }): DynamicsRos
         teamName: 'Alpha',
         lastTakenAt: NOON_KYIV.toISOString(),
         totalProfit: 0,
+        geoProfits: [],
         ...over,
     };
 };

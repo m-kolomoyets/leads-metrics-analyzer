@@ -15,8 +15,8 @@ export const dynamicsKeys = {
     dimensionRosterQueryKey(input: DynamicsRosterInput) {
         return [...dynamicsKeys.all, 'dimension-roster', input.reportDate] as const;
     },
-    // The month behind the member cards, keyed by its range: a page that moves to another day inside
-    // the same month must not refetch the grid it is already showing.
+    // The month behind the day picker, keyed by its range: a page that moves to another day inside
+    // the same month must not refetch the heatmap it is already showing.
     historyQueryKey(input: DynamicsHistoryInput) {
         return [...dynamicsKeys.all, 'history', input.from, input.to] as const;
     },

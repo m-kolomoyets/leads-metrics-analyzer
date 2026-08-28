@@ -1,14 +1,13 @@
 import type { RollupDimension } from '@/lib/auth/dimensionRollup';
 import { Suspense } from 'react';
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
-import { monthDays, monthLabel, monthRange } from '@/lib/utils/calendarMonth';
+import { cn } from '@/lib/utils/cn';
 import { kyivDay } from '@/lib/utils/kyivDay';
 import { useMinuteClock } from '@/hooks/useMinuteClock';
-import { dynamicsDimensionHistoryQueryOptions, dynamicsDimensionRosterQueryOptions } from '@/services/dynamics/queries';
+import { dynamicsDimensionRosterQueryOptions } from '@/services/dynamics/queries';
 import { buyerTabs } from '@/modules/Dynamics/utils/buyerTabs';
 import { activeBuyer, tabsOfTeam, teamsOf } from '@/modules/Dynamics/utils/frame';
-import { dimensionMemberDays } from '@/modules/Dynamics/utils/memberDays';
 import { DataAge } from '@/components/dynamics/DataAge';
 import { MemberCard } from '@/components/dynamics/MemberCard';
 import { RefreshButton } from '@/components/dynamics/RefreshButton';
@@ -21,6 +20,7 @@ import {
 import { PendingArea } from '@/components/PendingArea';
 import { PAGE_TITLE } from './constants';
 import { BuyerDimensionDay } from './components/BuyerDimensionDay';
+import { DayPickerControl } from './components/DayPickerControl';
 
 const routeApi = getRouteApi('/_authenticated/dashboard/dynamics');
 
@@ -41,29 +41,22 @@ function DynamicsDimension({ dimension }: DynamicsDimensionProps) {
     const navigate = routeApi.useNavigate();
     const now = useMinuteClock();
 
-    // Two different questions, and conflating them is what put the "today" mark on a past day: this
-    // is NOW (ADR-0017), and it is what the month grids date themselves against.
     const today = kyivDay(now);
     // This is the day being READ, which is today until a link says otherwise.
     const reportDate = search.day ?? today;
 
-    const month = monthRange(reportDate);
-
-    const { data: roster } = useSuspenseQuery(dynamicsDimensionRosterQueryOptions({ reportDate }));
-    // The same grid, with the only thing this viewer may know about a past day in it: whether it was
-    // reported. Every reported dot is neutral — there is no money here to grade anyone on.
-    const { data: history } = useSuspenseQuery(dynamicsDimensionHistoryQueryOptions(month));
-
-    const days = monthDays(reportDate);
-    const historyOf = new Map(
-        history.map((entry) => {
-            return [entry.buyerId, entry.reportedDates];
-        })
-    );
+    // `useQuery` with the previous day held on screen, deliberately not `useSuspenseQuery`: a
+    // suspending read would take the header and the day picker down with it every time the reader
+    // picks another day, which is the one control they are standing on. The old day stays, dimmed,
+    // until the new one lands.
+    const { data: roster, isPlaceholderData } = useQuery({
+        ...dynamicsDimensionRosterQueryOptions({ reportDate }),
+        placeholderData: keepPreviousData,
+    });
 
     // The roster carries no `totalProfit` field, so every tab that pushed reads `reported` rather
     // than green or red: there is no money here to grade anyone on.
-    const tabs = buyerTabs(roster, now);
+    const tabs = buyerTabs(roster ?? [], now);
     const buyer = activeBuyer(tabs, search.buyer);
     const teams = teamsOf(tabs);
     const teamId = buyer?.teamId ?? null;
@@ -83,6 +76,11 @@ function DynamicsDimension({ dimension }: DynamicsDimensionProps) {
         }
     }
 
+    function selectDay(nextDay: string) {
+        // The buyer is kept and the geo is dropped, for the same reason as on the trajectory page.
+        navigate({ search: { day: nextDay === today ? undefined : nextDay, buyer: search.buyer }, replace: true });
+    }
+
     function selectGeo(nextGeo: string) {
         navigate({ search: { ...search, geo: nextGeo }, replace: true });
     }
@@ -90,30 +88,35 @@ function DynamicsDimension({ dimension }: DynamicsDimensionProps) {
     return (
         <>
             <MainLayoutHeader>
-                <MainLayoutHeaderTitle meta={reportDate}>{PAGE_TITLE[dimension]}</MainLayoutHeaderTitle>
+                <MainLayoutHeaderTitle>{PAGE_TITLE[dimension]}</MainLayoutHeaderTitle>
+                <DayPickerControl reportDate={reportDate} today={today} onSelect={selectDay} />
                 <DataAge takenAt={buyer?.lastTakenAt ?? null} now={now} />
                 <MainLayoutHeaderActions>
                     <RefreshButton />
                 </MainLayoutHeaderActions>
             </MainLayoutHeader>
 
-            <div className="flex flex-col gap-4">
+            {/* The CONTENT reloads, never the frame: the header above stays put through a day
+                change and the day's own body dims until the new roster lands. */}
+            <div
+                className={cn(
+                    'flex flex-col gap-4',
+                    isPlaceholderData && 'opacity-60 motion-safe:transition-opacity motion-safe:duration-150'
+                )}
+            >
+                {!roster && <PendingArea label="Working out the day…" />}
+
                 {teams.length > 0 && <TeamTabs teams={teams} activeId={teamId} onSelect={selectTeam} />}
 
                 {teamTabs.length > 0 && (
-                    <section className="flex flex-col gap-2" aria-label="Team">
-                        <h2 className="text-muted-foreground text-xs">{monthLabel(reportDate)}</h2>
-
+                    <section aria-label="Team">
                         <div className="flex flex-wrap gap-3">
                             {teamTabs.map((tab) => {
                                 return (
                                     <MemberCard
                                         key={tab.id}
-                                        days={dimensionMemberDays(days, historyOf.get(tab.id) ?? [], today)}
-                                        reading={reportDate}
                                         selected={tab.id === buyer?.id}
                                         tab={tab}
-                                        today={today}
                                         onSelect={() => {
                                             selectBuyer(tab.id);
                                         }}
@@ -128,7 +131,7 @@ function DynamicsDimension({ dimension }: DynamicsDimensionProps) {
                     <Suspense
                         // Keyed on the buyer so switching people remounts the boundary rather than
                         // holding the previous person's markets on screen while the next day loads.
-                        key={buyer.id}
+                        key={`${buyer.id}-${reportDate}`}
                         fallback={<PendingArea label="Working out the day…" />}
                     >
                         <BuyerDimensionDay

@@ -49,33 +49,34 @@ export const Route = createFileRoute('/_authenticated/dashboard/dynamics')({
     beforeLoad({ context: { auth } }) {
         checkIsRouteAllowed('dynamics.view', auth.me.role);
     },
-    async loader({ context: { queryClient, auth }, deps }) {
+    // Not async: every read below is started and none is awaited, so the loader has nothing to wait
+    // for — the page paints its frame immediately and fills itself in.
+    loader({ context: { queryClient, auth }, deps }) {
         // "Today" is a Kyiv question and it is answered viewer-side (ADR-0017); the server only ever
         // sees a concrete date.
         const reportDate = deps.day ?? kyivDay();
-        // The member cards' month grids. Awaited alongside the roster rather than left to Suspense:
-        // the cards ARE the buyer row, and a row that paints its names and then grows its months a
-        // beat later is the page rearranging itself under the reader's cursor.
-        const month = monthRange(reportDate);
         const dimension = rollupFor(auth.me);
 
         // The dollar-free branch preloads its own two reads and none of the trajectory's: a Designer
         // or BDM would be refused by both, and warming a cache with a denial is worse than not
         // warming it at all.
         if (dimension !== null) {
+            // The day picker's month, warmed but not awaited: the grid is behind a popover, so its
+            // read must never hold the page's first paint.
+            void queryClient.prefetchQuery(dynamicsDimensionHistoryQueryOptions(monthRange(reportDate)));
+
             if (deps.buyer) {
                 void queryClient.prefetchQuery(
                     dynamicsDimensionDayQueryOptions({ dimension, buyerId: deps.buyer, reportDate })
                 );
             }
 
-            await Promise.all([
-                queryClient.ensureQueryData(dynamicsDimensionRosterQueryOptions({ reportDate })),
-                queryClient.ensureQueryData(dynamicsDimensionHistoryQueryOptions(month)),
-            ]);
+            void queryClient.prefetchQuery(dynamicsDimensionRosterQueryOptions({ reportDate }));
 
             return;
         }
+
+        void queryClient.prefetchQuery(dynamicsHistoryQueryOptions(monthRange(reportDate)));
 
         // Started, deliberately NOT awaited: which buyer the page opens on is decided from the roster,
         // so a link that names one only warms the cache. Its own Suspense boundary picks it up.
@@ -83,11 +84,12 @@ export const Route = createFileRoute('/_authenticated/dashboard/dynamics')({
             void queryClient.prefetchQuery(dynamicsDayQueryOptions({ buyerId: deps.buyer, reportDate }));
         }
 
-        // The card row is the page: it is awaited, so the frame paints with its buyers already in it.
-        await Promise.all([
-            queryClient.ensureQueryData(dynamicsRosterQueryOptions({ reportDate })),
-            queryClient.ensureQueryData(dynamicsHistoryQueryOptions(month)),
-        ]);
+        // Warmed, NOT awaited — the same as everything else on this loader. An awaited read blocks
+        // the navigation, and past `defaultPendingMs` the router swaps the whole route for its
+        // pending component: picking another day would take the page header, the day picker and the
+        // card row off screen and put a spinner where the reader was standing. The page keeps the
+        // day it has and reloads its contents underneath instead (see the module's roster read).
+        void queryClient.prefetchQuery(dynamicsRosterQueryOptions({ reportDate }));
     },
     component: DynamicsRoute,
 });

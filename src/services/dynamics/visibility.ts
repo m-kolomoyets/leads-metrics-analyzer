@@ -48,9 +48,9 @@ export const dynamicsReplacedFilter = (
     );
 };
 
-// Every visible buyer's active Snapshots across a range of report dates — the member cards' month
-// grids. Deliberately built on the same `listSnapshotsFilter` as the day read rather than beside it:
-// a replaced push is not a dot on anyone's month either (ADR-0018). Filters on `report_date`, never
+// Every visible buyer's active Snapshots across a range of report dates — the day picker's month.
+// Deliberately built on the same `listSnapshotsFilter` as the day read rather than beside it: a
+// replaced push is not a square on anyone's month either (ADR-0018). Filters on `report_date`, never
 // `taken_at` (ADR-0016), so a day pushed after midnight still lands on the day it reports.
 export const dynamicsRangeTotalsFilter = (scope: VisibilityScope, from: string, to: string): SQL | undefined => {
     return and(listSnapshotsFilter(scope), gte(snapshot.reportDate, from), lte(snapshot.reportDate, to));

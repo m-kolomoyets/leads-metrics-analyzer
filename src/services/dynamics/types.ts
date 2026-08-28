@@ -22,12 +22,23 @@ export type DynamicsRosterUser = {
     // untagged revenue (ADR-0003), so §4.4's "excluded traffic" caveat does not apply here. Null when
     // there is no push today, or when the push froze no rollup: no total to colour, not a zero.
     totalProfit: number | null;
+    // The markets that same push froze, each with the profit IT carried — the card's breakdown under
+    // the name (SPEC §6.2). Read from the LATEST push only: a Snapshot restates the day so far
+    // (ADR-0017), so a market's line is what the last report said about it, never a sum across
+    // pushes. Empty when there is no push today or the push froze no rollup.
+    geoProfits: RosterGeoProfit[];
+};
+
+// One market of that push: the code as it was reported and the profit frozen against it.
+export type RosterGeoProfit = {
+    geo: string;
+    profit: number;
 };
 
 // The dollar-free half of the roster, for the Designer/BDM frames (#10). Structurally the tab row
 // minus its one money field: those roles hold no dollar dimension, so no total is selected for them
 // server-side either — the field does not exist rather than arriving null.
-export type DynamicsDimensionRosterUser = Omit<DynamicsRosterUser, 'totalProfit'>;
+export type DynamicsDimensionRosterUser = Omit<DynamicsRosterUser, 'totalProfit' | 'geoProfits'>;
 
 // One row of a dollar-free day table: the viewer's single dimension, in one market, with the funnel
 // counts that dimension earned. No Spend, no Revenue, no cost-per — the read never selects them.
@@ -53,12 +64,9 @@ export type DynamicsDimensionDay = {
     rows: DynamicsDimensionRow[];
 };
 
-// One day of a buyer's month, as the member card's dot grid reads it. The figures come from that
-// day's LATEST active push and nothing is summed across pushes: a Snapshot restates the day so far
-// (ADR-0017), so adding two of them would double-count the day.
-//
-// A day the buyer never pushed is simply ABSENT from the array — the grid builds its own month and
-// paints the holes, so the wire carries facts rather than a row of nulls.
+// One day of a buyer's month, as the calendar's heatmap reads it: the day's total and the money it
+// was taken over. Both come from the LATEST push of that day and nothing is summed across pushes —
+// a Snapshot restates the day so far (ADR-0017).
 export type DynamicsHistoryDay = {
     reportDate: string;
     // Σ of the push's Frozen Geo Rollups. Null when the push froze no rollup at all — no total to
@@ -66,17 +74,20 @@ export type DynamicsHistoryDay = {
     profit: number | null;
     // The denominator the day's ROI is taken over, and the reason a zero-spend day cannot be graded.
     spendPlus: number;
+    // The markets behind that total, biggest mover first — the same `{ geo, profit }` pair the cards
+    // print, so the calendar cell can say WHICH market carried the day and not only that one did.
+    geos: RosterGeoProfit[];
 };
 
 // One buyer's month. Keyed by buyer rather than nested into the roster so the two reads stay
-// independent: the roster paints names and today's figure, the history fills the grid underneath.
+// independent: the roster paints the cards, the history fills the day picker's calendar.
 export type DynamicsBuyerHistory = {
     buyerId: string;
     days: DynamicsHistoryDay[];
 };
 
 // The dollar-free half of the same read (#10). A Designer or BDM holds no money dimension, so their
-// grid can only say WHETHER a day was reported — the dates are the whole payload.
+// calendar can only say WHETHER a day was reported — the dates are the whole payload.
 export type DynamicsDimensionBuyerHistory = {
     buyerId: string;
     reportedDates: string[];

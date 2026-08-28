@@ -1,46 +1,107 @@
-import type { DynamicsBuyerHistory, DynamicsDimensionBuyerHistory, DynamicsHistoryDay } from './types';
+import type { DynamicsBuyerHistory, DynamicsDimensionBuyerHistory, DynamicsHistoryDay, RosterGeoProfit } from './types';
 
 // The month read's shaping half, kept clear of the DB so the "latest push wins" rule is testable on
-// its own (ADR-0005). One row per active Snapshot in the range goes in; one entry per buyer, holding
-// only the days they actually pushed, comes out.
+// its own (ADR-0005). One row per Frozen Geo Rollup in the range goes in; one entry per buyer,
+// holding only the days they actually pushed, comes out.
 
-// One active Snapshot in the range, reduced to what a dot needs. `profit` and `spendPlus` are null
-// when the push froze no Frozen Geo Rollup at all — a push with no total, which the grid paints
-// differently from a day with no push.
+// One market of one active Snapshot in the range. `geo` is null when the push froze no rollup at all
+// — a push with no total, which the calendar paints differently from a day with no push — and the
+// figures are null with it.
 export type HistoryPushRow = {
+    snapshotId: string;
     createdByUserId: string;
     reportDate: string;
     takenAt: Date;
+    geo: string | null;
     profit: number | null;
     spendPlus: number | null;
 };
 
-// Snapshots are cumulative — each push restates the day so far — so the latest one IS the day's
-// total and nothing is summed across pushes (SPEC §3.1, ADR-0017). The key is the buyer AND the day,
-// which is the only difference from the roster's `latestPerUser`. Ties on `taken_at` are broken by
-// arrival order, which is the order the query returned.
-const latestPerBuyerDay = (rows: HistoryPushRow[]): Map<string, Map<string, HistoryPushRow>> => {
-    const byBuyer = new Map<string, Map<string, HistoryPushRow>>();
+type PushGroup = {
+    snapshotId: string;
+    takenAt: Date;
+    rollups: HistoryPushRow[];
+};
+
+// The day's markets, biggest mover first: a cell has room for two or three flags, and the ones worth
+// keeping are the ones carrying the day — in either direction. A market that lost $4,000 explains a
+// red day exactly as much as one that made $4,000 explains a green one.
+const byWeight = (a: RosterGeoProfit, b: RosterGeoProfit): number => {
+    return Math.abs(b.profit) - Math.abs(a.profit);
+};
+
+// Rows arrive one per rollup, so the push has to be reassembled before its recency can be judged.
+const groupPushes = (rows: HistoryPushRow[]): Map<string, PushGroup> => {
+    const pushes = new Map<string, PushGroup>();
 
     for (const row of rows) {
+        const push = pushes.get(row.snapshotId);
+
+        if (push) {
+            push.rollups.push(row);
+            continue;
+        }
+
+        pushes.set(row.snapshotId, { snapshotId: row.snapshotId, takenAt: row.takenAt, rollups: [row] });
+    }
+
+    return pushes;
+};
+
+// Snapshots are cumulative — each push restates the day so far — so the latest one IS the day's
+// total and nothing is summed across pushes (SPEC §3.1, ADR-0017). The key is the buyer AND the day.
+// Ties on `taken_at` are broken by snapshot id, so two pushes stamped the same second resolve to the
+// same one on every read rather than flipping between refreshes.
+const latestPerBuyerDay = (rows: HistoryPushRow[]): Map<string, Map<string, PushGroup>> => {
+    const byBuyer = new Map<string, Map<string, PushGroup>>();
+
+    for (const push of groupPushes(rows).values()) {
+        const [row] = push.rollups;
         let days = byBuyer.get(row.createdByUserId);
 
         if (!days) {
-            days = new Map<string, HistoryPushRow>();
+            days = new Map<string, PushGroup>();
             byBuyer.set(row.createdByUserId, days);
         }
 
         const current = days.get(row.reportDate);
+        const newer =
+            !current ||
+            push.takenAt.getTime() > current.takenAt.getTime() ||
+            (push.takenAt.getTime() === current.takenAt.getTime() && push.snapshotId > current.snapshotId);
 
-        if (!current || row.takenAt.getTime() >= current.takenAt.getTime()) {
-            days.set(row.reportDate, row);
+        if (newer) {
+            days.set(row.reportDate, push);
         }
     }
 
     return byBuyer;
 };
 
-// Ascending by date, so the grid can walk its own month against the array without sorting again.
+// One push's markets, added up into the day it reports.
+const toDay = (reportDate: string, push: PushGroup): DynamicsHistoryDay => {
+    const geos = push.rollups.flatMap((row): RosterGeoProfit[] => {
+        return row.geo === null ? [] : [{ geo: row.geo, profit: row.profit ?? 0 }];
+    });
+
+    return {
+        reportDate,
+        // Null, not zero, when the push froze no rollup: there is no total to grade, and the null is
+        // what stops the day being graded at all.
+        profit:
+            geos.length === 0
+                ? null
+                : geos.reduce((total, geo) => {
+                      return total + geo.profit;
+                  }, 0),
+        spendPlus: push.rollups.reduce((total, row) => {
+            return total + (row.spendPlus ?? 0);
+        }, 0),
+        geos: geos.sort(byWeight),
+    };
+};
+
+// Ascending by date, so the calendar can walk its own month against the array without sorting again.
 const byDate = (a: { reportDate: string }, b: { reportDate: string }): number => {
     return a.reportDate.localeCompare(b.reportDate);
 };
@@ -49,15 +110,9 @@ export const toHistory = (buyerIds: string[], rows: HistoryPushRow[]): DynamicsB
     const byBuyer = latestPerBuyerDay(rows);
 
     return buyerIds.map((buyerId): DynamicsBuyerHistory => {
-        const days = [...(byBuyer.get(buyerId)?.values() ?? [])]
-            .map((row): DynamicsHistoryDay => {
-                return {
-                    reportDate: row.reportDate,
-                    profit: row.profit,
-                    // A push that froze no rollup has no denominator either; zero is the honest
-                    // reading here, and the null profit beside it is what stops the day being graded.
-                    spendPlus: row.spendPlus ?? 0,
-                };
+        const days = [...(byBuyer.get(buyerId)?.entries() ?? [])]
+            .map(([reportDate, push]) => {
+                return toDay(reportDate, push);
             })
             .sort(byDate);
 

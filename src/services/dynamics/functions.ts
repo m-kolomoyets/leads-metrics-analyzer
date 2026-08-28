@@ -198,7 +198,7 @@ export const listDayRosterFn = createServerFn({ method: 'GET' })
         // Disabled and still-invited users are excluded: an offboarded person must not sit
         // permanently red in the tab row (spec story 41). The team is joined for its name only — the
         // frame's first level is a label, never a second access check (ADR-0007).
-        const [users, snapshots] = await Promise.all([
+        const [users, rollups] = await Promise.all([
             db
                 .select({
                     id: user.id,
@@ -211,29 +211,26 @@ export const listDayRosterFn = createServerFn({ method: 'GET' })
                 .leftJoin(team, eq(team.id, user.teamId))
                 .where(and(eq(user.status, 'active'), inArray(user.role, CAMPAIGN_ROLES), userRowFilter(scope)))
                 .orderBy(user.nickname),
-            // One row per active Snapshot of the day, its Frozen Geo Rollups already summed by the
-            // database. `leftJoin` so a push that froze no rollup still reports a `taken_at`: it is a
-            // push with no total, which the tabs render differently from no push at all.
+            // One row per Frozen Geo Rollup of the day, UNSUMMED: the card prints each market's own
+            // profit under the name, so the split has to survive the read, and the total is Σ of the
+            // latest push's markets rather than a second figure the database works out separately.
+            // `leftJoin` so a push that froze no rollup still reports a `taken_at`: it is a push with
+            // no total, which the cards render differently from no push at all.
             db
                 .select({
                     createdByUserId: snapshot.createdByUserId,
                     takenAt: snapshot.takenAt,
-                    // `sum` returns text (or null when the push froze no rollup); the cast is done
-                    // here rather than with `mapWith`, which would turn that null into a zero.
-                    totalProfit: sum(snapshotGeo.profit),
+                    snapshotId: snapshot.id,
+                    geo: snapshotGeo.geo,
+                    profit: snapshotGeo.profit,
                 })
                 .from(snapshot)
                 .leftJoin(snapshotGeo, eq(snapshotGeo.snapshotId, snapshot.id))
                 .where(dynamicsDayTotalsFilter(scope, data.reportDate))
-                .groupBy(snapshot.id, snapshot.createdByUserId, snapshot.takenAt),
+                .orderBy(asc(snapshotGeo.geo)),
         ]);
 
-        return toRoster(
-            users,
-            snapshots.map((row) => {
-                return { ...row, totalProfit: row.totalProfit === null ? null : Number(row.totalProfit) };
-            })
-        );
+        return toRoster(users, rollups);
     });
 
 // The two reads behind the Designer and BDM frames (#10). Same Team → Buyer → Geo frame, one table
@@ -364,9 +361,9 @@ export const listDimensionDayFn = createServerFn({ method: 'GET' })
         };
     });
 
-// The people a member card may be drawn for — the roster's own row-scope clause, asked for ids alone.
-// The history reads resolve it themselves rather than trusting a list of ids from the client: a
-// caller could otherwise ask for a month belonging to somebody they may not see.
+// The people a month may be drawn for — the roster's own row-scope clause, asked for ids alone. The
+// history reads resolve it themselves rather than trusting a list of ids from the client: a caller
+// could otherwise ask for a month belonging to somebody they may not see.
 const visibleBuyerIds = async (scope: VisibilityScope): Promise<string[]> => {
     const rows = await db
         .select({ id: user.id })
@@ -379,10 +376,11 @@ const visibleBuyerIds = async (scope: VisibilityScope): Promise<string[]> => {
     });
 };
 
-// The member cards' month grids: every visible buyer's day-by-day totals across one calendar month,
-// in ONE query rather than one per card (SPEC §6.2). A month of a team is a few hundred `snapshot`
-// rows, and the Frozen Geo Rollups are summed by the database, so the cost is the same shape as the
-// roster read — one round trip, no `snapshot_fact` row touched.
+// The day picker's heatmap: every visible buyer's day-by-day totals across one calendar month, in
+// ONE query rather than one per buyer. A month of a team is a few hundred `snapshot` rows and the
+// Frozen Geo Rollups are summed by the database, so the cost is the same shape as the roster read —
+// one round trip, no `snapshot_fact` row touched. Every buyer comes back rather than only the one
+// being read, because the picker follows the card row and switching people must not refetch.
 export const listMonthHistoryFn = createServerFn({ method: 'GET' })
     .inputValidator(dynamicsHistoryInputSchema)
     .handler(async ({ data }): Promise<DynamicsBuyerHistory[]> => {
@@ -397,38 +395,32 @@ export const listMonthHistoryFn = createServerFn({ method: 'GET' })
 
         const [buyerIds, pushes] = await Promise.all([
             visibleBuyerIds(scope),
-            // `leftJoin` so a push that froze no rollup still reports its day: it is a day with a
-            // report and no total, which the grid paints differently from a day with no report.
+            // One row per Frozen Geo Rollup, UNSUMMED — the same shape the roster read takes, and for
+            // the same reason: the calendar cell prints the markets behind the day's total, so the
+            // split has to survive the read. `leftJoin` so a push that froze no rollup still reports
+            // its day: a day with a report and no total, which the calendar paints differently from
+            // a day with no report.
             db
                 .select({
+                    snapshotId: snapshot.id,
                     createdByUserId: snapshot.createdByUserId,
                     reportDate: snapshot.reportDate,
                     takenAt: snapshot.takenAt,
-                    profit: sum(snapshotGeo.profit),
-                    spendPlus: sum(snapshotGeo.spendPlus),
+                    geo: snapshotGeo.geo,
+                    profit: snapshotGeo.profit,
+                    spendPlus: snapshotGeo.spendPlus,
                 })
                 .from(snapshot)
                 .leftJoin(snapshotGeo, eq(snapshotGeo.snapshotId, snapshot.id))
                 .where(dynamicsRangeTotalsFilter(scope, data.from, data.to))
-                .groupBy(snapshot.id, snapshot.createdByUserId, snapshot.reportDate, snapshot.takenAt),
+                .orderBy(asc(snapshotGeo.geo)),
         ]);
 
-        return toHistory(
-            buyerIds,
-            pushes.map((row) => {
-                return {
-                    ...row,
-                    // `sum` returns text, or null when the push froze no rollup; the cast is done
-                    // here rather than with `mapWith`, which would turn that null into a zero.
-                    profit: row.profit === null ? null : Number(row.profit),
-                    spendPlus: row.spendPlus === null ? null : Number(row.spendPlus),
-                };
-            })
-        );
+        return toHistory(buyerIds, pushes);
     });
 
-// The dollar-free month (#10). Same range, same row-scope, and not one figure selected: the grid can
-// only say whether a day was reported, so the dates are all that is read.
+// The dollar-free month (#10). Same range, same row-scope, and not one figure selected: the calendar
+// can only say whether a day was reported, so the dates are all that is read.
 export const listDimensionMonthHistoryFn = createServerFn({ method: 'GET' })
     .inputValidator(dynamicsHistoryInputSchema)
     .handler(async ({ data }): Promise<DynamicsDimensionBuyerHistory[]> => {
