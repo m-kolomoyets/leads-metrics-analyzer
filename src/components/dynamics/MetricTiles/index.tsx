@@ -48,7 +48,10 @@ function MetricTiles({ point }: MetricTilesProps) {
                 first report today — one push is not yet a trajectory, so there is no chart to draw
             </p>
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {/* Same sized tracks as the comparison panel: a tile holds a large figure and a
+                threshold line under it, and neither may be cut to fit a column count somebody
+                picked off the viewport. */}
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] gap-3">
                 {TILE_METRICS.map((metric) => {
                     const value = metricValue(point.figures, metric);
                     const zone = zoneOfTile(point, metric, value);

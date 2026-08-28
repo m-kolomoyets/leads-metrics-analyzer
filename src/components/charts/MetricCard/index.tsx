@@ -116,16 +116,17 @@ function MetricCard({
             {/* Two lines and no third. A card in a strip of four is scanned, not studied — a delta
                 and a footnote under every figure turn four glances into twelve, and the movement is
                 already in the shape to the right. */}
-            {/* `min-w-0`, because the figure is set in a wide numeric face and a full-cent profit
-                ("+$8,559.33") is a long word to a flex item: without it the column refuses to go
-                below its content and pushes the plot off the card's right edge instead. The figure
-                wraps rather than truncates — a clipped money amount is a wrong money amount — and
-                the size steps up only where the grid gives the card room for it. */}
-            <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 py-3 pl-4">
+            {/* `min-w-fit`, the opposite of the usual flex advice, and deliberately: the figure is
+                the card. A six-figure profit broken over two lines, or shrunk to fit a column
+                somebody else sized, is a number that has to be read twice. So the column refuses to
+                go below its own content and the CARD takes the width its number needs — the strip
+                above wraps a card onto the next row rather than squeezing this one. */}
+            <div className="flex min-w-fit flex-1 flex-col justify-center gap-0.5 py-3 pr-3 pl-4">
                 <span className="text-muted-foreground text-sm font-medium">{label}</span>
                 <span
                     className={cn(
-                        'text-lg leading-tight font-semibold tabular-nums xl:text-xl',
+                        // Never wrapped and never clipped: one line, whatever it costs in width.
+                        'text-lg leading-tight font-semibold whitespace-nowrap tabular-nums xl:text-xl',
                         valueTone ? VALUE_TONE[valueTone] : 'text-foreground'
                     )}
                     style={{ letterSpacing: 'var(--tracking-figure)' }}
@@ -137,10 +138,12 @@ function MetricCard({
                 // Every card wears the same inset panel, graded or not: the difference between them
                 // is what the plot SAYS — zone colours on the candles, or one accent hue — not how
                 // it is mounted.
-                // `shrink-0` against a long figure: the panel is a fixed share of the card and the
-                // figure beside it gets the rest, rather than the two negotiating and the plot
-                // collapsing to a sliver on the one card whose number is longest.
-                className="bg-chart-surface relative my-2.5 mr-2.5 w-2/5 shrink-0 overflow-hidden rounded-md"
+                // A FIXED width, not a share of the card's: the card's width is composed from its
+                // parts — label/figure at their own size, this plot, the gaps and the padding — and
+                // a percentage would make that circular, the plot sized off a width the plot is
+                // helping to decide. Fixed here means every card in the strip draws its day at the
+                // same scale, and nothing has to be clipped for a long figure to fit.
+                className="bg-chart-surface relative my-2.5 mr-2.5 w-40 shrink-0 overflow-hidden rounded-md"
             >
                 {/* Decor. A horizontal band of the candles' own colours, pooled at the floor of the
                     plot and masked away toward the top — the panel gets somewhere to stand without

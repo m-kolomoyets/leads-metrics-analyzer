@@ -26,11 +26,23 @@ type MetricStripProps = {
 
 function MetricStrip({ points, selected, onSelect }: MetricStripProps) {
     return (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="Metric strip" role="group">
+        // Three layouts and no others: 4-up, 2x2, stacked. The count is chosen by the STRIP's own
+        // width (`@container`), never the viewport's, and never by letting the cards find their own
+        // wrap points — free wrapping is what produces 3+1, a row of three beside an orphan, which
+        // reads as a layout that broke rather than one that adapted.
+        //
+        // The 4-up threshold is deliberately late (92rem): a card is a figure at reading size next
+        // to a 160px plot, and the widest of them — a six-figure profit — needs about 22rem to say
+        // so. Below that, two cards to a row, each half the row minus the gap.
+        //
+        // `min-w-fit` stays under all three as the floor: a card is never squeezed below the width
+        // its own content needs, so nothing is ever clipped or broken across lines.
+        <div className="@container/strip flex flex-wrap gap-3" aria-label="Metric strip" role="group">
             {stripCards(points).map((card) => {
                 return (
                     <MetricCard
                         key={card.metric}
+                        className="min-w-fit grow basis-full @md/strip:basis-[calc(50%-0.375rem)] @min-[92rem]/strip:basis-[calc(25%-0.5625rem)]"
                         domain={card.domain}
                         label={card.label}
                         selected={selected.includes(card.metric)}

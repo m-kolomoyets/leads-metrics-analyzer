@@ -50,12 +50,28 @@ function ComparisonPanel({ points }: ComparisonPanelProps) {
                     : `compared with ${previousClock ?? 'the previous push'}`}
             </p>
 
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4 xl:grid-cols-8">
+            {/* One card, divided inside it — not eight cards. The eight readings are a single
+                statement ("what changed since the last push"), and eight hairline borders would
+                argue with the section cards under them for the same attention (ADR-0021). What
+                separates one metric from the next is the same device the report's tables use: a
+                hairline, drawn here as a one-pixel gap over the border colour, so it appears
+                BETWEEN cells and never along the panel's own edges — which is what a `border-l`
+                cannot promise once the row can wrap.
+
+                Wrapping flex, not columns: a money amount is never broken, so every cell is as wide
+                as its own longest line, grows into the leftover, and the row breaks when the next
+                metric would not fit. Every row is filled by the growing (no cell may be `shrink`),
+                which is also what keeps the divider colour behind them from showing through as a
+                block at the end of a short last row. */}
+            <dl className="bg-border flex flex-wrap gap-px">
                 {rows.map((row) => {
                     const format = METRIC_FORMAT[row.metric];
 
                     return (
-                        <div key={row.metric} className="flex flex-col gap-0.5">
+                        <div
+                            key={row.metric}
+                            className="bg-surface flex grow flex-col gap-0.5 px-4 py-2 whitespace-nowrap first:pl-0 last:pr-0"
+                        >
                             <dt className="text-muted-foreground text-xs">{METRIC_LABEL[row.metric]}</dt>
 
                             {/* The figure now, carrying the weight — the number a buyer is looking for. */}

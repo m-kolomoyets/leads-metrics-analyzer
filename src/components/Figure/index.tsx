@@ -28,10 +28,19 @@ type FigureProps = {
 
 function Figure({ label, value, unit, size = 'md', meta, className }: FigureProps) {
     return (
-        <div className="flex flex-col gap-0.5">
+        <div className="flex min-w-0 flex-col gap-0.5">
             <span className="text-muted-foreground text-xs tracking-widest uppercase">{label}</span>
-            <span className="flex items-baseline gap-1.5 whitespace-nowrap">
-                <span className={cn('font-semibold tabular-nums', size === 'lg' ? 'text-xl' : 'text-base', className)}>
+            {/* The unit stays beside the figure while there is room and drops under it when there is
+                not — a six-figure amount is one unbreakable word, and a readout that refuses to wrap
+                simply runs out of its tile and over whatever sits next to it. */}
+            <span className="flex min-w-0 flex-wrap items-baseline gap-1.5">
+                <span
+                    className={cn(
+                        'font-semibold wrap-anywhere tabular-nums',
+                        size === 'lg' ? 'text-xl' : 'text-base',
+                        className
+                    )}
+                >
                     {value}
                 </span>
                 {unit && <span className="text-muted-foreground text-xs">{unit}</span>}
