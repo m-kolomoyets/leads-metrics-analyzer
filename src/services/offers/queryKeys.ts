@@ -1,4 +1,4 @@
-import type { RatingPeriod } from '@/lib/domain/offerRating';
+import type { RatingWindow } from '@/lib/domain/offerRating';
 
 export const offerKeys = {
     all: ['offers'] as const,
@@ -47,7 +47,7 @@ export const offerKeys = {
     setDeadlineMutationKey() {
         return [...offerKeys.all, 'set-deadline'] as const;
     },
-    ratingQueryKey(offerId: string, period: RatingPeriod) {
+    ratingQueryKey(offerId: string, period: RatingWindow) {
         return [...offerKeys.all, 'rating', offerId, period] as const;
     },
     updateClaimMutationKey() {

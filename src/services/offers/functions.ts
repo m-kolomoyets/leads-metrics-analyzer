@@ -31,7 +31,7 @@ import {
 } from '@/lib/db/schema';
 import { attentionItems } from '@/lib/domain/attention';
 import { formatDeadline } from '@/lib/domain/deadline';
-import { ratingPeriodRange } from '@/lib/domain/offerRating';
+import { ratingWindowRange } from '@/lib/domain/offerRating';
 import { parseOfferString } from '@/lib/domain/offerString';
 import { canEditComment } from '@/lib/domain/offerThread';
 import { kyivDay } from '@/lib/utils/kyivDay';
@@ -754,8 +754,14 @@ export const listOfferRatingFn = createServerFn({ method: 'GET' })
             return empty;
         }
 
-        const { from, to } = ratingPeriodRange(data.period, today);
-        const inPeriod = and(listSnapshotsFilter(scope), gte(snapshot.reportDate, from), lte(snapshot.reportDate, to));
+        // `all` (the Claim Gap's actual side, slice 12) has no lower bound; `to` still cuts off a
+        // report date from tomorrow, which the row-scope alone would let through.
+        const { from, to } = ratingWindowRange(data.period, today);
+        const inPeriod = and(
+            listSnapshotsFilter(scope),
+            from === null ? undefined : gte(snapshot.reportDate, from),
+            lte(snapshot.reportDate, to)
+        );
 
         // The offer's rows first: they name the pushes and the buyers the rest of the read is about.
         const modelRows = await db
@@ -765,6 +771,7 @@ export const listOfferRatingFn = createServerFn({ method: 'GET' })
                 campaign: snapshotCampaignModel.campaign,
                 revenue: snapshotCampaignModel.revenue,
                 installs: snapshotCampaignModel.installs,
+                regs: snapshotCampaignModel.regs,
                 sales: snapshotCampaignModel.sales,
             })
             .from(snapshotCampaignModel)
@@ -855,6 +862,7 @@ export const listOfferRatingFn = createServerFn({ method: 'GET' })
                     geo: geoOf.get(`${row.snapshotId}\u0000${row.campaign}`) ?? '',
                     revenue: row.revenue,
                     installs: row.installs,
+                    regs: row.regs,
                     sales: row.sales,
                 };
             }),

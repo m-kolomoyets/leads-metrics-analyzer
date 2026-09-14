@@ -26,6 +26,7 @@ import { offerCardAnchor } from '../../constants';
 import { formatPayoutOriginal, formatPayoutUsd } from '../../utils/formatPayout';
 import { ChangeAssignmentForm } from '../ChangeAssignmentForm';
 import { ClaimBlock } from '../ClaimBlock';
+import { ClaimGapBlock } from '../ClaimGapBlock';
 import { Highlight } from '../Highlight';
 import { OfferDeadline } from '../OfferDeadline';
 import { OfferRating } from '../OfferRating';
@@ -193,6 +194,8 @@ function OfferCardItem({
             </dl>
 
             <ClaimBlock card={card} canEdit={canEditClaim && !isArchived} />
+
+            {canSeeRating && <ClaimGapBlock card={card} />}
 
             {warnings.length > 0 && (
                 <ul className="flex flex-col gap-2">

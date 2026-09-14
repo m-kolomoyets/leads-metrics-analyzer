@@ -1,5 +1,5 @@
 import type { OfferRatingInput, RatingGeoRow, RatingModelRow, RatingSnapshotRow } from './offerRating';
-import { offerRating, RATING_DIM_AFTER_DAYS, ratingPeriodRange } from './offerRating';
+import { offerFunnel, offerRating, RATING_DIM_AFTER_DAYS, ratingPeriodRange, ratingWindowRange } from './offerRating';
 
 // The offer buyer rating (offers-and-home/11, PRD stories 38–45): per buyer who ran the offer in the
 // period, Allocated Spend at the Geo Unit Cost (ADR-0013), revenue, profit, weighted ROI, sales and
@@ -20,7 +20,7 @@ const push = (overrides: Partial<RatingSnapshotRow> & { snapshotId: string }): R
 };
 
 const model = (overrides: Partial<RatingModelRow> & { snapshotId: string }): RatingModelRow => {
-    return { campaign: 'c1', geo: 'KR', revenue: 100, installs: 10, sales: 1, ...overrides };
+    return { campaign: 'c1', geo: 'KR', revenue: 100, installs: 10, regs: 3, sales: 1, ...overrides };
 };
 
 const geo = (overrides: Partial<RatingGeoRow> & { snapshotId: string }): RatingGeoRow => {
@@ -231,5 +231,53 @@ describe('ratingPeriodRange', () => {
 
     it('crosses a year boundary', () => {
         expect(ratingPeriodRange('week', '2026-01-03')).toEqual({ from: '2025-12-28', to: '2026-01-03' });
+    });
+});
+
+// The offer's all-time Attributed funnel (offers-and-home/12): the same latest-per-buyer-day rows the
+// rating counts, summed across every buyer the viewer sees. Feeds the Claim Gap's actual side.
+describe('offerFunnel', () => {
+    it('sums installs, regs, sales and revenue over the counted pushes', () => {
+        expect(
+            offerFunnel(
+                input({
+                    snapshots: [push({ snapshotId: 's1' }), push({ snapshotId: 's2', buyerUserId: 'u2' })],
+                    models: [
+                        model({ snapshotId: 's1', installs: 10, regs: 4, sales: 1, revenue: 100 }),
+                        model({ snapshotId: 's2', installs: 20, regs: 6, sales: 3, revenue: 250 }),
+                    ],
+                })
+            )
+        ).toEqual({ installs: 30, regs: 10, sales: 4, revenue: 350 });
+    });
+
+    it('counts only the latest active push per buyer per day', () => {
+        expect(
+            offerFunnel(
+                input({
+                    snapshots: [
+                        push({ snapshotId: 's1', takenAt: '2026-09-10T08:00:00Z' }),
+                        push({ snapshotId: 's2', takenAt: '2026-09-10T12:00:00Z' }),
+                        push({ snapshotId: 's3', takenAt: '2026-09-10T18:00:00Z', status: 'replaced' }),
+                    ],
+                    models: [
+                        model({ snapshotId: 's1', installs: 10, regs: 1, sales: 1, revenue: 10 }),
+                        model({ snapshotId: 's2', installs: 12, regs: 2, sales: 2, revenue: 20 }),
+                        model({ snapshotId: 's3', installs: 99, regs: 9, sales: 9, revenue: 999 }),
+                    ],
+                })
+            )
+        ).toEqual({ installs: 12, regs: 2, sales: 2, revenue: 20 });
+    });
+
+    it('is empty when nobody ran the offer', () => {
+        expect(offerFunnel(input({}))).toEqual({ installs: 0, regs: 0, sales: 0, revenue: 0 });
+    });
+});
+
+describe('ratingWindowRange', () => {
+    it('bounds a period like ratingPeriodRange and leaves the all-time window open', () => {
+        expect(ratingWindowRange('week', today)).toEqual({ from: '2026-09-08', to: today });
+        expect(ratingWindowRange('all', today)).toEqual({ from: null, to: today });
     });
 });

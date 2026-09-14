@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { RATING_PERIODS } from '@/lib/domain/offerRating';
+import { RATING_WINDOWS } from '@/lib/domain/offerRating';
 
 // Zod input schemas for the Offers API (offers-and-home/04). Validated at the server-function
 // boundary (`inputValidator`) so handlers can trust the shape; the offer string itself is parsed
@@ -68,7 +68,8 @@ export type OfferRatingInputData = z.infer<typeof offerRatingInputSchema>;
 export const offerRatingInputSchema = z.object({
     // The external Keitaro offer id the card is keyed by — the Campaign Model's `key`.
     offerId: z.string().trim().min(1),
-    period: z.enum(RATING_PERIODS),
+    // A rating period, or `all` for the Claim Gap's all-time actuals (slice 12).
+    period: z.enum(RATING_WINDOWS),
 });
 
 // One claim figure: a whole count, or null for "not declared". The form sends '' as null. Capped at
