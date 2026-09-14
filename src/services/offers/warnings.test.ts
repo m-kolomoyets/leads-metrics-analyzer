@@ -22,6 +22,7 @@ describe('offerWarnings', () => {
         buyerUserId: null,
         buyerNickname: null,
         isAssignmentUnresolved: false,
+        claim: { installs: null, regs: null, sales: null },
         createdByUserId: 'u1',
         createdByNickname: 'ihor',
         createdAt: '2026-09-14T10:00:00.000Z',

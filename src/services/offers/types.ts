@@ -1,6 +1,7 @@
 import type { OfferAccess } from '@/lib/auth/offerAccess';
 import type { UserRole } from '@/lib/constants';
 import type { AttentionItem } from '@/lib/domain/attention';
+import type { AdvertiserClaim } from '@/lib/domain/claim';
 import type { OfferRatingInput } from '@/lib/domain/offerRating';
 import type { OfferCurrency, OfferStringFragment } from '@/lib/domain/offerString';
 import type { OfferThreadEntryKind } from '@/lib/domain/offerThread';
@@ -30,6 +31,8 @@ export type OfferCardView = {
     buyerUserId: string | null;
     buyerNickname: string | null;
     isAssignmentUnresolved: boolean;
+    // The Advertiser Claim as declared (offers-and-home/07); all three null until one is entered.
+    claim: AdvertiserClaim;
     createdByUserId: string;
     createdByNickname: string;
     createdAt: string;

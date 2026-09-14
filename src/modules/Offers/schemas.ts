@@ -20,8 +20,7 @@ export const offersSearchSchema = z.object({
     // Team and buyer ids; an id outside the viewer's list matches nothing rather than revealing it.
     team: optionalToken,
     buyer: optionalToken,
-    // Deadline presence or state (slice 09), and Advertiser Claim presence — a placeholder until
-    // slice 07 lands the field: every card reads "no claim" for now (PRD story 14).
+    // Deadline presence or state (slice 09), and Advertiser Claim presence (slice 07, PRD story 14).
     deadline: z.enum(OFFER_DEADLINE_FILTERS).optional().catch(undefined),
     claim: z.enum(OFFER_CLAIM_FILTERS).optional().catch(undefined),
     // Archived cards are hidden by default and shown INSTEAD of live ones when asked for (story 11).

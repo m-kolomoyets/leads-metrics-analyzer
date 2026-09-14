@@ -25,6 +25,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { offerCardAnchor } from '../../constants';
 import { formatPayoutOriginal, formatPayoutUsd } from '../../utils/formatPayout';
 import { ChangeAssignmentForm } from '../ChangeAssignmentForm';
+import { ClaimBlock } from '../ClaimBlock';
 import { Highlight } from '../Highlight';
 import { OfferDeadline } from '../OfferDeadline';
 import { OfferRating } from '../OfferRating';
@@ -58,6 +59,7 @@ function OfferCardItem({
     canChangeAssignment,
     canComment,
     canSeeRating,
+    canEditClaim,
     deadlineState,
     canEditDeadline,
 }: OfferCardItemProps) {
@@ -189,6 +191,8 @@ function OfferCardItem({
                     </dd>
                 </div>
             </dl>
+
+            <ClaimBlock card={card} canEdit={canEditClaim && !isArchived} />
 
             {warnings.length > 0 && (
                 <ul className="flex flex-col gap-2">

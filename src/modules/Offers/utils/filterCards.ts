@@ -3,8 +3,8 @@ import type { OffersSearch } from '../schemas';
 
 // The directory's filter and search over the cards the server already scoped (PRD stories 11, 13,
 // 14). Pure, over the minimal card shape the filters read. The Deadline's state is judged by the
-// caller against Kyiv's today (slice 09); the Advertiser Claim field does not exist yet (slice 07),
-// so its presence arrives as a boolean and every card reads "no" until then.
+// caller against Kyiv's today (slice 09); the Advertiser Claim's presence arrives as a boolean
+// (slice 07), so the filter never learns the claim's shape.
 
 export type OfferFilterSubject = {
     offerId: string;

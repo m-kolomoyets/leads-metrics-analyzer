@@ -50,4 +50,7 @@ export const offerKeys = {
     ratingQueryKey(offerId: string, period: RatingPeriod) {
         return [...offerKeys.all, 'rating', offerId, period] as const;
     },
+    updateClaimMutationKey() {
+        return [...offerKeys.all, 'update-claim'] as const;
+    },
 };

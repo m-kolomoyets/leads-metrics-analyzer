@@ -46,6 +46,7 @@ import {
     offerThreadEntryIdInputSchema,
     retryOfferFxInputSchema,
     setOfferDeadlineInputSchema,
+    updateOfferClaimInputSchema,
 } from './schemas';
 import { fixRateToUsd } from './fx';
 import { pickAssignment } from './pickAssignment';
@@ -72,6 +73,7 @@ const viewerFrom = (me: MeData): Viewer => {
 };
 
 const OFFER_NOT_FOUND_MESSAGE = 'Offer card not found';
+const OFFER_ARCHIVED_MESSAGE = 'Offer card is archived';
 
 // Postgres unique_violation on the live-`offer_id` partial index: two authors pasted the same offer
 // at once and the pre-check above let both through. The loser gets the same "duplicate" verdict
@@ -248,6 +250,48 @@ export const retryOfferFxFn = createServerFn({ method: 'POST' })
             })
             // Guarded on `pending` so a concurrent retry cannot overwrite an already fixed rate.
             .where(and(eq(offerCard.id, data.offerCardId), eq(offerCard.fxStatus, 'pending')));
+
+        const view = await loadOfferCardView(viewer, data.offerCardId);
+
+        if (!view) {
+            throw new Error(OFFER_NOT_FOUND_MESSAGE);
+        }
+
+        return view;
+    });
+
+// Writes the Advertiser Claim (offers-and-home/07): one set of values, overwritten on every edit, no
+// history (PRD story 19). bdm/head only, server-enforced; an archived card is read-only.
+export const updateOfferClaimFn = createServerFn({ method: 'POST' })
+    .inputValidator(updateOfferClaimInputSchema)
+    .handler(async ({ data }): Promise<OfferCardView> => {
+        const me = await requireUser();
+        const viewer = viewerFrom(me);
+
+        if (!canOffer(me.role, 'editClaim')) {
+            throw new Error(FORBIDDEN_MESSAGE);
+        }
+
+        const current = await loadOfferCardView(viewer, data.offerCardId);
+
+        if (!current) {
+            throw new Error(OFFER_NOT_FOUND_MESSAGE);
+        }
+
+        if (current.archivedAt !== null) {
+            throw new Error(OFFER_ARCHIVED_MESSAGE);
+        }
+
+        await db
+            .update(offerCard)
+            .set({
+                claimInstalls: data.installs,
+                claimRegs: data.regs,
+                claimSales: data.sales,
+                updatedAt: new Date(),
+            })
+            // Guarded on live so a concurrent archive cannot be written over.
+            .where(and(eq(offerCard.id, data.offerCardId), isNull(offerCard.archivedAt)));
 
         const view = await loadOfferCardView(viewer, data.offerCardId);
 

@@ -11,6 +11,7 @@
 //   offers-and-home/04 — offer_card, fx_rate (Offer Cards, ADR-0027) ✓
 //   offers-and-home/08 — offer_thread_entry, offer_card_seen (Thread, unread counts) ✓
 //   offers-and-home/09 — offer_card.deadline ✓
+//   offers-and-home/07 — offer_card.claim_* (Advertiser Claim) ✓
 // See docs/specs/0001-multi-user-auth-teams-persistence.md, docs/specs/0003-reports-feed-archive-detailed-report.md
 // and docs/adr/0002, 0006, 0007, 0015, 0018.
 
@@ -554,6 +555,12 @@ export const offerCard = pgTable(
         // True when the team or the named buyer matched nobody at creation — visible to bdm/head only
         // until fixed (PRD story 7–8).
         isAssignmentUnresolved: boolean('is_assignment_unresolved').notNull().default(false),
+        // Advertiser Claim (offers-and-home/07): the figures the advertiser declared, entered once by
+        // bdm/head; an edit overwrites, no history. Each nullable — a claim is whatever was stated —
+        // and "has a claim" means any of the three is set.
+        claimInstalls: integer('claim_installs'),
+        claimRegs: integer('claim_regs'),
+        claimSales: integer('claim_sales'),
         createdByUserId: uuid('created_by_user_id')
             .notNull()
             .references(

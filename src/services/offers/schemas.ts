@@ -70,3 +70,16 @@ export const offerRatingInputSchema = z.object({
     offerId: z.string().trim().min(1),
     period: z.enum(RATING_PERIODS),
 });
+
+// One claim figure: a whole count, or null for "not declared". The form sends '' as null. Capped at
+// the column's `integer` range so an absurd paste is refused here, not by Postgres.
+export const CLAIM_FIGURE_MAX = 2_147_483_647;
+const claimFigureSchema = z.number().int().min(0).max(CLAIM_FIGURE_MAX).nullable();
+
+export type UpdateOfferClaimInput = z.infer<typeof updateOfferClaimInputSchema>;
+export const updateOfferClaimInputSchema = z.object({
+    offerCardId: z.uuid(),
+    installs: claimFigureSchema,
+    regs: claimFigureSchema,
+    sales: claimFigureSchema,
+});

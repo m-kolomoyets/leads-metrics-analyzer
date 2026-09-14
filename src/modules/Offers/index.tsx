@@ -7,6 +7,7 @@ import { useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 import { PlusIcon, SearchXIcon, TagIcon } from 'lucide-react';
 import { canOffer } from '@/lib/auth/offerAccess';
+import { hasClaim } from '@/lib/domain/claim';
 import { deadlineState } from '@/lib/domain/deadline';
 import { kyivDay } from '@/lib/utils/kyivDay';
 import { offerCardsQueryOptions, unlistedOffersQueryOptions } from '@/services/offers/queries';
@@ -46,6 +47,7 @@ function Offers() {
     const canComment = canOffer(role, 'comment');
     const canEditDeadline = canOffer(role, 'editDeadline');
     const canSeeRating = canOffer(role, 'seeRating');
+    const canEditClaim = canOffer(role, 'editClaim');
     // Null while closed; an object (possibly empty) while open, so a seed from an Unlisted Offer
     // survives until the sheet closes and the next "New card" opens blank.
     const [createSeed, setCreateSeed] = useState<Partial<CreateOfferCardInput> | null>(null);
@@ -53,8 +55,6 @@ function Offers() {
     const query = search.q ?? '';
     // Today is Kyiv's today (ADR-0017): the filter, the marks and the badge judge one day.
     const today = kyivDay();
-    // The Advertiser Claim does not exist on a card yet (slice 07): every card reads "no" until
-    // then, which is exactly what the placeholder filter promises.
     const subjects = cards.map((card): OfferFilterSubject & { card: typeof card } => {
         return {
             card,
@@ -65,7 +65,7 @@ function Offers() {
             archivedAt: card.archivedAt,
             deadline: card.deadline,
             deadlineState: deadlineState(card, today),
-            hasClaim: false,
+            hasClaim: hasClaim(card.claim),
         };
     });
     const visible = filterOfferCards(subjects, search);
@@ -141,6 +141,7 @@ function Offers() {
                                         canChangeAssignment={canChangeAssignment}
                                         canComment={canComment}
                                         canSeeRating={canSeeRating}
+                                        canEditClaim={canEditClaim}
                                     />
                                 </li>
                             );

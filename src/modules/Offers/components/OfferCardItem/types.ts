@@ -14,4 +14,6 @@ export type OfferCardItemProps = {
     canComment: boolean;
     // The buyer rating under the card (offers-and-home/11): team lead, bdm, head — never a buyer.
     canSeeRating: boolean;
+    // Whether the viewer may enter or overwrite the Advertiser Claim (bdm/head).
+    canEditClaim: boolean;
 };

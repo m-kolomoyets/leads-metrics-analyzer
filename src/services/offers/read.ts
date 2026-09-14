@@ -35,6 +35,9 @@ export const selectOfferCards = () => {
             buyerUserId: offerCard.buyerUserId,
             buyerNickname: buyer.nickname,
             isAssignmentUnresolved: offerCard.isAssignmentUnresolved,
+            claimInstalls: offerCard.claimInstalls,
+            claimRegs: offerCard.claimRegs,
+            claimSales: offerCard.claimSales,
             createdByUserId: offerCard.createdByUserId,
             createdByNickname: user.nickname,
             createdAt: offerCard.createdAt,
@@ -67,6 +70,7 @@ export const toOfferCardView = (viewer: Viewer, row: OfferCardJoinedRow, unreadC
         buyerUserId: row.buyerUserId,
         buyerNickname: row.buyerNickname,
         isAssignmentUnresolved: row.isAssignmentUnresolved,
+        claim: { installs: row.claimInstalls, regs: row.claimRegs, sales: row.claimSales },
         createdByUserId: row.createdByUserId,
         // The creator FK cascades on user delete, so a listed card always has one; guard anyway.
         createdByNickname: row.createdByNickname ?? '',

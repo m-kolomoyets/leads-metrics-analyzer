@@ -9,6 +9,7 @@ import type {
     OfferThreadEntryIdInput,
     RetryOfferFxInput,
     SetOfferDeadlineInput,
+    UpdateOfferClaimInput,
 } from './schemas';
 import { mutationOptions, queryOptions } from '@tanstack/react-query';
 import {
@@ -28,6 +29,7 @@ import {
     retryOfferFxFn,
     setOfferDeadlineFn,
     unarchiveOfferCardFn,
+    updateOfferClaimFn,
 } from './functions';
 import { offerKeys } from './queryKeys';
 
@@ -233,6 +235,18 @@ export const offerRatingQueryOptions = ({ offerId, period }: OfferRatingInputDat
         queryKey: offerKeys.ratingQueryKey(offerId, period),
         queryFn() {
             return listOfferRatingFn({ data: { offerId, period } });
+        },
+    });
+};
+
+export const updateOfferClaimMutationOptions = () => {
+    return mutationOptions({
+        mutationKey: offerKeys.updateClaimMutationKey(),
+        mutationFn(data: UpdateOfferClaimInput) {
+            return updateOfferClaimFn({ data });
+        },
+        onSuccess(_data, _variables, _onMutateResult, { client }) {
+            client.invalidateQueries({ queryKey: offerKeys.listQueryKey() });
         },
     });
 };
