@@ -18,6 +18,8 @@ import { Route as UnauthenticatedResetPasswordIndexRouteImport } from './routes/
 import { Route as UnauthenticatedLoginIndexRouteImport } from './routes/_unauthenticated/login/index'
 import { Route as UnauthenticatedActivateIndexRouteImport } from './routes/_unauthenticated/activate/index'
 import { Route as AuthenticatedPresetsIndexRouteImport } from './routes/_authenticated/presets/index'
+import { Route as AuthenticatedOffersIndexRouteImport } from './routes/_authenticated/offers/index'
+import { Route as AuthenticatedHomeIndexRouteImport } from './routes/_authenticated/home/index'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard/index'
 import { Route as AuthenticatedAnalyzeIndexRouteImport } from './routes/_authenticated/analyze/index'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
@@ -71,6 +73,17 @@ const AuthenticatedPresetsIndexRoute =
     path: '/presets/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedOffersIndexRoute =
+  AuthenticatedOffersIndexRouteImport.update({
+    id: '/offers/',
+    path: '/offers/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedHomeIndexRoute = AuthenticatedHomeIndexRouteImport.update({
+  id: '/home/',
+  path: '/home/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDashboardIndexRoute =
   AuthenticatedDashboardIndexRouteImport.update({
     id: '/dashboard/',
@@ -115,6 +128,8 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/analyze/': typeof AuthenticatedAnalyzeIndexRoute
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
+  '/home/': typeof AuthenticatedHomeIndexRoute
+  '/offers/': typeof AuthenticatedOffersIndexRoute
   '/presets/': typeof AuthenticatedPresetsIndexRoute
   '/activate/': typeof UnauthenticatedActivateIndexRoute
   '/login/': typeof UnauthenticatedLoginIndexRoute
@@ -129,6 +144,8 @@ export interface FileRoutesByTo {
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/analyze': typeof AuthenticatedAnalyzeIndexRoute
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
+  '/home': typeof AuthenticatedHomeIndexRoute
+  '/offers': typeof AuthenticatedOffersIndexRoute
   '/presets': typeof AuthenticatedPresetsIndexRoute
   '/activate': typeof UnauthenticatedActivateIndexRoute
   '/login': typeof UnauthenticatedLoginIndexRoute
@@ -147,6 +164,8 @@ export interface FileRoutesById {
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/analyze/': typeof AuthenticatedAnalyzeIndexRoute
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
+  '/_authenticated/home/': typeof AuthenticatedHomeIndexRoute
+  '/_authenticated/offers/': typeof AuthenticatedOffersIndexRoute
   '/_authenticated/presets/': typeof AuthenticatedPresetsIndexRoute
   '/_unauthenticated/activate/': typeof UnauthenticatedActivateIndexRoute
   '/_unauthenticated/login/': typeof UnauthenticatedLoginIndexRoute
@@ -163,6 +182,8 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/analyze/'
     | '/dashboard/'
+    | '/home/'
+    | '/offers/'
     | '/presets/'
     | '/activate/'
     | '/login/'
@@ -177,6 +198,8 @@ export interface FileRouteTypes {
     | '/admin'
     | '/analyze'
     | '/dashboard'
+    | '/home'
+    | '/offers'
     | '/presets'
     | '/activate'
     | '/login'
@@ -194,6 +217,8 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/'
     | '/_authenticated/analyze/'
     | '/_authenticated/dashboard/'
+    | '/_authenticated/home/'
+    | '/_authenticated/offers/'
     | '/_authenticated/presets/'
     | '/_unauthenticated/activate/'
     | '/_unauthenticated/login/'
@@ -273,6 +298,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPresetsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/offers/': {
+      id: '/_authenticated/offers/'
+      path: '/offers'
+      fullPath: '/offers/'
+      preLoaderRoute: typeof AuthenticatedOffersIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/home/': {
+      id: '/_authenticated/home/'
+      path: '/home'
+      fullPath: '/home/'
+      preLoaderRoute: typeof AuthenticatedHomeIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard/': {
       id: '/_authenticated/dashboard/'
       path: '/dashboard'
@@ -324,6 +363,8 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
   AuthenticatedAnalyzeIndexRoute: typeof AuthenticatedAnalyzeIndexRoute
   AuthenticatedDashboardIndexRoute: typeof AuthenticatedDashboardIndexRoute
+  AuthenticatedHomeIndexRoute: typeof AuthenticatedHomeIndexRoute
+  AuthenticatedOffersIndexRoute: typeof AuthenticatedOffersIndexRoute
   AuthenticatedPresetsIndexRoute: typeof AuthenticatedPresetsIndexRoute
   AuthenticatedDashboardReportSnapshotIdRoute: typeof AuthenticatedDashboardReportSnapshotIdRoute
 }
@@ -334,6 +375,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   AuthenticatedAnalyzeIndexRoute: AuthenticatedAnalyzeIndexRoute,
   AuthenticatedDashboardIndexRoute: AuthenticatedDashboardIndexRoute,
+  AuthenticatedHomeIndexRoute: AuthenticatedHomeIndexRoute,
+  AuthenticatedOffersIndexRoute: AuthenticatedOffersIndexRoute,
   AuthenticatedPresetsIndexRoute: AuthenticatedPresetsIndexRoute,
   AuthenticatedDashboardReportSnapshotIdRoute:
     AuthenticatedDashboardReportSnapshotIdRoute,

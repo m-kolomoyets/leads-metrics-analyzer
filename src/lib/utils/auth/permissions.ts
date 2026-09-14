@@ -1,7 +1,7 @@
 import type { ObjectDotNotation } from '@/lib/types';
 import type { AuthRole } from '@/services/auth/types';
 import { notFound } from '@tanstack/react-router';
-import { ROLES_IDS } from '@/lib/constants';
+import { FALLBACK_REDIRECT, ROLES_IDS } from '@/lib/constants';
 
 // NOTE: This is the template's demo route-gating (merchants/vouchers pages). The real, spec-driven
 // visibility model — row-scope + dimension-scope via `scopeFor(viewer)` — lands in T3 (#4).
@@ -15,6 +15,17 @@ export const ROLES_CONFIG = {
 
 export type RolePermissionsKeys = ObjectDotNotation<typeof ROLES_PERMISSIONS>;
 export const ROLES_PERMISSIONS = {
+    // Home (offers-and-home PRD) — the post-login landing for every role but Designer, whose landing
+    // stays as it was (story 58). Whether a viewer reads dollar figures there is `seesDollarsOn`'s
+    // call, not this list's.
+    home: {
+        view: [ROLES_IDS.head, ROLES_IDS.teamLead, ROLES_IDS.buyer, ROLES_IDS.bdm],
+    },
+    // Offers (offers-and-home PRD). Same four roles: BDM issues the cards, the dollar roles work
+    // them; a Designer has no part in an offer at all.
+    offers: {
+        view: [ROLES_IDS.head, ROLES_IDS.teamLead, ROLES_IDS.buyer, ROLES_IDS.bdm],
+    },
     // Admin panel (T4b, #6) — Head-only. Mirrors the server-side `requireHead` gate on the admin API.
     admin: {
         view: [ROLES_IDS.head],
@@ -68,6 +79,12 @@ export const hasPermissions = (permissionKey: RolePermissionsKeys, authRole?: Au
     }, clonedRolesPermissions);
 
     return Array.isArray(permissions) && permissions.includes(authRole);
+};
+
+// Where a fresh session lands. Home for every role that may open it; the Designer keeps the landing
+// they had before Home existed (story 58).
+export const landingFor = (role?: AuthRole) => {
+    return hasPermissions('home.view', role) ? '/home' : FALLBACK_REDIRECT;
 };
 
 export const checkIsRouteAllowed = (rolePermissionKey: RolePermissionsKeys, role?: AuthRole) => {

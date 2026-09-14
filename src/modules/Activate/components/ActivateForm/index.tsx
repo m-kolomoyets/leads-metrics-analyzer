@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 import { toast } from 'sonner';
-import { FALLBACK_REDIRECT } from '@/lib/constants';
+import { landingFor } from '@/lib/utils/auth/permissions';
 import { focusFirstError } from '@/lib/utils/focusFirstError';
 import { activateMutationOptions } from '@/services/auth/queries';
 import { useAppForm } from '@/components/Form';
@@ -32,8 +32,8 @@ function ActivateForm() {
             await activate(
                 { token: token ?? '', password: value.password },
                 {
-                    onSuccess() {
-                        navigate({ to: FALLBACK_REDIRECT, replace: true });
+                    onSuccess(me) {
+                        navigate({ to: landingFor(me.role), replace: true });
                     },
                     onError(error) {
                         if (error instanceof Error && error.message) {

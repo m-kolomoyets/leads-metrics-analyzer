@@ -3,9 +3,11 @@ import type { LucideIcon } from 'lucide-react';
 import type { RolePermissionsKeys } from '@/lib/utils/auth/permissions';
 import {
     ChartColumnBigIcon,
-    LayoutDashboardIcon,
+    FileTextIcon,
+    HouseIcon,
     ShieldUserIcon,
     SlidersHorizontalIcon,
+    TagIcon,
     TrendingUpIcon,
 } from 'lucide-react';
 
@@ -16,13 +18,33 @@ export type NavbarLinkItem = {
     rolePermissionKey?: RolePermissionsKeys;
 };
 
+// Home · Offers · Reports · Dynamics · Analyze · Presets (offers-and-home PRD): the two new surfaces
+// lead because they are where a session now starts, and the push feed is "Reports" from here on —
+// one of several reports, not the dashboard the app opens on.
 export const NAVBAR_LINK_LIST: NavbarLinkItem[] = [
     {
-        label: 'Dashboard',
-        Icon: LayoutDashboardIcon,
+        label: 'Home',
+        Icon: HouseIcon,
+        linkProps: {
+            to: '/home',
+        },
+        rolePermissionKey: 'home.view',
+    },
+    {
+        label: 'Offers',
+        Icon: TagIcon,
+        linkProps: {
+            to: '/offers',
+        },
+        rolePermissionKey: 'offers.view',
+    },
+    {
+        label: 'Reports',
+        Icon: FileTextIcon,
         linkProps: {
             to: '/dashboard',
         },
+        rolePermissionKey: 'report.view',
     },
     {
         label: 'Dynamics',

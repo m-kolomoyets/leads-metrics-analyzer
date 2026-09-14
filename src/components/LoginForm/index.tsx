@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 import { toast } from 'sonner';
-import { FALLBACK_REDIRECT } from '@/lib/constants';
+import { landingFor } from '@/lib/utils/auth/permissions';
 import { focusFirstError } from '@/lib/utils/focusFirstError';
 import { loginMutationOptions } from '@/services/auth/queries';
 import { loginInputSchema } from '@/services/auth/schemas';
@@ -31,9 +31,9 @@ function LoginForm() {
         },
         async onSubmit({ value, formApi }) {
             await login(value, {
-                onSuccess() {
+                onSuccess(me) {
                     navigate({
-                        to: redirectSearch || FALLBACK_REDIRECT,
+                        to: redirectSearch || landingFor(me.role),
                         replace: true,
                     });
                 },

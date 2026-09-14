@@ -1,12 +1,12 @@
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
 import { z } from 'zod';
-import { FALLBACK_REDIRECT } from '@/lib/constants';
+import { landingFor } from '@/lib/utils/auth/permissions';
 import { meQueryOptions } from '@/services/auth/queries';
 
 export const Route = createFileRoute('/_unauthenticated')({
     validateSearch: z.object({
         // Only accept internal paths ("/…" but not "//…") so a crafted ?redirect=https://evil.com
-        // cannot turn login into an open redirect. Anything else falls back to '' (→ dashboard).
+        // cannot turn login into an open redirect. Anything else falls back to '' (→ the role's landing).
         redirect: z
             .string()
             .refine((value) => {
@@ -26,7 +26,7 @@ export const Route = createFileRoute('/_unauthenticated')({
 
         if (me) {
             throw redirect({
-                to: search.redirect || FALLBACK_REDIRECT,
+                to: search.redirect || landingFor(me.role),
                 replace: true,
             });
         }
