@@ -1,8 +1,10 @@
-import type { CreateOfferCardInput, OfferCardIdInput, RetryOfferFxInput } from './schemas';
+import type { ChangeOfferAssignmentInput, CreateOfferCardInput, OfferCardIdInput, RetryOfferFxInput } from './schemas';
 import { mutationOptions, queryOptions } from '@tanstack/react-query';
 import {
     archiveOfferCardFn,
+    changeOfferAssignmentFn,
     createOfferCardFn,
+    listOfferAssigneesFn,
     listOfferCardsFn,
     listUnlistedOffersFn,
     retryOfferFxFn,
@@ -78,6 +80,31 @@ export const unarchiveOfferCardMutationOptions = () => {
         onSuccess(result, _variables, _onMutateResult, { client }) {
             if (result.ok) {
                 client.invalidateQueries({ queryKey: offerKeys.all });
+            }
+        },
+    });
+};
+
+export const offerAssigneesQueryOptions = () => {
+    return queryOptions({
+        queryKey: offerKeys.assigneesQueryKey(),
+        queryFn() {
+            return listOfferAssigneesFn();
+        },
+    });
+};
+
+// A changed Assignment moves the card between people's lists, so the whole directory is refetched
+// (offers-and-home/06); a refused pick wrote nothing.
+export const changeOfferAssignmentMutationOptions = () => {
+    return mutationOptions({
+        mutationKey: offerKeys.changeAssignmentMutationKey(),
+        mutationFn(data: ChangeOfferAssignmentInput) {
+            return changeOfferAssignmentFn({ data });
+        },
+        onSuccess(result, _variables, _onMutateResult, { client }) {
+            if (result.ok) {
+                client.invalidateQueries({ queryKey: offerKeys.listQueryKey() });
             }
         },
     });

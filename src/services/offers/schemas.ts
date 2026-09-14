@@ -22,3 +22,11 @@ export type OfferCardIdInput = z.infer<typeof offerCardIdInputSchema>;
 export const offerCardIdInputSchema = z.object({
     offerCardId: z.uuid(),
 });
+
+export type ChangeOfferAssignmentInput = z.infer<typeof changeOfferAssignmentInputSchema>;
+export const changeOfferAssignmentInputSchema = z.object({
+    offerCardId: z.uuid(),
+    teamId: z.uuid(),
+    // Null assigns the whole team (offers-and-home/06).
+    buyerUserId: z.uuid().nullable(),
+});

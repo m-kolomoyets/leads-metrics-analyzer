@@ -52,3 +52,15 @@ export type UnlistedOfferView = {
 // Unarchive is refused as data, like create: a newer live card may have taken the id meanwhile.
 export type UnarchiveOfferCardResult =
     { ok: true; card: OfferCardView } | { ok: false; reason: 'duplicate'; existingCardId: string };
+
+// The roster the Assignment picker chooses from (offers-and-home/06): every team, and every user
+// who can be a card's recipient — placed in a team and not disabled. `teamId` lets the buyer list
+// narrow to the picked team on the client.
+export type OfferAssigneesView = {
+    teams: { id: string; name: string }[];
+    users: { id: string; nickname: string; teamId: string }[];
+};
+
+// A refused pick is data, like a duplicate on create: the picker may be stale (team deleted, user
+// moved) and the form shows which side went wrong.
+export type ChangeOfferAssignmentResult = { ok: true; card: OfferCardView } | { ok: false; reason: 'team' | 'buyer' };

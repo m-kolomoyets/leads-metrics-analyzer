@@ -1,8 +1,15 @@
 import type { Viewer } from '@/lib/auth/scope';
 import type { MeData } from '@/services/auth/types';
-import type { CreateOfferCardResult, OfferCardView, UnarchiveOfferCardResult, UnlistedOfferView } from './types';
+import type {
+    ChangeOfferAssignmentResult,
+    CreateOfferCardResult,
+    OfferAssigneesView,
+    OfferCardView,
+    UnarchiveOfferCardResult,
+    UnlistedOfferView,
+} from './types';
 import { createServerFn } from '@tanstack/react-start';
-import { and, desc, eq, isNull, max, ne, notInArray } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, isNull, max, ne, notInArray } from 'drizzle-orm';
 import { assertDimension } from '@/lib/auth/denial';
 import { FORBIDDEN_MESSAGE, requireUser } from '@/lib/auth/guards';
 import { canOffer } from '@/lib/auth/offerAccess';
@@ -11,8 +18,14 @@ import { db } from '@/lib/db';
 import { offerCard, snapshot, snapshotCampaignModel, team, user } from '@/lib/db/schema';
 import { parseOfferString } from '@/lib/domain/offerString';
 import { listSnapshotsFilter, matchesNoRows } from '@/services/snapshots/visibility';
-import { createOfferCardInputSchema, offerCardIdInputSchema, retryOfferFxInputSchema } from './schemas';
+import {
+    changeOfferAssignmentInputSchema,
+    createOfferCardInputSchema,
+    offerCardIdInputSchema,
+    retryOfferFxInputSchema,
+} from './schemas';
 import { fixRateToUsd } from './fx';
+import { pickAssignment } from './pickAssignment';
 import { loadOfferCardView, selectOfferCards, toOfferCardView } from './read';
 import { resolveAssignment } from './resolveAssignment';
 
@@ -279,6 +292,85 @@ export const unarchiveOfferCardFn = createServerFn({ method: 'POST' })
                 throw error;
             }
         }
+
+        const view = await loadOfferCardView(viewer, data.offerCardId);
+
+        if (!view) {
+            throw new Error(OFFER_NOT_FOUND_MESSAGE);
+        }
+
+        return { ok: true, card: view };
+    });
+
+// The roster the Assignment picker offers (offers-and-home/06): every team, and every user who can
+// receive a card — a buyer or team lead placed in a team, not disabled. Gated like the change itself,
+// so a role that cannot reassign never lists the company's people through this door.
+export const listOfferAssigneesFn = createServerFn({ method: 'GET' }).handler(async (): Promise<OfferAssigneesView> => {
+    const me = await requireUser();
+
+    if (!canOffer(me.role, 'changeAssignment')) {
+        throw new Error(FORBIDDEN_MESSAGE);
+    }
+
+    const [teams, users] = await Promise.all([
+        db.select({ id: team.id, name: team.name }).from(team).orderBy(team.name),
+        db
+            .select({ id: user.id, nickname: user.nickname, teamId: user.teamId })
+            .from(user)
+            .where(and(isNotNull(user.teamId), inArray(user.role, ['buyer', 'team_lead']), ne(user.status, 'disabled')))
+            .orderBy(user.nickname),
+    ]);
+
+    return {
+        teams,
+        users: users.flatMap((row) => {
+            return row.teamId === null ? [] : [{ id: row.id, nickname: row.nickname, teamId: row.teamId }];
+        }),
+    };
+});
+
+// Fix an Unresolved Assignment or reassign a resolved one (PRD story 8, slice 06). The pick is
+// validated against the roster by the pure seam; the raw team/recipient text the string named is
+// never rewritten — it stays as the record of what was issued. An archived card is read-only.
+export const changeOfferAssignmentFn = createServerFn({ method: 'POST' })
+    .inputValidator(changeOfferAssignmentInputSchema)
+    .handler(async ({ data }): Promise<ChangeOfferAssignmentResult> => {
+        const me = await requireUser();
+        const viewer = viewerFrom(me);
+
+        if (!canOffer(me.role, 'changeAssignment')) {
+            throw new Error(FORBIDDEN_MESSAGE);
+        }
+
+        const current = await loadOfferCardView(viewer, data.offerCardId);
+
+        if (!current) {
+            throw new Error(OFFER_NOT_FOUND_MESSAGE);
+        }
+
+        if (current.archivedAt !== null) {
+            throw new Error(FORBIDDEN_MESSAGE);
+        }
+
+        const [teams, users] = await Promise.all([
+            db.select({ id: team.id }).from(team),
+            db.select({ id: user.id, teamId: user.teamId }).from(user),
+        ]);
+        const picked = pickAssignment({ teamId: data.teamId, buyerUserId: data.buyerUserId }, teams, users);
+
+        if (!picked.ok) {
+            return { ok: false, reason: picked.reason };
+        }
+
+        await db
+            .update(offerCard)
+            .set({
+                teamId: picked.teamId,
+                buyerUserId: picked.buyerUserId,
+                isAssignmentUnresolved: false,
+                updatedAt: new Date(),
+            })
+            .where(eq(offerCard.id, data.offerCardId));
 
         const view = await loadOfferCardView(viewer, data.offerCardId);
 

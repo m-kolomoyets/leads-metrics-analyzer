@@ -6,4 +6,5 @@ export type OfferCardItemProps = {
     query: string;
     canRetryFx: boolean;
     canArchive: boolean;
+    canChangeAssignment: boolean;
 };

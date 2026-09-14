@@ -18,4 +18,10 @@ export const offerKeys = {
     unarchiveMutationKey() {
         return [...offerKeys.all, 'unarchive'] as const;
     },
+    assigneesQueryKey() {
+        return [...offerKeys.all, 'assignees'] as const;
+    },
+    changeAssignmentMutationKey() {
+        return [...offerKeys.all, 'change-assignment'] as const;
+    },
 };

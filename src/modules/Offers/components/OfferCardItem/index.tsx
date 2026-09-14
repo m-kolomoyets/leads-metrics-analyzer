@@ -1,7 +1,8 @@
 import type { OfferWarning } from '@/services/offers/warnings';
 import type { OfferCardItemProps } from './types';
+import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { ArchiveIcon, ArchiveRestoreIcon, RefreshCwIcon, TriangleAlertIcon } from 'lucide-react';
+import { ArchiveIcon, ArchiveRestoreIcon, RefreshCwIcon, TriangleAlertIcon, UsersIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils/cn';
 import {
@@ -13,8 +14,10 @@ import { offerWarnings } from '@/services/offers/warnings';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
 import { offerCardAnchor } from '../../constants';
 import { formatPayoutOriginal, formatPayoutUsd } from '../../utils/formatPayout';
+import { ChangeAssignmentForm } from '../ChangeAssignmentForm';
 import { Highlight } from '../Highlight';
 
 const createdFormat = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium' });
@@ -35,9 +38,10 @@ const warningText = (warning: OfferWarning): string => {
 
 // One Offer Card in the directory (offers-and-home/04): id and Payout up top, the raw string as the
 // caption underneath (PRD story 12), then who it is for and who issued it. Warnings sit last, each
-// with its fix where one exists here (retry the rate); fixing an Assignment is slice 06. An archived
-// card is read-only (story 10): it keeps everything but offers no action beyond unarchive.
-function OfferCardItem({ card, query, canRetryFx, canArchive }: OfferCardItemProps) {
+// with its fix where one exists (retry the rate, change the Assignment — slice 06). An archived card
+// is read-only (story 10): it keeps everything but offers no action beyond unarchive.
+function OfferCardItem({ card, query, canRetryFx, canArchive, canChangeAssignment }: OfferCardItemProps) {
+    const [isAssignmentOpen, setIsAssignmentOpen] = useState(false);
     const { mutate: retryFx, isPending: isRetrying } = useMutation(retryOfferFxMutationOptions());
     const { mutate: archive, isPending: isArchiving } = useMutation(archiveOfferCardMutationOptions());
     const { mutate: unarchive, isPending: isUnarchiving } = useMutation(unarchiveOfferCardMutationOptions());
@@ -126,8 +130,20 @@ function OfferCardItem({ card, query, canRetryFx, canArchive }: OfferCardItemPro
             <dl className="text-muted-foreground flex flex-wrap gap-x-6 gap-y-1 text-xs">
                 <div className="flex gap-1">
                     <dt>Assigned to</dt>
-                    <dd className="text-foreground">
+                    <dd className="text-foreground flex items-center gap-2">
                         {card.isAssignmentUnresolved ? <Badge variant="yellow">{assignment}</Badge> : assignment}
+                        {canChangeAssignment && !isArchived && (
+                            <Button
+                                size="xs"
+                                variant="ghost"
+                                onClick={() => {
+                                    setIsAssignmentOpen(true);
+                                }}
+                            >
+                                <UsersIcon data-icon="inline-start" />
+                                Change
+                            </Button>
+                        )}
                     </dd>
                 </div>
                 <div className="flex gap-1">
@@ -181,6 +197,28 @@ function OfferCardItem({ card, query, canRetryFx, canArchive }: OfferCardItemPro
                         </Button>
                     )}
                 </footer>
+            )}
+
+            {canChangeAssignment && (
+                <Dialog open={isAssignmentOpen} onOpenChange={setIsAssignmentOpen}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Change assignment</DialogTitle>
+                            <DialogDescription>
+                                Pick the team and, optionally, one of its members. The card becomes visible to them
+                                right away.
+                            </DialogDescription>
+                        </DialogHeader>
+                        {isAssignmentOpen && (
+                            <ChangeAssignmentForm
+                                card={card}
+                                onSuccess={() => {
+                                    setIsAssignmentOpen(false);
+                                }}
+                            />
+                        )}
+                    </DialogContent>
+                </Dialog>
             )}
         </Card>
     );
