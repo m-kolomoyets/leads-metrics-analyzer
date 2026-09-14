@@ -8,18 +8,21 @@
 //   S2a (#53) — snapshot_geo, snapshot_creative, snapshot_campaign_model, snapshot_fact.attribution,
 //               copied thresholds on applied_ruleset(_geo) ✓
 //   D3 — snapshot.status/replaced_by/replaced_at (replaceable Snapshots) ✓
+//   offers-and-home/04 — offer_card, fx_rate (Offer Cards, ADR-0027) ✓
 // See docs/specs/0001-multi-user-auth-teams-persistence.md, docs/specs/0003-reports-feed-archive-detailed-report.md
 // and docs/adr/0002, 0006, 0007, 0015, 0018.
 
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import {
+    boolean,
     date,
     doublePrecision,
     integer,
     jsonb,
     pgEnum,
     pgTable,
+    primaryKey,
     text,
     timestamp,
     unique,
@@ -499,6 +502,96 @@ export const snapshotCampaignModel = pgTable(
     }
 );
 
+// Offer Cards (offers-and-home PRD, CONTEXT.md §Offer Cards). The currency the offer string declared
+// the Payout in — the only two the parser reads (`domain/offerString`).
+export const offerCurrency = pgEnum('offer_currency', ['USD', 'EUR']);
+
+// Whether the Payout is fixed in USD yet (ADR-0027). `pending` only when the rate service was down at
+// creation: the card exists, carries no `payout_usd`, and a retry fixes it on the day it succeeds.
+export const offerFxStatus = pgEnum('offer_fx_status', ['fixed', 'pending']);
+
+// One Offer Card per live `offer_id` (partial unique index below); an archived card may share its id
+// with a newer one. The raw string is kept verbatim as the caption — only the Payout and the
+// Assignment are read out of it, and the Assignment's raw team/recipient text is stored beside the
+// resolved FKs so an Unresolved card (nobody matched) can be fixed later without re-parsing.
+// `payout_original`/`payout_currency`/`fx_rate`/`fx_fetched_at`/`payout_usd` are ADR-0027's fields:
+// fetched once, never refreshed. `team_id`/`buyer_user_id` `set null` so a deleted team or user
+// leaves the card standing (it turns Unresolved); the creator cascades like a Snapshot's does.
+export const offerCard = pgTable(
+    'offer_card',
+    {
+        id: uuid('id').primaryKey().defaultRandom(),
+        // The external Keitaro offer id (`13002`) — the key cards join to Snapshot rows by.
+        offerId: text('offer_id').notNull(),
+        rawString: text('raw_string').notNull(),
+        payoutOriginal: doublePrecision('payout_original').notNull(),
+        payoutCurrency: offerCurrency('payout_currency').notNull(),
+        fxStatus: offerFxStatus('fx_status').notNull().default('fixed'),
+        // Null while `fx_status = 'pending'`. A USD offer stores rate 1.
+        fxRate: doublePrecision('fx_rate'),
+        fxFetchedAt: timestamp('fx_fetched_at', { withTimezone: true }),
+        payoutUsd: doublePrecision('payout_usd'),
+        // Assignment as the string named it, verbatim (trimmed). `recipient` equals `team` for a
+        // team-wide offer.
+        assignedTeamText: text('assigned_team_text').notNull(),
+        assignedRecipientText: text('assigned_recipient_text').notNull(),
+        teamId: uuid('team_id').references(
+            () => {
+                return team.id;
+            },
+            { onDelete: 'set null' }
+        ),
+        // Null for a team-wide offer, and for an Unresolved one.
+        buyerUserId: uuid('buyer_user_id').references(
+            () => {
+                return user.id;
+            },
+            { onDelete: 'set null' }
+        ),
+        // True when the team or the named buyer matched nobody at creation — visible to bdm/head only
+        // until fixed (PRD story 7–8).
+        isAssignmentUnresolved: boolean('is_assignment_unresolved').notNull().default(false),
+        createdByUserId: uuid('created_by_user_id')
+            .notNull()
+            .references(
+                () => {
+                    return user.id;
+                },
+                { onDelete: 'cascade' }
+            ),
+        // Null while live. Archiving keeps the row and its history; the partial unique index only
+        // counts live cards.
+        archivedAt: timestamp('archived_at', { withTimezone: true }),
+        createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+        updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    },
+    (t) => {
+        return [
+            uniqueIndex('offer_card_live_offer_id_key')
+                .on(t.offerId)
+                .where(sql`${t.archivedAt} is null`),
+        ];
+    }
+);
+
+// The per-day FX cache (ADR-0027): one row per calendar day × base × quote, written the first time a
+// card needs that day's rate, read by every later card the same day. `day` is the Kyiv calendar day
+// the rate was fetched on (the app's one timezone, ADR-0017) — the cache key, not the ECB reference
+// date, which is what `fetched_at` and the card's `fx_fetched_at` record.
+export const fxRate = pgTable(
+    'fx_rate',
+    {
+        day: date('day').notNull(),
+        base: text('base').notNull(),
+        quote: text('quote').notNull(),
+        rate: doublePrecision('rate').notNull(),
+        fetchedAt: timestamp('fetched_at', { withTimezone: true }).notNull().defaultNow(),
+    },
+    (t) => {
+        return [primaryKey({ columns: [t.day, t.base, t.quote] })];
+    }
+);
+
 export type UserRow = typeof user.$inferSelect;
 export type SessionRow = typeof session.$inferSelect;
 export type TeamRow = typeof team.$inferSelect;
@@ -515,3 +608,5 @@ export type SnapshotFactRow = typeof snapshotFact.$inferSelect;
 export type SnapshotGeoRow = typeof snapshotGeo.$inferSelect;
 export type SnapshotCreativeRow = typeof snapshotCreative.$inferSelect;
 export type SnapshotCampaignModelRow = typeof snapshotCampaignModel.$inferSelect;
+export type OfferCardRow = typeof offerCard.$inferSelect;
+export type FxRateRow = typeof fxRate.$inferSelect;
