@@ -5,6 +5,7 @@ import type {
     CreateOfferCardResult,
     OfferAssigneesView,
     OfferCardView,
+    OfferThreadEntryView,
     UnarchiveOfferCardResult,
     UnlistedOfferView,
 } from './types';
@@ -15,18 +16,30 @@ import { FORBIDDEN_MESSAGE, requireUser } from '@/lib/auth/guards';
 import { canOffer } from '@/lib/auth/offerAccess';
 import { scopeFor } from '@/lib/auth/scope';
 import { db } from '@/lib/db';
-import { offerCard, snapshot, snapshotCampaignModel, team, user } from '@/lib/db/schema';
+import {
+    offerCard,
+    offerCardSeen,
+    offerThreadEntry,
+    snapshot,
+    snapshotCampaignModel,
+    team,
+    user,
+} from '@/lib/db/schema';
 import { parseOfferString } from '@/lib/domain/offerString';
+import { canEditComment } from '@/lib/domain/offerThread';
 import { listSnapshotsFilter, matchesNoRows } from '@/services/snapshots/visibility';
 import {
+    addOfferCommentInputSchema,
     changeOfferAssignmentInputSchema,
     createOfferCardInputSchema,
+    editOfferCommentInputSchema,
     offerCardIdInputSchema,
+    offerThreadEntryIdInputSchema,
     retryOfferFxInputSchema,
 } from './schemas';
 import { fixRateToUsd } from './fx';
 import { pickAssignment } from './pickAssignment';
-import { loadOfferCardView, selectOfferCards, toOfferCardView } from './read';
+import { loadOfferCardView, selectOfferCards, toOfferCardView, withUnreadCounts } from './read';
 import { resolveAssignment } from './resolveAssignment';
 
 // Offers API (offers-and-home/04). Reads run every row through the pure `offerAccessFor` seam
@@ -72,14 +85,15 @@ export const listOfferCardsFn = createServerFn({ method: 'GET' }).handler(async 
     const viewer = viewerFrom(me);
 
     const rows = await selectOfferCards().orderBy(desc(offerCard.createdAt));
-
-    return rows
+    const visible = rows
         .map((row) => {
             return toOfferCardView(viewer, row);
         })
         .filter((view) => {
             return view.access === 'read';
         });
+
+    return withUnreadCounts(viewer, visible);
 });
 
 export const createOfferCardFn = createServerFn({ method: 'POST' })
@@ -379,6 +393,181 @@ export const changeOfferAssignmentFn = createServerFn({ method: 'POST' })
         }
 
         return { ok: true, card: view };
+    });
+
+// ---- Thread (offers-and-home/08) ----------------------------------------------------------------
+
+const ENTRY_NOT_FOUND_MESSAGE = 'Comment not found';
+
+const toThreadEntryView = (viewerId: string, now: Date, row: ThreadEntryRow): OfferThreadEntryView => {
+    const isDeleted = row.deletedAt !== null;
+
+    return {
+        id: row.id,
+        kind: row.kind,
+        // A deleted comment keeps its place, not its words.
+        body: isDeleted ? '' : row.body,
+        authorUserId: row.authorUserId,
+        authorNickname: row.authorNickname,
+        authorRole: row.authorRole,
+        createdAt: row.createdAt.toISOString(),
+        editedAt: row.editedAt?.toISOString() ?? null,
+        deletedAt: row.deletedAt?.toISOString() ?? null,
+        canEdit: canEditComment(row, viewerId, now),
+    };
+};
+
+const selectThreadEntries = () => {
+    return db
+        .select({
+            id: offerThreadEntry.id,
+            offerCardId: offerThreadEntry.offerCardId,
+            kind: offerThreadEntry.kind,
+            body: offerThreadEntry.body,
+            authorUserId: offerThreadEntry.authorUserId,
+            authorNickname: user.nickname,
+            authorRole: user.role,
+            createdAt: offerThreadEntry.createdAt,
+            editedAt: offerThreadEntry.editedAt,
+            deletedAt: offerThreadEntry.deletedAt,
+        })
+        .from(offerThreadEntry)
+        .leftJoin(user, eq(offerThreadEntry.authorUserId, user.id));
+};
+
+type ThreadEntryRow = Awaited<ReturnType<typeof selectThreadEntries>>[number];
+
+// Whoever may read the card may read its Thread (PRD story 30). Oldest first — newest at the bottom.
+export const listOfferThreadFn = createServerFn({ method: 'GET' })
+    .inputValidator(offerCardIdInputSchema)
+    .handler(async ({ data }): Promise<OfferThreadEntryView[]> => {
+        const me = await requireUser();
+        const card = await loadOfferCardView(viewerFrom(me), data.offerCardId);
+
+        if (!card) {
+            throw new Error(OFFER_NOT_FOUND_MESSAGE);
+        }
+
+        const rows = await selectThreadEntries()
+            .where(eq(offerThreadEntry.offerCardId, data.offerCardId))
+            .orderBy(offerThreadEntry.createdAt, offerThreadEntry.id);
+        const now = new Date();
+
+        return rows.map((row) => {
+            return toThreadEntryView(me.id, now, row);
+        });
+    });
+
+// Post a comment (PRD story 30). Read access to the card plus the role's `comment` capability;
+// an archived card's Thread is closed to new comments (story 33).
+export const addOfferCommentFn = createServerFn({ method: 'POST' })
+    .inputValidator(addOfferCommentInputSchema)
+    .handler(async ({ data }): Promise<OfferThreadEntryView> => {
+        const me = await requireUser();
+
+        if (!canOffer(me.role, 'comment')) {
+            throw new Error(FORBIDDEN_MESSAGE);
+        }
+
+        const card = await loadOfferCardView(viewerFrom(me), data.offerCardId);
+
+        if (!card) {
+            throw new Error(OFFER_NOT_FOUND_MESSAGE);
+        }
+
+        if (card.archivedAt !== null) {
+            throw new Error(FORBIDDEN_MESSAGE);
+        }
+
+        const [created] = await db
+            .insert(offerThreadEntry)
+            .values({ offerCardId: data.offerCardId, authorUserId: me.id, kind: 'comment', body: data.body })
+            .returning({ id: offerThreadEntry.id });
+        const [row] = await selectThreadEntries().where(eq(offerThreadEntry.id, created.id)).limit(1);
+
+        if (!row) {
+            throw new Error(ENTRY_NOT_FOUND_MESSAGE);
+        }
+
+        return toThreadEntryView(me.id, new Date(), row);
+    });
+
+// The author's own comment, within the 15-minute window (PRD story 31), on a card they can still
+// read and that is still live. The window is judged here against `created_at`, not trusted from
+// the client.
+const loadEditableComment = async (me: MeData, entryId: string): Promise<ThreadEntryRow> => {
+    const [row] = await selectThreadEntries().where(eq(offerThreadEntry.id, entryId)).limit(1);
+
+    if (!row) {
+        throw new Error(ENTRY_NOT_FOUND_MESSAGE);
+    }
+
+    const card = await loadOfferCardView(viewerFrom(me), row.offerCardId);
+
+    if (!card) {
+        throw new Error(ENTRY_NOT_FOUND_MESSAGE);
+    }
+
+    if (card.archivedAt !== null || !canEditComment(row, me.id, new Date())) {
+        throw new Error(FORBIDDEN_MESSAGE);
+    }
+
+    return row;
+};
+
+export const editOfferCommentFn = createServerFn({ method: 'POST' })
+    .inputValidator(editOfferCommentInputSchema)
+    .handler(async ({ data }): Promise<OfferThreadEntryView> => {
+        const me = await requireUser();
+
+        await loadEditableComment(me, data.entryId);
+
+        await db
+            .update(offerThreadEntry)
+            .set({ body: data.body, editedAt: new Date() })
+            .where(eq(offerThreadEntry.id, data.entryId));
+
+        const [row] = await selectThreadEntries().where(eq(offerThreadEntry.id, data.entryId)).limit(1);
+
+        if (!row) {
+            throw new Error(ENTRY_NOT_FOUND_MESSAGE);
+        }
+
+        return toThreadEntryView(me.id, new Date(), row);
+    });
+
+// Soft delete: the row stays with `deleted_at` set so the stream keeps its shape and the unread
+// rule can skip it.
+export const deleteOfferCommentFn = createServerFn({ method: 'POST' })
+    .inputValidator(offerThreadEntryIdInputSchema)
+    .handler(async ({ data }): Promise<void> => {
+        const me = await requireUser();
+
+        await loadEditableComment(me, data.entryId);
+
+        await db.update(offerThreadEntry).set({ deletedAt: new Date() }).where(eq(offerThreadEntry.id, data.entryId));
+    });
+
+// Opening a card marks it seen (PRD story 34): upsert the viewer's mark to now.
+export const markOfferCardSeenFn = createServerFn({ method: 'POST' })
+    .inputValidator(offerCardIdInputSchema)
+    .handler(async ({ data }): Promise<void> => {
+        const me = await requireUser();
+        const card = await loadOfferCardView(viewerFrom(me), data.offerCardId);
+
+        if (!card) {
+            throw new Error(OFFER_NOT_FOUND_MESSAGE);
+        }
+
+        const now = new Date();
+
+        await db
+            .insert(offerCardSeen)
+            .values({ userId: me.id, offerCardId: data.offerCardId, lastSeenAt: now })
+            .onConflictDoUpdate({
+                target: [offerCardSeen.userId, offerCardSeen.offerCardId],
+                set: { lastSeenAt: now },
+            });
     });
 
 // Unlisted Offers (PRD story 15): every `offer_id` in the viewer's active Snapshots' Campaign Models

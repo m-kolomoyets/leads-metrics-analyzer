@@ -9,6 +9,7 @@
 //               copied thresholds on applied_ruleset(_geo) ✓
 //   D3 — snapshot.status/replaced_by/replaced_at (replaceable Snapshots) ✓
 //   offers-and-home/04 — offer_card, fx_rate (Offer Cards, ADR-0027) ✓
+//   offers-and-home/08 — offer_thread_entry, offer_card_seen (Thread, unread counts) ✓
 // See docs/specs/0001-multi-user-auth-teams-persistence.md, docs/specs/0003-reports-feed-archive-detailed-report.md
 // and docs/adr/0002, 0006, 0007, 0015, 0018.
 
@@ -18,6 +19,7 @@ import {
     boolean,
     date,
     doublePrecision,
+    index,
     integer,
     jsonb,
     pgEnum,
@@ -589,6 +591,76 @@ export const fxRate = pgTable(
     },
     (t) => {
         return [primaryKey({ columns: [t.day, t.base, t.quote] })];
+    }
+);
+
+// A Thread entry's kind (CONTEXT.md §Thread): a person's comment, or a system entry written when
+// the Deadline or the Assignment changes (slice 09). One stream, one order.
+export const offerThreadEntryKind = pgEnum('offer_thread_entry_kind', [
+    'comment',
+    'deadline_changed',
+    'assignment_changed',
+]);
+
+// An Offer Card's Thread (offers-and-home/08). `author_user_id` is the commenter, or the actor of a
+// system entry; `set null` so a deleted user's words stay in the record. `body` is the comment text,
+// or for a system entry the new value as text (the date, the assignment) — rendered, never parsed.
+// A deleted comment keeps its row with `deleted_at` set, so the count of what was said and unread
+// stays honest; the 15-minute edit/delete window is enforced by the server against `created_at`.
+export const offerThreadEntry = pgTable(
+    'offer_thread_entry',
+    {
+        id: uuid('id').primaryKey().defaultRandom(),
+        offerCardId: uuid('offer_card_id')
+            .notNull()
+            .references(
+                () => {
+                    return offerCard.id;
+                },
+                { onDelete: 'cascade' }
+            ),
+        authorUserId: uuid('author_user_id').references(
+            () => {
+                return user.id;
+            },
+            { onDelete: 'set null' }
+        ),
+        kind: offerThreadEntryKind('kind').notNull(),
+        body: text('body').notNull(),
+        createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+        editedAt: timestamp('edited_at', { withTimezone: true }),
+        deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    },
+    (t) => {
+        return [index('offer_thread_entry_card_idx').on(t.offerCardId, t.createdAt)];
+    }
+);
+
+// When a user last opened a card (offers-and-home/08) — the mark that unread counts are measured
+// from. One row per user × card, upserted on every open.
+export const offerCardSeen = pgTable(
+    'offer_card_seen',
+    {
+        userId: uuid('user_id')
+            .notNull()
+            .references(
+                () => {
+                    return user.id;
+                },
+                { onDelete: 'cascade' }
+            ),
+        offerCardId: uuid('offer_card_id')
+            .notNull()
+            .references(
+                () => {
+                    return offerCard.id;
+                },
+                { onDelete: 'cascade' }
+            ),
+        lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
+    },
+    (t) => {
+        return [primaryKey({ columns: [t.userId, t.offerCardId] })];
     }
 );
 

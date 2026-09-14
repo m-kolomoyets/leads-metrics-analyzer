@@ -7,4 +7,5 @@ export type OfferCardItemProps = {
     canRetryFx: boolean;
     canArchive: boolean;
     canChangeAssignment: boolean;
+    canComment: boolean;
 };

@@ -30,3 +30,28 @@ export const changeOfferAssignmentInputSchema = z.object({
     // Null assigns the whole team (offers-and-home/06).
     buyerUserId: z.uuid().nullable(),
 });
+
+export const OFFER_COMMENT_MAX_LENGTH = 2000;
+
+const commentBody = z
+    .string()
+    .trim()
+    .min(1, { error: REQUIRED_MESSAGE })
+    .max(OFFER_COMMENT_MAX_LENGTH, { error: `At most ${OFFER_COMMENT_MAX_LENGTH} characters` });
+
+export type AddOfferCommentInput = z.infer<typeof addOfferCommentInputSchema>;
+export const addOfferCommentInputSchema = z.object({
+    offerCardId: z.uuid(),
+    body: commentBody,
+});
+
+export type EditOfferCommentInput = z.infer<typeof editOfferCommentInputSchema>;
+export const editOfferCommentInputSchema = z.object({
+    entryId: z.uuid(),
+    body: commentBody,
+});
+
+export type OfferThreadEntryIdInput = z.infer<typeof offerThreadEntryIdInputSchema>;
+export const offerThreadEntryIdInputSchema = z.object({
+    entryId: z.uuid(),
+});

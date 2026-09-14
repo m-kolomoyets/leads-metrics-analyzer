@@ -2,7 +2,14 @@ import type { OfferWarning } from '@/services/offers/warnings';
 import type { OfferCardItemProps } from './types';
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { ArchiveIcon, ArchiveRestoreIcon, RefreshCwIcon, TriangleAlertIcon, UsersIcon } from 'lucide-react';
+import {
+    ArchiveIcon,
+    ArchiveRestoreIcon,
+    MessageSquareIcon,
+    RefreshCwIcon,
+    TriangleAlertIcon,
+    UsersIcon,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils/cn';
 import {
@@ -19,6 +26,7 @@ import { offerCardAnchor } from '../../constants';
 import { formatPayoutOriginal, formatPayoutUsd } from '../../utils/formatPayout';
 import { ChangeAssignmentForm } from '../ChangeAssignmentForm';
 import { Highlight } from '../Highlight';
+import { OfferThread } from '../OfferThread';
 
 const createdFormat = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium' });
 
@@ -40,8 +48,9 @@ const warningText = (warning: OfferWarning): string => {
 // caption underneath (PRD story 12), then who it is for and who issued it. Warnings sit last, each
 // with its fix where one exists (retry the rate, change the Assignment — slice 06). An archived card
 // is read-only (story 10): it keeps everything but offers no action beyond unarchive.
-function OfferCardItem({ card, query, canRetryFx, canArchive, canChangeAssignment }: OfferCardItemProps) {
+function OfferCardItem({ card, query, canRetryFx, canArchive, canChangeAssignment, canComment }: OfferCardItemProps) {
     const [isAssignmentOpen, setIsAssignmentOpen] = useState(false);
+    const [isThreadOpen, setIsThreadOpen] = useState(false);
     const { mutate: retryFx, isPending: isRetrying } = useMutation(retryOfferFxMutationOptions());
     const { mutate: archive, isPending: isArchiving } = useMutation(archiveOfferCardMutationOptions());
     const { mutate: unarchive, isPending: isUnarchiving } = useMutation(unarchiveOfferCardMutationOptions());
@@ -183,9 +192,24 @@ function OfferCardItem({ card, query, canRetryFx, canArchive, canChangeAssignmen
                 </ul>
             )}
 
-            {canArchive && (
-                <footer className="flex justify-end">
-                    {isArchived ? (
+            <footer className="flex items-center justify-between gap-2">
+                <Button
+                    size="xs"
+                    variant="ghost"
+                    onClick={() => {
+                        setIsThreadOpen(true);
+                    }}
+                >
+                    <MessageSquareIcon data-icon="inline-start" />
+                    Thread
+                    {card.unreadCount > 0 && (
+                        <Badge variant="default" aria-label={`${card.unreadCount} unread`}>
+                            {card.unreadCount}
+                        </Badge>
+                    )}
+                </Button>
+                {canArchive &&
+                    (isArchived ? (
                         <Button size="xs" variant="ghost" onClick={handleUnarchive} isLoading={isUnarchiving}>
                             <ArchiveRestoreIcon data-icon="inline-start" />
                             Unarchive
@@ -195,9 +219,10 @@ function OfferCardItem({ card, query, canRetryFx, canArchive, canChangeAssignmen
                             <ArchiveIcon data-icon="inline-start" />
                             Archive
                         </Button>
-                    )}
-                </footer>
-            )}
+                    ))}
+            </footer>
+
+            <OfferThread card={card} open={isThreadOpen} onOpenChange={setIsThreadOpen} canComment={canComment} />
 
             {canChangeAssignment && (
                 <Dialog open={isAssignmentOpen} onOpenChange={setIsAssignmentOpen}>

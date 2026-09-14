@@ -1,12 +1,25 @@
-import type { ChangeOfferAssignmentInput, CreateOfferCardInput, OfferCardIdInput, RetryOfferFxInput } from './schemas';
+import type {
+    AddOfferCommentInput,
+    ChangeOfferAssignmentInput,
+    CreateOfferCardInput,
+    EditOfferCommentInput,
+    OfferCardIdInput,
+    OfferThreadEntryIdInput,
+    RetryOfferFxInput,
+} from './schemas';
 import { mutationOptions, queryOptions } from '@tanstack/react-query';
 import {
+    addOfferCommentFn,
     archiveOfferCardFn,
     changeOfferAssignmentFn,
     createOfferCardFn,
+    deleteOfferCommentFn,
+    editOfferCommentFn,
     listOfferAssigneesFn,
     listOfferCardsFn,
+    listOfferThreadFn,
     listUnlistedOffersFn,
+    markOfferCardSeenFn,
     retryOfferFxFn,
     unarchiveOfferCardFn,
 } from './functions';
@@ -106,6 +119,64 @@ export const changeOfferAssignmentMutationOptions = () => {
             if (result.ok) {
                 client.invalidateQueries({ queryKey: offerKeys.listQueryKey() });
             }
+        },
+    });
+};
+
+export const offerThreadQueryOptions = (offerCardId: string) => {
+    return queryOptions({
+        queryKey: offerKeys.threadQueryKey(offerCardId),
+        queryFn() {
+            return listOfferThreadFn({ data: { offerCardId } });
+        },
+    });
+};
+
+export const addOfferCommentMutationOptions = () => {
+    return mutationOptions({
+        mutationKey: offerKeys.addCommentMutationKey(),
+        mutationFn(data: AddOfferCommentInput) {
+            return addOfferCommentFn({ data });
+        },
+        onSuccess(_data, variables, _onMutateResult, { client }) {
+            client.invalidateQueries({ queryKey: offerKeys.threadQueryKey(variables.offerCardId) });
+        },
+    });
+};
+
+export const editOfferCommentMutationOptions = (offerCardId: string) => {
+    return mutationOptions({
+        mutationKey: offerKeys.editCommentMutationKey(),
+        mutationFn(data: EditOfferCommentInput) {
+            return editOfferCommentFn({ data });
+        },
+        onSuccess(_data, _variables, _onMutateResult, { client }) {
+            client.invalidateQueries({ queryKey: offerKeys.threadQueryKey(offerCardId) });
+        },
+    });
+};
+
+export const deleteOfferCommentMutationOptions = (offerCardId: string) => {
+    return mutationOptions({
+        mutationKey: offerKeys.deleteCommentMutationKey(),
+        mutationFn(data: OfferThreadEntryIdInput) {
+            return deleteOfferCommentFn({ data });
+        },
+        onSuccess(_data, _variables, _onMutateResult, { client }) {
+            client.invalidateQueries({ queryKey: offerKeys.threadQueryKey(offerCardId) });
+        },
+    });
+};
+
+// Opening a card marks it seen (PRD story 34); the list's unread counters read from that mark.
+export const markOfferCardSeenMutationOptions = () => {
+    return mutationOptions({
+        mutationKey: offerKeys.markSeenMutationKey(),
+        mutationFn(data: OfferCardIdInput) {
+            return markOfferCardSeenFn({ data });
+        },
+        onSuccess(_data, _variables, _onMutateResult, { client }) {
+            client.invalidateQueries({ queryKey: offerKeys.listQueryKey() });
         },
     });
 };

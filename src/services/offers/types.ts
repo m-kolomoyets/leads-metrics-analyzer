@@ -1,5 +1,7 @@
 import type { OfferAccess } from '@/lib/auth/offerAccess';
+import type { UserRole } from '@/lib/constants';
 import type { OfferCurrency, OfferStringFragment } from '@/lib/domain/offerString';
+import type { OfferThreadEntryKind } from '@/lib/domain/offerThread';
 
 // Domain shapes for the Offers API (offers-and-home/04). An Offer Card as returned to the client:
 // the raw string (its caption), the Payout fixed per ADR-0027, the Assignment as resolved and as
@@ -30,6 +32,8 @@ export type OfferCardView = {
     createdByNickname: string;
     createdAt: string;
     archivedAt: string | null;
+    // Live comments by others since the viewer last opened the card (offers-and-home/08).
+    unreadCount: number;
     access: OfferAccess;
 };
 
@@ -64,3 +68,20 @@ export type OfferAssigneesView = {
 // A refused pick is data, like a duplicate on create: the picker may be stale (team deleted, user
 // moved) and the form shows which side went wrong.
 export type ChangeOfferAssignmentResult = { ok: true; card: OfferCardView } | { ok: false; reason: 'team' | 'buyer' };
+
+// One Thread entry as the client renders it (offers-and-home/08). A comment carries its author; a
+// system entry (slice 09) carries the actor the same way, and `body` holds the new value as text. A
+// deleted comment is listed with `deletedAt` set and an empty body, so the stream keeps its shape.
+export type OfferThreadEntryView = {
+    id: string;
+    kind: OfferThreadEntryKind;
+    body: string;
+    authorUserId: string | null;
+    authorNickname: string | null;
+    authorRole: UserRole | null;
+    createdAt: string;
+    editedAt: string | null;
+    deletedAt: string | null;
+    // Whether the viewer may still edit or delete this entry, as the server judged it at read time.
+    canEdit: boolean;
+};

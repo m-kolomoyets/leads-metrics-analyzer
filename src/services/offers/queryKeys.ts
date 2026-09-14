@@ -24,4 +24,19 @@ export const offerKeys = {
     changeAssignmentMutationKey() {
         return [...offerKeys.all, 'change-assignment'] as const;
     },
+    threadQueryKey(offerCardId: string) {
+        return [...offerKeys.all, 'thread', offerCardId] as const;
+    },
+    addCommentMutationKey() {
+        return [...offerKeys.all, 'add-comment'] as const;
+    },
+    editCommentMutationKey() {
+        return [...offerKeys.all, 'edit-comment'] as const;
+    },
+    deleteCommentMutationKey() {
+        return [...offerKeys.all, 'delete-comment'] as const;
+    },
+    markSeenMutationKey() {
+        return [...offerKeys.all, 'mark-seen'] as const;
+    },
 };

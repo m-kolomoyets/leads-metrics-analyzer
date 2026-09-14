@@ -26,6 +26,7 @@ describe('offerWarnings', () => {
         createdByNickname: 'ihor',
         createdAt: '2026-09-14T10:00:00.000Z',
         archivedAt: null,
+        unreadCount: 0,
         access: 'read',
     };
 
