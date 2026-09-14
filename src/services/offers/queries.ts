@@ -1,3 +1,4 @@
+import type { QueryClient } from '@tanstack/react-query';
 import type {
     AddOfferCommentInput,
     ChangeOfferAssignmentInput,
@@ -16,6 +17,7 @@ import {
     createOfferCardFn,
     deleteOfferCommentFn,
     editOfferCommentFn,
+    listAttentionItemsFn,
     listOfferAssigneesFn,
     listOfferCardsFn,
     listOfferThreadFn,
@@ -34,6 +36,31 @@ export const offerCardsQueryOptions = () => {
             return listOfferCardsFn();
         },
     });
+};
+
+// The Attention Badge (offers-and-home/10) is "what needs me now", so unlike every other read it
+// polls: a minute's cadence, plus a refetch when the tab comes back into view, is what makes an
+// overdue Deadline or a colleague's comment appear without a reload. Every offers mutation that can
+// change an item invalidates it as well (`invalidateOfferCards`).
+const ATTENTION_REFETCH_INTERVAL_MS = 60 * 1000;
+
+export const attentionQueryOptions = () => {
+    return queryOptions({
+        queryKey: offerKeys.attentionQueryKey(),
+        queryFn() {
+            return listAttentionItemsFn();
+        },
+        refetchInterval: ATTENTION_REFETCH_INTERVAL_MS,
+        refetchOnWindowFocus: true,
+        // A failed poll must not take the bar with it: the badge keeps its last answer.
+        throwOnError: false,
+    });
+};
+
+// A card changed for the viewer: the directory and the badge both go stale together.
+const invalidateOfferCards = (client: QueryClient) => {
+    client.invalidateQueries({ queryKey: offerKeys.listQueryKey() });
+    client.invalidateQueries({ queryKey: offerKeys.attentionQueryKey() });
 };
 
 export const unlistedOffersQueryOptions = () => {
@@ -68,7 +95,7 @@ export const retryOfferFxMutationOptions = () => {
             return retryOfferFxFn({ data });
         },
         onSuccess(_data, _variables, _onMutateResult, { client }) {
-            client.invalidateQueries({ queryKey: offerKeys.listQueryKey() });
+            invalidateOfferCards(client);
         },
     });
 };
@@ -119,7 +146,7 @@ export const changeOfferAssignmentMutationOptions = () => {
         },
         onSuccess(result, _variables, _onMutateResult, { client }) {
             if (result.ok) {
-                client.invalidateQueries({ queryKey: offerKeys.listQueryKey() });
+                invalidateOfferCards(client);
             }
         },
     });
@@ -178,7 +205,7 @@ export const markOfferCardSeenMutationOptions = () => {
             return markOfferCardSeenFn({ data });
         },
         onSuccess(_data, _variables, _onMutateResult, { client }) {
-            client.invalidateQueries({ queryKey: offerKeys.listQueryKey() });
+            invalidateOfferCards(client);
         },
     });
 };
@@ -191,7 +218,7 @@ export const setOfferDeadlineMutationOptions = () => {
             return setOfferDeadlineFn({ data });
         },
         onSuccess(_data, variables, _onMutateResult, { client }) {
-            client.invalidateQueries({ queryKey: offerKeys.listQueryKey() });
+            invalidateOfferCards(client);
             client.invalidateQueries({ queryKey: offerKeys.threadQueryKey(variables.offerCardId) });
         },
     });

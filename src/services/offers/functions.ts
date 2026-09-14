@@ -1,6 +1,7 @@
 import type { Viewer } from '@/lib/auth/scope';
 import type { MeData } from '@/services/auth/types';
 import type {
+    AttentionView,
     ChangeOfferAssignmentResult,
     CreateOfferCardResult,
     OfferAssigneesView,
@@ -25,9 +26,11 @@ import {
     team,
     user,
 } from '@/lib/db/schema';
+import { attentionItems } from '@/lib/domain/attention';
 import { formatDeadline } from '@/lib/domain/deadline';
 import { parseOfferString } from '@/lib/domain/offerString';
 import { canEditComment } from '@/lib/domain/offerThread';
+import { kyivDay } from '@/lib/utils/kyivDay';
 import { listSnapshotsFilter, matchesNoRows } from '@/services/snapshots/visibility';
 import {
     addOfferCommentInputSchema,
@@ -42,12 +45,12 @@ import {
 import { fixRateToUsd } from './fx';
 import { pickAssignment } from './pickAssignment';
 import {
+    listVisibleOfferCards,
     loadOfferCardView,
     selectOfferCards,
     selectThreadEntries,
     toOfferCardView,
     toThreadEntryView,
-    withUnreadCounts,
 } from './read';
 import { resolveAssignment } from './resolveAssignment';
 
@@ -91,18 +94,29 @@ const findLiveCardId = async (offerId: string): Promise<string | undefined> => {
 // bounded by the number of offers ever issued, and the filters live in the URL, not in a query.
 export const listOfferCardsFn = createServerFn({ method: 'GET' }).handler(async (): Promise<OfferCardView[]> => {
     const me = await requireUser();
-    const viewer = viewerFrom(me);
 
-    const rows = await selectOfferCards().orderBy(desc(offerCard.createdAt));
-    const visible = rows
-        .map((row) => {
-            return toOfferCardView(viewer, row);
-        })
-        .filter((view) => {
-            return view.access === 'read';
-        });
+    return listVisibleOfferCards(viewerFrom(me), 'all');
+});
 
-    return withUnreadCounts(viewer, visible);
+// The Attention Badge's items (offers-and-home/10): the same scoped read as the list, run through
+// the pure builder against Kyiv's today. Live cards only — the rule drops archived ones itself, and
+// the list read is bounded the same way. The Advertiser Claim field is not on the card yet (slice
+// 07), so its presence travels as unknown and raises no item until then.
+export const listAttentionItemsFn = createServerFn({ method: 'GET' }).handler(async (): Promise<AttentionView> => {
+    const me = await requireUser();
+    const today = kyivDay();
+    const counted = await listVisibleOfferCards(viewerFrom(me), 'live');
+
+    return {
+        today,
+        items: attentionItems(
+            me.role,
+            counted.map((view) => {
+                return { ...view, hasClaim: null };
+            }),
+            today
+        ),
+    };
 });
 
 export const createOfferCardFn = createServerFn({ method: 'POST' })

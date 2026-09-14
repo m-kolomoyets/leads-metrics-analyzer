@@ -3,6 +3,9 @@ export const offerKeys = {
     listQueryKey() {
         return [...offerKeys.all, 'list'] as const;
     },
+    attentionQueryKey() {
+        return [...offerKeys.all, 'attention'] as const;
+    },
     createMutationKey() {
         return [...offerKeys.all, 'create'] as const;
     },

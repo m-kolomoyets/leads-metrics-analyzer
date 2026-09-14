@@ -1,5 +1,6 @@
 import type { OfferAccess } from '@/lib/auth/offerAccess';
 import type { UserRole } from '@/lib/constants';
+import type { AttentionItem } from '@/lib/domain/attention';
 import type { OfferCurrency, OfferStringFragment } from '@/lib/domain/offerString';
 import type { OfferThreadEntryKind } from '@/lib/domain/offerThread';
 
@@ -86,4 +87,12 @@ export type OfferThreadEntryView = {
     deletedAt: string | null;
     // Whether the viewer may still edit or delete this entry, as the server judged it at read time.
     canEdit: boolean;
+};
+
+// The Attention Badge's read (offers-and-home/10): the viewer's items in one call, already built by
+// the pure rule on the server against Kyiv's today. `today` travels with them so the client's
+// deadline copy ("due in 2 days") reads the same day the items were judged on.
+export type AttentionView = {
+    items: AttentionItem[];
+    today: string;
 };

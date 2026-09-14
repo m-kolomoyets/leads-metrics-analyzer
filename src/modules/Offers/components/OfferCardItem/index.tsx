@@ -125,7 +125,12 @@ function OfferCardItem({
         <Card
             render={<article />}
             id={offerCardAnchor(card.id)}
-            className={cn('flex flex-col gap-3 p-4 target:ring-2 target:ring-ring', isArchived && 'border-dashed')}
+            // A hash landing (duplicate link, Attention Badge) scrolls the card clear of the fixed bar
+            // and the sticky page header, which would otherwise cover exactly the card promised.
+            className={cn(
+                'flex scroll-mt-[calc(var(--navbar-height,0px)+4rem)] flex-col gap-3 p-4 target:ring-2 target:ring-ring',
+                isArchived && 'border-dashed'
+            )}
         >
             <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                 <h3 className="flex items-baseline gap-2 text-base font-semibold tabular-nums">

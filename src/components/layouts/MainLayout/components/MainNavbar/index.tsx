@@ -2,6 +2,7 @@ import type { MainNavbarProps } from './types';
 import { Suspense } from 'react';
 import { cn } from '@/lib/utils/cn';
 import { NAVBAR_LINK_LIST, NAVBAR_SYSTEM_LINK_LIST } from './constants';
+import { AttentionBadge } from './components/AttentionBadge';
 import { NavbarBrand } from './components/NavbarBrand';
 import { NavbarNavigation } from './components/NavbarNavigation';
 import { NavbarNavigationFallback } from './components/NavbarNavigationFallback';
@@ -59,6 +60,9 @@ function MainNavbar({ isCondensed = false, className, ...rest }: MainNavbarProps
                         items={NAVBAR_SYSTEM_LINK_LIST}
                         className="border-border ml-2 border-l pl-2 [&:empty]:hidden"
                     />
+                    {/* The Attention Badge parks at the trailing end of the tab row — the row that
+                        never folds — so "what needs me now" is in view however far the page scrolled. */}
+                    <AttentionBadge />
                 </Suspense>
             </nav>
         </header>

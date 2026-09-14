@@ -1,6 +1,6 @@
 import type { Viewer } from '@/lib/auth/scope';
 import type { OfferCardView, OfferThreadEntryView } from './types';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { offerAccessFor } from '@/lib/auth/offerAccess';
 import { db } from '@/lib/db';
@@ -85,7 +85,7 @@ export const toOfferCardView = (viewer: Viewer, row: OfferCardJoinedRow, unreadC
 // Unread counters for the given cards (offers-and-home/08): the Thread comments and the viewer's
 // seen marks are loaded for exactly these cards and counted by the pure rule. Two bounded reads
 // rather than a correlated subquery, so the rule lives in one tested place.
-export const withUnreadCounts = async (viewer: Viewer, views: OfferCardView[]): Promise<OfferCardView[]> => {
+const withUnreadCounts = async (viewer: Viewer, views: OfferCardView[]): Promise<OfferCardView[]> => {
     if (views.length === 0) {
         return views;
     }
@@ -123,6 +123,22 @@ export const withUnreadCounts = async (viewer: Viewer, views: OfferCardView[]): 
 
         return { ...view, unreadCount: countUnread(own, viewer.id, lastSeenByCard.get(view.id) ?? null) };
     });
+};
+
+// Every card the viewer may see, newest first, with unread counters — the directory's read and
+// the Attention Badge's (which asks for live cards only; the archived ones raise nothing anyway).
+export const listVisibleOfferCards = async (viewer: Viewer, scope: 'all' | 'live'): Promise<OfferCardView[]> => {
+    const query = selectOfferCards().orderBy(desc(offerCard.createdAt));
+    const rows = await (scope === 'live' ? query.where(isNull(offerCard.archivedAt)) : query);
+    const visible = rows
+        .map((row) => {
+            return toOfferCardView(viewer, row);
+        })
+        .filter((view) => {
+            return view.access === 'read';
+        });
+
+    return withUnreadCounts(viewer, visible);
 };
 
 // The single shape every read and write returns; `undefined` when the card is missing or the viewer
