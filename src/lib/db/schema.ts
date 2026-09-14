@@ -12,6 +12,7 @@
 // and docs/adr/0002, 0006, 0007, 0015, 0018.
 
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import {
     date,
     doublePrecision,
@@ -22,6 +23,7 @@ import {
     text,
     timestamp,
     unique,
+    uniqueIndex,
     uuid,
 } from 'drizzle-orm/pg-core';
 
@@ -31,28 +33,36 @@ export const userRole = pgEnum('user_role', ['head', 'team_lead', 'buyer', 'desi
 // Head sets status; a disabled user cannot log in (spec story 22, 24).
 export const userStatus = pgEnum('user_status', ['active', 'invited', 'disabled']);
 
-export const user = pgTable('user', {
-    id: uuid('id').primaryKey().defaultRandom(),
-    email: text('email').notNull().unique(),
-    // Human handle shown wherever a person is named (Report feed, #52). Required — existing rows were
-    // backfilled once from the email local-part. Not unique: two people may share a first name.
-    nickname: text('nickname').notNull(),
-    // Argon2id hash only — never the plaintext (spec story 5).
-    passwordHash: text('password_hash').notNull(),
-    role: userRole('role').notNull().default('buyer'),
-    status: userStatus('status').notNull().default('invited'),
-    // A user belongs to at most one team (spec §Teams). Nullable: head/designer/bdm are teamless,
-    // and a buyer exists before placement. Forward ref to `team` (declared below) needs the
-    // AnyPgColumn annotation to break the circular-type inference (drizzle circular-FK guidance).
-    // `set null` so deleting a team unplaces its members rather than deleting them.
-    teamId: uuid('team_id').references(
-        (): AnyPgColumn => {
-            return team.id;
-        },
-        { onDelete: 'set null' }
-    ),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+export const user = pgTable(
+    'user',
+    {
+        id: uuid('id').primaryKey().defaultRandom(),
+        email: text('email').notNull().unique(),
+        // Human handle shown wherever a person is named (Report feed, #52). Required — existing rows were
+        // backfilled once from the email local-part. Unique case-insensitively (index below) so Assignment
+        // can resolve a buyer from a handle; the migration disambiguated earlier duplicates with a suffix.
+        nickname: text('nickname').notNull(),
+        // Argon2id hash only — never the plaintext (spec story 5).
+        passwordHash: text('password_hash').notNull(),
+        role: userRole('role').notNull().default('buyer'),
+        status: userStatus('status').notNull().default('invited'),
+        // A user belongs to at most one team (spec §Teams). Nullable: head/designer/bdm are teamless,
+        // and a buyer exists before placement. Forward ref to `team` (declared below) needs the
+        // AnyPgColumn annotation to break the circular-type inference (drizzle circular-FK guidance).
+        // `set null` so deleting a team unplaces its members rather than deleting them.
+        teamId: uuid('team_id').references(
+            (): AnyPgColumn => {
+                return team.id;
+            },
+            { onDelete: 'set null' }
+        ),
+        createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    },
+    (t) => {
+        // Mirrors `normalizeNickname` (trim + case-fold); the app trims before write, so `lower` suffices.
+        return [uniqueIndex('user_nickname_lower_key').on(sql`lower(${t.nickname})`)];
+    }
+);
 
 // A team has exactly one lead (spec §Teams) — `lead_id` is a single nullable FK, so a team can be
 // created before its lead is designated (PATCH /admin/teams/:id). `set null` so deleting the lead

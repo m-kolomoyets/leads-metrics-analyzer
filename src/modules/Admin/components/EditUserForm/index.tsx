@@ -2,7 +2,7 @@ import type { EditUserFormProps } from './types';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { updateUserMutationOptions } from '@/services/admin/queries';
-import { updateUserInputSchema } from '@/services/admin/schemas';
+import { NICKNAME_TAKEN_MESSAGE, updateUserInputSchema } from '@/services/admin/schemas';
 import { useAppForm } from '@/components/Form';
 import { Button } from '@/components/ui/Button';
 import { Field, FieldGroup, FieldSet } from '@/components/ui/Field';
@@ -55,7 +55,9 @@ function EditUserForm({ user, teams, onSuccess }: EditUserFormProps) {
                 },
                 onError(error) {
                     if (error instanceof Error && error.message) {
-                        formApi.setErrorMap({ onSubmit: { fields: { role: { message: error.message } } } });
+                        const field = error.message === NICKNAME_TAKEN_MESSAGE ? 'nickname' : 'role';
+
+                        formApi.setErrorMap({ onSubmit: { fields: { [field]: { message: error.message } } } });
                     } else {
                         toast.error('Failed to update user');
                     }

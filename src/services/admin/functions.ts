@@ -4,6 +4,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { requireHead } from '@/lib/auth/guards';
 import { issueInvitation } from '@/lib/auth/invitation';
+import { findNicknameOwner } from '@/lib/auth/nickname';
 import { hashPassword } from '@/lib/auth/password';
 import { canRequestPasswordReset } from '@/lib/auth/passwordResetPolicy';
 import { issueResetToken } from '@/lib/auth/passwordResetToken';
@@ -14,7 +15,9 @@ import {
     createUserInputSchema,
     deleteTeamInputSchema,
     deleteUserInputSchema,
+    EMAIL_TAKEN_MESSAGE,
     generateResetLinkInputSchema,
+    NICKNAME_TAKEN_MESSAGE,
     resendInvitationInputSchema,
     updateTeamInputSchema,
     updateTeamLeadInputSchema,
@@ -27,9 +30,33 @@ import {
 // gate. Because role/status/team live in the DB (the session store's source of truth), a
 // reassignment takes effect on the target user's next request (spec story 4).
 
-// Postgres unique_violation — a duplicate email hits the `user.email` unique index.
-const isUniqueViolation = (error: unknown) => {
-    return (error as { code?: string } | null)?.code === '23505';
+// Postgres unique_violation, keyed by the index it hit: `user.email` or the case-insensitive
+// nickname index. The nickname pre-check below normally fires first; this catches the race. An
+// unknown constraint is not translated — the caller rethrows it as-is.
+const UNIQUE_VIOLATION_MESSAGES: Record<string, string | undefined> = {
+    user_email_key: EMAIL_TAKEN_MESSAGE,
+    user_nickname_lower_key: NICKNAME_TAKEN_MESSAGE,
+};
+
+const uniqueViolationMessage = (error: unknown): string | undefined => {
+    const pgError = error as { code?: string; constraint_name?: string } | null;
+
+    if (pgError?.code !== '23505') {
+        return undefined;
+    }
+
+    return UNIQUE_VIOLATION_MESSAGES[pgError.constraint_name ?? ''];
+};
+
+// Reject a taken nickname with a readable message before the DB does (offers-and-home/02). Pulls
+// the handle column only — the table is a small team roster, and the comparison rule (trim +
+// case-fold) lives in one pure seam rather than being restated in SQL.
+const assertNicknameFree = async (nickname: string, excludeId?: string) => {
+    const rows = await db.select({ id: user.id, nickname: user.nickname }).from(user);
+
+    if (findNicknameOwner(nickname, rows, excludeId)) {
+        throw new Error(NICKNAME_TAKEN_MESSAGE);
+    }
 };
 
 const USER_COLUMNS = {
@@ -92,6 +119,8 @@ export const createUserFn = createServerFn({ method: 'POST' })
         // regardless.
         const passwordHash = await hashPassword(randomBytes(32).toString('hex'));
 
+        await assertNicknameFree(data.nickname);
+
         let row: AdminUser;
 
         try {
@@ -107,8 +136,10 @@ export const createUserFn = createServerFn({ method: 'POST' })
                 })
                 .returning(USER_COLUMNS);
         } catch (error) {
-            if (isUniqueViolation(error)) {
-                throw new Error('A user with this email already exists');
+            const message = uniqueViolationMessage(error);
+
+            if (message) {
+                throw new Error(message);
             }
 
             throw error;
@@ -208,6 +239,7 @@ export const updateUserFn = createServerFn({ method: 'POST' })
         }> = {};
 
         if (data.nickname !== undefined) {
+            await assertNicknameFree(data.nickname, data.id);
             updates.nickname = data.nickname;
         }
 
@@ -223,7 +255,19 @@ export const updateUserFn = createServerFn({ method: 'POST' })
             updates.teamId = data.teamId;
         }
 
-        const [row] = await db.update(user).set(updates).where(eq(user.id, data.id)).returning(USER_COLUMNS);
+        let row: AdminUser | undefined;
+
+        try {
+            [row] = await db.update(user).set(updates).where(eq(user.id, data.id)).returning(USER_COLUMNS);
+        } catch (error) {
+            const message = uniqueViolationMessage(error);
+
+            if (message) {
+                throw new Error(message);
+            }
+
+            throw error;
+        }
 
         if (!row) {
             throw new Error('User not found');

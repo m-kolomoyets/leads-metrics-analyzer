@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { createUserMutationOptions } from '@/services/admin/queries';
-import { createUserInputSchema } from '@/services/admin/schemas';
+import { createUserInputSchema, NICKNAME_TAKEN_MESSAGE } from '@/services/admin/schemas';
 import { useAppForm } from '@/components/Form';
 import { Button } from '@/components/ui/Button';
 import { Field, FieldGroup, FieldSet } from '@/components/ui/Field';
@@ -73,7 +73,11 @@ function CreateUserForm({ teams, onSuccess }: CreateUserFormProps) {
                 },
                 onError(error) {
                     if (error instanceof Error && error.message) {
-                        formApi.setErrorMap({ onSubmit: { fields: { email: { message: error.message } } } });
+                        // A taken nickname belongs under its own field; every other rejection
+                        // (duplicate email, anything unexpected) lands on email as before.
+                        const field = error.message === NICKNAME_TAKEN_MESSAGE ? 'nickname' : 'email';
+
+                        formApi.setErrorMap({ onSubmit: { fields: { [field]: { message: error.message } } } });
                     } else {
                         toast.error('Failed to create user');
                     }
