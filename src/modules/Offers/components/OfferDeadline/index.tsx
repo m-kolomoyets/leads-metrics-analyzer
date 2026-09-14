@@ -23,7 +23,7 @@ function OfferDeadline({ card, state, canEdit }: OfferDeadlineProps) {
     const { mutate: setDeadline, isPending } = useMutation(setOfferDeadlineMutationOptions());
     const isEditable = canEdit && card.archivedAt === null;
 
-    function change(deadline: string | null) {
+    function handleChange(deadline: string | null) {
         setDeadline(
             { offerCardId: card.id, deadline },
             {
@@ -58,7 +58,7 @@ function OfferDeadline({ card, state, canEdit }: OfferDeadlineProps) {
         <span className="flex items-center gap-1">
             <DatePicker
                 value={card.deadline ?? ''}
-                onChange={change}
+                onChange={handleChange}
                 locale="en"
                 disabled={isPending}
                 className="h-6 rounded-sm px-2 text-xs"
@@ -70,7 +70,7 @@ function OfferDeadline({ card, state, canEdit }: OfferDeadlineProps) {
                     aria-label="Clear deadline"
                     disabled={isPending}
                     onClick={() => {
-                        change(null);
+                        handleChange(null);
                     }}
                 >
                     <XIcon />

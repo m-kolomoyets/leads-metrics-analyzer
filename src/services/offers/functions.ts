@@ -325,6 +325,12 @@ export const unarchiveOfferCardFn = createServerFn({ method: 'POST' })
         return { ok: true, card: view };
     });
 
+// Who can receive a card: a buyer or team lead placed in a team, not disabled. One predicate for
+// the picker's list and the change's check, so the two cannot drift apart.
+const assignableUsersFilter = () => {
+    return and(isNotNull(user.teamId), inArray(user.role, ['buyer', 'team_lead']), ne(user.status, 'disabled'));
+};
+
 // The roster the Assignment picker offers (offers-and-home/06): every team, and every user who can
 // receive a card — a buyer or team lead placed in a team, not disabled. Gated like the change itself,
 // so a role that cannot reassign never lists the company's people through this door.
@@ -340,7 +346,7 @@ export const listOfferAssigneesFn = createServerFn({ method: 'GET' }).handler(as
         db
             .select({ id: user.id, nickname: user.nickname, teamId: user.teamId })
             .from(user)
-            .where(and(isNotNull(user.teamId), inArray(user.role, ['buyer', 'team_lead']), ne(user.status, 'disabled')))
+            .where(assignableUsersFilter())
             .orderBy(user.nickname),
     ]);
 
@@ -375,9 +381,11 @@ export const changeOfferAssignmentFn = createServerFn({ method: 'POST' })
             throw new Error(FORBIDDEN_MESSAGE);
         }
 
+        // The same roster the picker lists — a hand-built request cannot name a disabled user or
+        // a role that never receives a card.
         const [teams, users] = await Promise.all([
             db.select({ id: team.id }).from(team),
-            db.select({ id: user.id, teamId: user.teamId }).from(user),
+            db.select({ id: user.id, teamId: user.teamId }).from(user).where(assignableUsersFilter()),
         ]);
         const picked = pickAssignment({ teamId: data.teamId, buyerUserId: data.buyerUserId }, teams, users);
 
@@ -385,30 +393,40 @@ export const changeOfferAssignmentFn = createServerFn({ method: 'POST' })
             return { ok: false, reason: picked.reason };
         }
 
-        await db
-            .update(offerCard)
-            .set({
-                teamId: picked.teamId,
-                buyerUserId: picked.buyerUserId,
-                isAssignmentUnresolved: false,
-                updatedAt: new Date(),
-            })
-            .where(eq(offerCard.id, data.offerCardId));
+        // The change and its Thread entry land together (PRD story 32): ownership history must
+        // never miss a step. The entry names the new Assignment as people read it, with the actor.
+        await db.transaction(async (tx) => {
+            await tx
+                .update(offerCard)
+                .set({
+                    teamId: picked.teamId,
+                    buyerUserId: picked.buyerUserId,
+                    isAssignmentUnresolved: false,
+                    updatedAt: new Date(),
+                })
+                .where(eq(offerCard.id, data.offerCardId));
+
+            const [assigned] = await tx
+                .select({ teamName: team.name, buyerNickname: user.nickname })
+                .from(offerCard)
+                .leftJoin(team, eq(offerCard.teamId, team.id))
+                .leftJoin(user, eq(offerCard.buyerUserId, user.id))
+                .where(eq(offerCard.id, data.offerCardId))
+                .limit(1);
+
+            await tx.insert(offerThreadEntry).values({
+                offerCardId: data.offerCardId,
+                authorUserId: me.id,
+                kind: 'assignment_changed',
+                body: `${assigned?.teamName ?? current.assignedTeamText} · ${assigned?.buyerNickname ?? 'whole team'}`,
+            });
+        });
 
         const view = await loadOfferCardView(viewer, data.offerCardId);
 
         if (!view) {
             throw new Error(OFFER_NOT_FOUND_MESSAGE);
         }
-
-        // Ownership history lives in the Thread (PRD story 32): the new Assignment as people read
-        // it, with the actor.
-        await db.insert(offerThreadEntry).values({
-            offerCardId: view.id,
-            authorUserId: me.id,
-            kind: 'assignment_changed',
-            body: `${view.teamName ?? view.assignedTeamText} · ${view.buyerNickname ?? 'whole team'}`,
-        });
 
         return { ok: true, card: view };
     });
@@ -441,16 +459,18 @@ export const setOfferDeadlineFn = createServerFn({ method: 'POST' })
             return current;
         }
 
-        await db
-            .update(offerCard)
-            .set({ deadline: data.deadline, updatedAt: new Date() })
-            .where(eq(offerCard.id, data.offerCardId));
+        await db.transaction(async (tx) => {
+            await tx
+                .update(offerCard)
+                .set({ deadline: data.deadline, updatedAt: new Date() })
+                .where(eq(offerCard.id, data.offerCardId));
 
-        await db.insert(offerThreadEntry).values({
-            offerCardId: data.offerCardId,
-            authorUserId: me.id,
-            kind: 'deadline_changed',
-            body: data.deadline === null ? '' : formatDeadline(data.deadline),
+            await tx.insert(offerThreadEntry).values({
+                offerCardId: data.offerCardId,
+                authorUserId: me.id,
+                kind: 'deadline_changed',
+                body: data.deadline === null ? '' : formatDeadline(data.deadline),
+            });
         });
 
         const view = await loadOfferCardView(viewer, data.offerCardId);
