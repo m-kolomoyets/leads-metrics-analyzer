@@ -17,3 +17,8 @@ export type RetryOfferFxInput = z.infer<typeof retryOfferFxInputSchema>;
 export const retryOfferFxInputSchema = z.object({
     offerCardId: z.uuid(),
 });
+
+export type OfferCardIdInput = z.infer<typeof offerCardIdInputSchema>;
+export const offerCardIdInputSchema = z.object({
+    offerCardId: z.uuid(),
+});

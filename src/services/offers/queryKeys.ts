@@ -9,4 +9,13 @@ export const offerKeys = {
     retryFxMutationKey() {
         return [...offerKeys.all, 'retry-fx'] as const;
     },
+    unlistedQueryKey() {
+        return [...offerKeys.all, 'unlisted'] as const;
+    },
+    archiveMutationKey() {
+        return [...offerKeys.all, 'archive'] as const;
+    },
+    unarchiveMutationKey() {
+        return [...offerKeys.all, 'unarchive'] as const;
+    },
 };

@@ -14,14 +14,14 @@ import { offerCardAnchor, PARSE_FAILURE_MESSAGES } from '../../constants';
 // a parse failure lands under the string field naming the fragment, a duplicate live `offer_id`
 // under the id field with a link to the card that already exists. Both are outcomes, not errors —
 // nothing was saved, the author edits and resubmits.
-function CreateOfferCardForm({ onSuccess }: CreateOfferCardFormProps) {
+function CreateOfferCardForm({ defaultValues, onSuccess }: CreateOfferCardFormProps) {
     const { mutateAsync: createOfferCard } = useMutation(createOfferCardMutationOptions());
     const [duplicateCardId, setDuplicateCardId] = useState<string | null>(null);
 
     const form = useAppForm({
         defaultValues: {
-            offerId: '',
-            rawString: '',
+            offerId: defaultValues?.offerId ?? '',
+            rawString: defaultValues?.rawString ?? '',
         },
         async onSubmit({ value, formApi }) {
             setDuplicateCardId(null);

@@ -39,3 +39,16 @@ export type CreateOfferCardResult =
     | { ok: true; card: OfferCardView }
     | { ok: false; reason: 'parse'; fragment: OfferStringFragment }
     | { ok: false; reason: 'duplicate'; existingCardId: string };
+
+// An Unlisted Offer (CONTEXT.md): an `offer_id` seen in the viewer's active Snapshots' Campaign Models
+// with no live card anywhere. `label` is the Keitaro offer name as the model stored it — the seed for
+// the card's raw string; `lastReportDate` is the latest day it ran, for ordering (PRD story 15).
+export type UnlistedOfferView = {
+    offerId: string;
+    label: string;
+    lastReportDate: string;
+};
+
+// Unarchive is refused as data, like create: a newer live card may have taken the id meanwhile.
+export type UnarchiveOfferCardResult =
+    { ok: true; card: OfferCardView } | { ok: false; reason: 'duplicate'; existingCardId: string };

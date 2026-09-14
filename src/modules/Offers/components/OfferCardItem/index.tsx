@@ -1,15 +1,21 @@
 import type { OfferWarning } from '@/services/offers/warnings';
 import type { OfferCardItemProps } from './types';
 import { useMutation } from '@tanstack/react-query';
-import { RefreshCwIcon, TriangleAlertIcon } from 'lucide-react';
+import { ArchiveIcon, ArchiveRestoreIcon, RefreshCwIcon, TriangleAlertIcon } from 'lucide-react';
 import { toast } from 'sonner';
-import { retryOfferFxMutationOptions } from '@/services/offers/queries';
+import { cn } from '@/lib/utils/cn';
+import {
+    archiveOfferCardMutationOptions,
+    retryOfferFxMutationOptions,
+    unarchiveOfferCardMutationOptions,
+} from '@/services/offers/queries';
 import { offerWarnings } from '@/services/offers/warnings';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { offerCardAnchor } from '../../constants';
 import { formatPayoutOriginal, formatPayoutUsd } from '../../utils/formatPayout';
+import { Highlight } from '../Highlight';
 
 const createdFormat = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium' });
 
@@ -29,9 +35,13 @@ const warningText = (warning: OfferWarning): string => {
 
 // One Offer Card in the directory (offers-and-home/04): id and Payout up top, the raw string as the
 // caption underneath (PRD story 12), then who it is for and who issued it. Warnings sit last, each
-// with its fix where one exists here (retry the rate); fixing an Assignment is slice 06.
-function OfferCardItem({ card, canRetryFx }: OfferCardItemProps) {
+// with its fix where one exists here (retry the rate); fixing an Assignment is slice 06. An archived
+// card is read-only (story 10): it keeps everything but offers no action beyond unarchive.
+function OfferCardItem({ card, query, canRetryFx, canArchive }: OfferCardItemProps) {
     const { mutate: retryFx, isPending: isRetrying } = useMutation(retryOfferFxMutationOptions());
+    const { mutate: archive, isPending: isArchiving } = useMutation(archiveOfferCardMutationOptions());
+    const { mutate: unarchive, isPending: isUnarchiving } = useMutation(unarchiveOfferCardMutationOptions());
+    const isArchived = card.archivedAt !== null;
     const warnings = offerWarnings(card);
     const original = formatPayoutOriginal(card);
     const assignment = card.isAssignmentUnresolved
@@ -56,14 +66,51 @@ function OfferCardItem({ card, canRetryFx }: OfferCardItemProps) {
         );
     }
 
+    function handleArchive() {
+        archive(
+            { offerCardId: card.id },
+            {
+                onSuccess() {
+                    toast.success('Offer card archived');
+                },
+                onError() {
+                    toast.error('Failed to archive the card');
+                },
+            }
+        );
+    }
+
+    function handleUnarchive() {
+        unarchive(
+            { offerCardId: card.id },
+            {
+                onSuccess(result) {
+                    if (result.ok) {
+                        toast.success('Offer card restored');
+                    } else {
+                        toast.error('A live card for this offer already exists');
+                    }
+                },
+                onError() {
+                    toast.error('Failed to restore the card');
+                },
+            }
+        );
+    }
+
     return (
         <Card
             render={<article />}
             id={offerCardAnchor(card.id)}
-            className="flex flex-col gap-3 p-4 target:ring-2 target:ring-ring"
+            className={cn('flex flex-col gap-3 p-4 target:ring-2 target:ring-ring', isArchived && 'border-dashed')}
         >
             <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                <h3 className="text-base font-semibold tabular-nums">#{card.offerId}</h3>
+                <h3 className="flex items-baseline gap-2 text-base font-semibold tabular-nums">
+                    <span>
+                        #<Highlight text={card.offerId} query={query} />
+                    </span>
+                    {isArchived && <Badge variant="outline">Archived</Badge>}
+                </h3>
                 <p className="flex items-baseline gap-2">
                     <span className={card.payoutUsd === null ? 'text-muted-foreground text-sm' : 'font-semibold'}>
                         {formatPayoutUsd(card)}
@@ -72,7 +119,9 @@ function OfferCardItem({ card, canRetryFx }: OfferCardItemProps) {
                 </p>
             </header>
 
-            <p className="text-muted-foreground font-mono text-xs break-words">{card.rawString}</p>
+            <p className="text-muted-foreground font-mono text-xs break-words">
+                <Highlight text={card.rawString} query={query} />
+            </p>
 
             <dl className="text-muted-foreground flex flex-wrap gap-x-6 gap-y-1 text-xs">
                 <div className="flex gap-1">
@@ -100,7 +149,7 @@ function OfferCardItem({ card, canRetryFx }: OfferCardItemProps) {
                             <li key={warning.kind} className="text-zone-yellow flex items-center gap-2 text-xs">
                                 <TriangleAlertIcon className="size-3.5 shrink-0" aria-hidden="true" />
                                 <span>{warningText(warning)}</span>
-                                {warning.kind === 'fx_pending' && canRetryFx && (
+                                {warning.kind === 'fx_pending' && canRetryFx && !isArchived && (
                                     <Button
                                         size="xs"
                                         variant="outline"
@@ -116,6 +165,22 @@ function OfferCardItem({ card, canRetryFx }: OfferCardItemProps) {
                         );
                     })}
                 </ul>
+            )}
+
+            {canArchive && (
+                <footer className="flex justify-end">
+                    {isArchived ? (
+                        <Button size="xs" variant="ghost" onClick={handleUnarchive} isLoading={isUnarchiving}>
+                            <ArchiveRestoreIcon data-icon="inline-start" />
+                            Unarchive
+                        </Button>
+                    ) : (
+                        <Button size="xs" variant="ghost" onClick={handleArchive} isLoading={isArchiving}>
+                            <ArchiveIcon data-icon="inline-start" />
+                            Archive
+                        </Button>
+                    )}
+                </footer>
             )}
         </Card>
     );

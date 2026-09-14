@@ -2,6 +2,8 @@ import type { OfferCardView } from '@/services/offers/types';
 
 export type OfferCardItemProps = {
     card: OfferCardView;
-    // Whether the viewer may retry a pending rate (the create roles).
+    // The search text, for painting hits in the id and caption.
+    query: string;
     canRetryFx: boolean;
+    canArchive: boolean;
 };

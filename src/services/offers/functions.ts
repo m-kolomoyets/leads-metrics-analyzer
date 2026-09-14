@@ -1,14 +1,17 @@
 import type { Viewer } from '@/lib/auth/scope';
 import type { MeData } from '@/services/auth/types';
-import type { CreateOfferCardResult, OfferCardView } from './types';
+import type { CreateOfferCardResult, OfferCardView, UnarchiveOfferCardResult, UnlistedOfferView } from './types';
 import { createServerFn } from '@tanstack/react-start';
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, desc, eq, isNull, max, ne, notInArray } from 'drizzle-orm';
+import { assertDimension } from '@/lib/auth/denial';
 import { FORBIDDEN_MESSAGE, requireUser } from '@/lib/auth/guards';
 import { canOffer } from '@/lib/auth/offerAccess';
+import { scopeFor } from '@/lib/auth/scope';
 import { db } from '@/lib/db';
-import { offerCard, team, user } from '@/lib/db/schema';
+import { offerCard, snapshot, snapshotCampaignModel, team, user } from '@/lib/db/schema';
 import { parseOfferString } from '@/lib/domain/offerString';
-import { createOfferCardInputSchema, retryOfferFxInputSchema } from './schemas';
+import { listSnapshotsFilter, matchesNoRows } from '@/services/snapshots/visibility';
+import { createOfferCardInputSchema, offerCardIdInputSchema, retryOfferFxInputSchema } from './schemas';
 import { fixRateToUsd } from './fx';
 import { loadOfferCardView, selectOfferCards, toOfferCardView } from './read';
 import { resolveAssignment } from './resolveAssignment';
@@ -48,13 +51,14 @@ const findLiveCardId = async (offerId: string): Promise<string | undefined> => {
     return existing?.id;
 };
 
-// Live cards the viewer may see, newest first. Archived cards are out until the filter lands
-// (slice 05).
+// Every card the viewer may see, live and archived, newest first. Search and filters (incl. the
+// archived/live split) are the client's, over this scoped list (ADR-0004) — the directory is
+// bounded by the number of offers ever issued, and the filters live in the URL, not in a query.
 export const listOfferCardsFn = createServerFn({ method: 'GET' }).handler(async (): Promise<OfferCardView[]> => {
     const me = await requireUser();
     const viewer = viewerFrom(me);
 
-    const rows = await selectOfferCards().where(isNull(offerCard.archivedAt)).orderBy(desc(offerCard.createdAt));
+    const rows = await selectOfferCards().orderBy(desc(offerCard.createdAt));
 
     return rows
         .map((row) => {
@@ -198,3 +202,140 @@ export const retryOfferFxFn = createServerFn({ method: 'POST' })
 
         return view;
     });
+
+// Archive (PRD story 10): the card leaves the live list, keeps its history and frees its `offer_id`
+// for a newer card. Idempotent — archiving an archived card is the same answer.
+export const archiveOfferCardFn = createServerFn({ method: 'POST' })
+    .inputValidator(offerCardIdInputSchema)
+    .handler(async ({ data }): Promise<OfferCardView> => {
+        const me = await requireUser();
+        const viewer = viewerFrom(me);
+
+        if (!canOffer(me.role, 'archive')) {
+            throw new Error(FORBIDDEN_MESSAGE);
+        }
+
+        const current = await loadOfferCardView(viewer, data.offerCardId);
+
+        if (!current) {
+            throw new Error(OFFER_NOT_FOUND_MESSAGE);
+        }
+
+        if (current.archivedAt === null) {
+            await db
+                .update(offerCard)
+                .set({ archivedAt: new Date(), updatedAt: new Date() })
+                .where(and(eq(offerCard.id, data.offerCardId), isNull(offerCard.archivedAt)));
+        }
+
+        const view = await loadOfferCardView(viewer, data.offerCardId);
+
+        if (!view) {
+            throw new Error(OFFER_NOT_FOUND_MESSAGE);
+        }
+
+        return view;
+    });
+
+// Unarchive puts the card back among the live ones — unless a newer live card took the id meanwhile,
+// in which case the caller gets the link, as on create. The partial unique index is the backstop.
+export const unarchiveOfferCardFn = createServerFn({ method: 'POST' })
+    .inputValidator(offerCardIdInputSchema)
+    .handler(async ({ data }): Promise<UnarchiveOfferCardResult> => {
+        const me = await requireUser();
+        const viewer = viewerFrom(me);
+
+        if (!canOffer(me.role, 'archive')) {
+            throw new Error(FORBIDDEN_MESSAGE);
+        }
+
+        const current = await loadOfferCardView(viewer, data.offerCardId);
+
+        if (!current) {
+            throw new Error(OFFER_NOT_FOUND_MESSAGE);
+        }
+
+        if (current.archivedAt !== null) {
+            const existingCardId = await findLiveCardId(current.offerId);
+
+            if (existingCardId) {
+                return { ok: false, reason: 'duplicate', existingCardId };
+            }
+
+            try {
+                await db
+                    .update(offerCard)
+                    .set({ archivedAt: null, updatedAt: new Date() })
+                    .where(eq(offerCard.id, data.offerCardId));
+            } catch (error) {
+                if (isLiveOfferIdViolation(error)) {
+                    const winnerId = await findLiveCardId(current.offerId);
+
+                    if (winnerId) {
+                        return { ok: false, reason: 'duplicate', existingCardId: winnerId };
+                    }
+                }
+
+                throw error;
+            }
+        }
+
+        const view = await loadOfferCardView(viewer, data.offerCardId);
+
+        if (!view) {
+            throw new Error(OFFER_NOT_FOUND_MESSAGE);
+        }
+
+        return { ok: true, card: view };
+    });
+
+// Unlisted Offers (PRD story 15): every `offer_id` in the viewer's active Snapshots' Campaign Models
+// with no live card ANYWHERE — a card the viewer cannot see still lists the offer, so the check is
+// global while the Snapshots are row-scoped through the same seam every Snapshot read composes
+// (`listSnapshotsFilter`). Latest-run first, so what is running now sits on top.
+export const listUnlistedOffersFn = createServerFn({ method: 'GET' }).handler(
+    async (): Promise<UnlistedOfferView[]> => {
+        const me = await requireUser();
+        const scope = scopeFor(viewerFrom(me));
+
+        // A Designer's scope carries no offer dimension (PRD story 18): refused, not an empty list.
+        assertDimension(scope, 'offer');
+
+        if (matchesNoRows(scope)) {
+            return [];
+        }
+
+        const liveOfferIds = db
+            .select({ offerId: offerCard.offerId })
+            .from(offerCard)
+            .where(isNull(offerCard.archivedAt));
+
+        const rows = await db
+            .select({
+                offerId: snapshotCampaignModel.key,
+                label: max(snapshotCampaignModel.label),
+                lastReportDate: max(snapshot.reportDate),
+            })
+            .from(snapshotCampaignModel)
+            .innerJoin(snapshot, eq(snapshotCampaignModel.snapshotId, snapshot.id))
+            .where(
+                and(
+                    listSnapshotsFilter(scope),
+                    eq(snapshotCampaignModel.dimension, 'offer'),
+                    // A campaign whose Keitaro rows carried no Offer ID models under an empty key.
+                    ne(snapshotCampaignModel.key, ''),
+                    notInArray(snapshotCampaignModel.key, liveOfferIds)
+                )
+            )
+            .groupBy(snapshotCampaignModel.key)
+            .orderBy(desc(max(snapshot.reportDate)), snapshotCampaignModel.key);
+
+        return rows.map((row): UnlistedOfferView => {
+            return {
+                offerId: row.offerId,
+                label: row.label ?? '',
+                lastReportDate: row.lastReportDate ?? '',
+            };
+        });
+    }
+);
