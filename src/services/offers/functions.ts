@@ -6,12 +6,13 @@ import type {
     CreateOfferCardResult,
     OfferAssigneesView,
     OfferCardView,
+    OfferRatingView,
     OfferThreadEntryView,
     UnarchiveOfferCardResult,
     UnlistedOfferView,
 } from './types';
 import { createServerFn } from '@tanstack/react-start';
-import { and, desc, eq, inArray, isNotNull, isNull, max, ne, notInArray } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lte, max, ne, notInArray } from 'drizzle-orm';
 import { assertDimension } from '@/lib/auth/denial';
 import { FORBIDDEN_MESSAGE, requireUser } from '@/lib/auth/guards';
 import { canOffer } from '@/lib/auth/offerAccess';
@@ -23,11 +24,14 @@ import {
     offerThreadEntry,
     snapshot,
     snapshotCampaignModel,
+    snapshotFact,
+    snapshotGeo,
     team,
     user,
 } from '@/lib/db/schema';
 import { attentionItems } from '@/lib/domain/attention';
 import { formatDeadline } from '@/lib/domain/deadline';
+import { ratingPeriodRange } from '@/lib/domain/offerRating';
 import { parseOfferString } from '@/lib/domain/offerString';
 import { canEditComment } from '@/lib/domain/offerThread';
 import { kyivDay } from '@/lib/utils/kyivDay';
@@ -38,6 +42,7 @@ import {
     createOfferCardInputSchema,
     editOfferCommentInputSchema,
     offerCardIdInputSchema,
+    offerRatingInputSchema,
     offerThreadEntryIdInputSchema,
     retryOfferFxInputSchema,
     setOfferDeadlineInputSchema,
@@ -681,3 +686,134 @@ export const listUnlistedOffersFn = createServerFn({ method: 'GET' }).handler(
         });
     }
 );
+
+// The offer buyer rating's rows (offers-and-home/11, PRD stories 38–45). Gated by `seeRating` — a
+// buyer is refused, not handed an empty list (story 45) — and row-scoped through the same
+// `listSnapshotsFilter` every Snapshot read composes, so a team lead reads their team only (story
+// 44). Selection only (ADR-0004): every active push in the period for the buyers who ran the offer,
+// the offer's Campaign Model rows, each campaign's Geo from that push's Facts, and the Frozen Geo
+// Rollup's costing half; the client picks the latest push per day and prices the rows.
+export const listOfferRatingFn = createServerFn({ method: 'GET' })
+    .inputValidator(offerRatingInputSchema)
+    .handler(async ({ data }): Promise<OfferRatingView> => {
+        const me = await requireUser();
+
+        if (!canOffer(me.role, 'seeRating')) {
+            throw new Error(FORBIDDEN_MESSAGE);
+        }
+
+        const scope = scopeFor(viewerFrom(me));
+        const today = kyivDay();
+        const empty: OfferRatingView = { today, snapshots: [], models: [], geos: [] };
+
+        if (matchesNoRows(scope)) {
+            return empty;
+        }
+
+        const { from, to } = ratingPeriodRange(data.period, today);
+        const inPeriod = and(listSnapshotsFilter(scope), gte(snapshot.reportDate, from), lte(snapshot.reportDate, to));
+
+        // The offer's rows first: they name the pushes and the buyers the rest of the read is about.
+        const modelRows = await db
+            .select({
+                snapshotId: snapshotCampaignModel.snapshotId,
+                buyerUserId: snapshot.createdByUserId,
+                campaign: snapshotCampaignModel.campaign,
+                revenue: snapshotCampaignModel.revenue,
+                installs: snapshotCampaignModel.installs,
+                sales: snapshotCampaignModel.sales,
+            })
+            .from(snapshotCampaignModel)
+            .innerJoin(snapshot, eq(snapshotCampaignModel.snapshotId, snapshot.id))
+            .where(
+                and(inPeriod, eq(snapshotCampaignModel.dimension, 'offer'), eq(snapshotCampaignModel.key, data.offerId))
+            );
+
+        if (modelRows.length === 0) {
+            return empty;
+        }
+
+        const snapshotIds = [
+            ...new Set(
+                modelRows.map((row) => {
+                    return row.snapshotId;
+                })
+            ),
+        ];
+        const buyerIds = [
+            ...new Set(
+                modelRows.map((row) => {
+                    return row.buyerUserId;
+                })
+            ),
+        ];
+        const campaigns = [
+            ...new Set(
+                modelRows.map((row) => {
+                    return row.campaign;
+                })
+            ),
+        ];
+
+        // Every push of those buyers in the period, not only the ones carrying the offer: the latest
+        // push restates the day, and one that dropped the offer must win over an earlier one that had
+        // it (ADR-0017). Nicknames ride along so the rating needs no roster read.
+        const [pushes, campaignGeos, geos] = await Promise.all([
+            db
+                .select({
+                    snapshotId: snapshot.id,
+                    buyerUserId: snapshot.createdByUserId,
+                    buyerNickname: user.nickname,
+                    reportDate: snapshot.reportDate,
+                    takenAt: snapshot.takenAt,
+                    status: snapshot.status,
+                })
+                .from(snapshot)
+                .innerJoin(user, eq(snapshot.createdByUserId, user.id))
+                .where(and(inPeriod, inArray(snapshot.createdByUserId, buyerIds)))
+                .orderBy(snapshot.takenAt),
+            db
+                .selectDistinct({
+                    snapshotId: snapshotFact.snapshotId,
+                    campaign: snapshotFact.campaign,
+                    geo: snapshotFact.geo,
+                })
+                .from(snapshotFact)
+                .where(and(inArray(snapshotFact.snapshotId, snapshotIds), inArray(snapshotFact.campaign, campaigns))),
+            db
+                .select({
+                    snapshotId: snapshotGeo.snapshotId,
+                    geo: snapshotGeo.geo,
+                    spendPlus: snapshotGeo.spendPlus,
+                    installs: snapshotGeo.installs,
+                })
+                .from(snapshotGeo)
+                .where(inArray(snapshotGeo.snapshotId, snapshotIds)),
+        ]);
+
+        const geoOf = new Map(
+            campaignGeos.map((row) => {
+                return [`${row.snapshotId}\u0000${row.campaign}`, row.geo] as const;
+            })
+        );
+
+        return {
+            today,
+            snapshots: pushes.map((row) => {
+                return { ...row, takenAt: row.takenAt.toISOString() };
+            }),
+            models: modelRows.map((row) => {
+                return {
+                    snapshotId: row.snapshotId,
+                    campaign: row.campaign,
+                    // A campaign with no Fact in its own push has no market to price it in; the
+                    // rule then allocates it nothing.
+                    geo: geoOf.get(`${row.snapshotId}\u0000${row.campaign}`) ?? '',
+                    revenue: row.revenue,
+                    installs: row.installs,
+                    sales: row.sales,
+                };
+            }),
+            geos,
+        };
+    });

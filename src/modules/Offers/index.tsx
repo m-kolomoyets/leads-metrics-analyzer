@@ -45,6 +45,7 @@ function Offers() {
     const canChangeAssignment = canOffer(role, 'changeAssignment');
     const canComment = canOffer(role, 'comment');
     const canEditDeadline = canOffer(role, 'editDeadline');
+    const canSeeRating = canOffer(role, 'seeRating');
     // Null while closed; an object (possibly empty) while open, so a seed from an Unlisted Offer
     // survives until the sheet closes and the next "New card" opens blank.
     const [createSeed, setCreateSeed] = useState<Partial<CreateOfferCardInput> | null>(null);
@@ -139,6 +140,7 @@ function Offers() {
                                         canArchive={canArchive}
                                         canChangeAssignment={canChangeAssignment}
                                         canComment={canComment}
+                                        canSeeRating={canSeeRating}
                                     />
                                 </li>
                             );

@@ -27,6 +27,7 @@ import { formatPayoutOriginal, formatPayoutUsd } from '../../utils/formatPayout'
 import { ChangeAssignmentForm } from '../ChangeAssignmentForm';
 import { Highlight } from '../Highlight';
 import { OfferDeadline } from '../OfferDeadline';
+import { OfferRating } from '../OfferRating';
 import { OfferThread } from '../OfferThread';
 
 const createdFormat = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium' });
@@ -56,6 +57,7 @@ function OfferCardItem({
     canArchive,
     canChangeAssignment,
     canComment,
+    canSeeRating,
     deadlineState,
     canEditDeadline,
 }: OfferCardItemProps) {
@@ -212,6 +214,9 @@ function OfferCardItem({
                     })}
                 </ul>
             )}
+
+            {/* An archived card keeps its rating (story 10): the history is the point of keeping it. */}
+            {canSeeRating && <OfferRating card={card} />}
 
             <footer className="flex items-center justify-between gap-2">
                 <Button

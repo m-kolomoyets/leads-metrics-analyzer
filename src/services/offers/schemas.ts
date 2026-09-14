@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { RATING_PERIODS } from '@/lib/domain/offerRating';
 
 // Zod input schemas for the Offers API (offers-and-home/04). Validated at the server-function
 // boundary (`inputValidator`) so handlers can trust the shape; the offer string itself is parsed
@@ -61,4 +62,11 @@ export const setOfferDeadlineInputSchema = z.object({
     offerCardId: z.uuid(),
     // `YYYY-MM-DD`, or null to clear (slice 09).
     deadline: z.iso.date().nullable(),
+});
+
+export type OfferRatingInputData = z.infer<typeof offerRatingInputSchema>;
+export const offerRatingInputSchema = z.object({
+    // The external Keitaro offer id the card is keyed by — the Campaign Model's `key`.
+    offerId: z.string().trim().min(1),
+    period: z.enum(RATING_PERIODS),
 });

@@ -5,6 +5,7 @@ import type {
     CreateOfferCardInput,
     EditOfferCommentInput,
     OfferCardIdInput,
+    OfferRatingInputData,
     OfferThreadEntryIdInput,
     RetryOfferFxInput,
     SetOfferDeadlineInput,
@@ -20,6 +21,7 @@ import {
     listAttentionItemsFn,
     listOfferAssigneesFn,
     listOfferCardsFn,
+    listOfferRatingFn,
     listOfferThreadFn,
     listUnlistedOffersFn,
     markOfferCardSeenFn,
@@ -220,6 +222,17 @@ export const setOfferDeadlineMutationOptions = () => {
         onSuccess(_data, variables, _onMutateResult, { client }) {
             invalidateOfferCards(client);
             client.invalidateQueries({ queryKey: offerKeys.threadQueryKey(variables.offerCardId) });
+        },
+    });
+};
+
+// The offer buyer rating's rows (offers-and-home/11), keyed per offer and period: switching the
+// period is a new read, and a period already opened is served from cache.
+export const offerRatingQueryOptions = ({ offerId, period }: OfferRatingInputData) => {
+    return queryOptions({
+        queryKey: offerKeys.ratingQueryKey(offerId, period),
+        queryFn() {
+            return listOfferRatingFn({ data: { offerId, period } });
         },
     });
 };

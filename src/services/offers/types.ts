@@ -1,6 +1,7 @@
 import type { OfferAccess } from '@/lib/auth/offerAccess';
 import type { UserRole } from '@/lib/constants';
 import type { AttentionItem } from '@/lib/domain/attention';
+import type { OfferRatingInput } from '@/lib/domain/offerRating';
 import type { OfferCurrency, OfferStringFragment } from '@/lib/domain/offerString';
 import type { OfferThreadEntryKind } from '@/lib/domain/offerThread';
 
@@ -94,5 +95,12 @@ export type OfferThreadEntryView = {
 // deadline copy ("due in 2 days") reads the same day the items were judged on.
 export type AttentionView = {
     items: AttentionItem[];
+    today: string;
+};
+
+// The offer buyer rating's read (offers-and-home/11): the frozen rows the pure `offerRating` sums,
+// already row-scoped and period-bounded, never the sums themselves (ADR-0004). `today` is Kyiv's
+// day the window was cut on, so the client dims against the same day the server selected by.
+export type OfferRatingView = OfferRatingInput & {
     today: string;
 };

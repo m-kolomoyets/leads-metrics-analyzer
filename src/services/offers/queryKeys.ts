@@ -1,3 +1,5 @@
+import type { RatingPeriod } from '@/lib/domain/offerRating';
+
 export const offerKeys = {
     all: ['offers'] as const,
     listQueryKey() {
@@ -44,5 +46,8 @@ export const offerKeys = {
     },
     setDeadlineMutationKey() {
         return [...offerKeys.all, 'set-deadline'] as const;
+    },
+    ratingQueryKey(offerId: string, period: RatingPeriod) {
+        return [...offerKeys.all, 'rating', offerId, period] as const;
     },
 };

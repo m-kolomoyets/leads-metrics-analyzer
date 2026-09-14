@@ -12,4 +12,6 @@ export type OfferCardItemProps = {
     canArchive: boolean;
     canChangeAssignment: boolean;
     canComment: boolean;
+    // The buyer rating under the card (offers-and-home/11): team lead, bdm, head — never a buyer.
+    canSeeRating: boolean;
 };
