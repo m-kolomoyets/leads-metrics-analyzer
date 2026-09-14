@@ -41,7 +41,14 @@ import {
 } from './schemas';
 import { fixRateToUsd } from './fx';
 import { pickAssignment } from './pickAssignment';
-import { loadOfferCardView, selectOfferCards, toOfferCardView, withUnreadCounts } from './read';
+import {
+    loadOfferCardView,
+    selectOfferCards,
+    selectThreadEntries,
+    toOfferCardView,
+    toThreadEntryView,
+    withUnreadCounts,
+} from './read';
 import { resolveAssignment } from './resolveAssignment';
 
 // Offers API (offers-and-home/04). Reads run every row through the pure `offerAccessFor` seam
@@ -459,44 +466,6 @@ export const setOfferDeadlineFn = createServerFn({ method: 'POST' })
 
 const ENTRY_NOT_FOUND_MESSAGE = 'Comment not found';
 
-const toThreadEntryView = (viewerId: string, now: Date, row: ThreadEntryRow): OfferThreadEntryView => {
-    const isDeleted = row.deletedAt !== null;
-
-    return {
-        id: row.id,
-        kind: row.kind,
-        // A deleted comment keeps its place, not its words.
-        body: isDeleted ? '' : row.body,
-        authorUserId: row.authorUserId,
-        authorNickname: row.authorNickname,
-        authorRole: row.authorRole,
-        createdAt: row.createdAt.toISOString(),
-        editedAt: row.editedAt?.toISOString() ?? null,
-        deletedAt: row.deletedAt?.toISOString() ?? null,
-        canEdit: canEditComment(row, viewerId, now),
-    };
-};
-
-const selectThreadEntries = () => {
-    return db
-        .select({
-            id: offerThreadEntry.id,
-            offerCardId: offerThreadEntry.offerCardId,
-            kind: offerThreadEntry.kind,
-            body: offerThreadEntry.body,
-            authorUserId: offerThreadEntry.authorUserId,
-            authorNickname: user.nickname,
-            authorRole: user.role,
-            createdAt: offerThreadEntry.createdAt,
-            editedAt: offerThreadEntry.editedAt,
-            deletedAt: offerThreadEntry.deletedAt,
-        })
-        .from(offerThreadEntry)
-        .leftJoin(user, eq(offerThreadEntry.authorUserId, user.id));
-};
-
-type ThreadEntryRow = Awaited<ReturnType<typeof selectThreadEntries>>[number];
-
 // Whoever may read the card may read its Thread (PRD story 30). Oldest first — newest at the bottom.
 export const listOfferThreadFn = createServerFn({ method: 'GET' })
     .inputValidator(offerCardIdInputSchema)
@@ -555,7 +524,7 @@ export const addOfferCommentFn = createServerFn({ method: 'POST' })
 // The author's own comment, within the 15-minute window (PRD story 31), on a card they can still
 // read and that is still live. The window is judged here against `created_at`, not trusted from
 // the client.
-const loadEditableComment = async (me: MeData, entryId: string): Promise<ThreadEntryRow> => {
+const loadEditableComment = async (me: MeData, entryId: string): Promise<void> => {
     const [row] = await selectThreadEntries().where(eq(offerThreadEntry.id, entryId)).limit(1);
 
     if (!row) {
@@ -571,8 +540,6 @@ const loadEditableComment = async (me: MeData, entryId: string): Promise<ThreadE
     if (card.archivedAt !== null || !canEditComment(row, me.id, new Date())) {
         throw new Error(FORBIDDEN_MESSAGE);
     }
-
-    return row;
 };
 
 export const editOfferCommentFn = createServerFn({ method: 'POST' })

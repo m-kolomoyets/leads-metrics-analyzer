@@ -1,11 +1,11 @@
 import type { Viewer } from '@/lib/auth/scope';
-import type { OfferCardView } from './types';
+import type { OfferCardView, OfferThreadEntryView } from './types';
 import { and, eq, inArray } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { offerAccessFor } from '@/lib/auth/offerAccess';
 import { db } from '@/lib/db';
 import { offerCard, offerCardSeen, offerThreadEntry, team, user } from '@/lib/db/schema';
-import { countUnread } from '@/lib/domain/offerThread';
+import { canEditComment, countUnread } from '@/lib/domain/offerThread';
 
 // SERVER-ONLY. The one joined read of `offer_card` (team name, buyer and creator nicknames) and its
 // mapping into the client view with the viewer's verdict attached. Kept out of `functions.ts` so the
@@ -143,4 +143,44 @@ export const loadOfferCardView = async (viewer: Viewer, offerCardId: string): Pr
     const [counted] = await withUnreadCounts(viewer, [view]);
 
     return counted;
+};
+
+// The Thread's joined read (offers-and-home/08) and its view mapping. Here, not in `functions.ts`:
+// a module-level `typeof` alias of the query builder there would keep drizzle in the client bundle.
+export const selectThreadEntries = () => {
+    return db
+        .select({
+            id: offerThreadEntry.id,
+            offerCardId: offerThreadEntry.offerCardId,
+            kind: offerThreadEntry.kind,
+            body: offerThreadEntry.body,
+            authorUserId: offerThreadEntry.authorUserId,
+            authorNickname: user.nickname,
+            authorRole: user.role,
+            createdAt: offerThreadEntry.createdAt,
+            editedAt: offerThreadEntry.editedAt,
+            deletedAt: offerThreadEntry.deletedAt,
+        })
+        .from(offerThreadEntry)
+        .leftJoin(user, eq(offerThreadEntry.authorUserId, user.id));
+};
+
+type ThreadEntryRow = Awaited<ReturnType<typeof selectThreadEntries>>[number];
+
+export const toThreadEntryView = (viewerId: string, now: Date, row: ThreadEntryRow): OfferThreadEntryView => {
+    const isDeleted = row.deletedAt !== null;
+
+    return {
+        id: row.id,
+        kind: row.kind,
+        // A deleted comment keeps its place, not its words.
+        body: isDeleted ? '' : row.body,
+        authorUserId: row.authorUserId,
+        authorNickname: row.authorNickname,
+        authorRole: row.authorRole,
+        createdAt: row.createdAt.toISOString(),
+        editedAt: row.editedAt?.toISOString() ?? null,
+        deletedAt: row.deletedAt?.toISOString() ?? null,
+        canEdit: canEditComment(row, viewerId, now),
+    };
 };
