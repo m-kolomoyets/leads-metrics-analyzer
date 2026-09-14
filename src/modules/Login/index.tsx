@@ -10,7 +10,7 @@ const TAGLINE = 'Where ad spend meets what it earned';
 
 function Login() {
     return (
-        <div className="grid h-full lg:grid-cols-2">
+        <div className="grid flex-1 lg:grid-cols-2">
             <div className="relative hidden flex-col justify-between bg-black p-10 lg:flex dark:bg-white">
                 <Link className="w-fit rounded-md" to="/login">
                     <span className="text-background text-xl font-semibold tracking-tight">{WORDMARK}</span>
