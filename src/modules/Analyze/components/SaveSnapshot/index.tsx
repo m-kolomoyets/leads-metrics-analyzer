@@ -6,11 +6,23 @@ import type { PresetView, SharedSettingsView } from '@/services/presets/types';
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { parseISODate } from '@/lib/utils/isoDate';
+import { kyivDay } from '@/lib/utils/kyivDay';
 import { createSnapshotMutationOptions } from '@/services/snapshots/queries';
 import { DatePicker } from '@/components/DatePicker';
-import { ui } from '@/components/report/utils/i18n';
+import { longDate, ui } from '@/components/report/utils/i18n';
 import { Button } from '@/components/ui/Button';
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/Dialog';
 import { Label } from '@/components/ui/Label';
+import { needsReportDateConfirmation } from '../../utils/reportDateConfirm';
 import { defaultReportDate, planSnapshot } from '../../utils/toSnapshot';
 
 type SaveSnapshotProps = {
@@ -28,12 +40,6 @@ type SaveSnapshotProps = {
     excluded: ReadonlySet<string>;
     locale: Locale;
 };
-
-// Today as a calendar date in the analyst's own timezone (`en-CA` renders ISO). `toISOString` would
-// shift the day for anyone east of UTC late in the evening.
-function today(): string {
-    return new Date().toLocaleDateString('en-CA');
-}
 
 // Save as Snapshot (S5, #25). One click freezes what is on screen: the applied ruleset is assembled
 // from each analyzed geo's ACTIVE preset version + the active shared-settings version, so the pinned
@@ -57,8 +63,10 @@ function SaveSnapshot({
     // covering another day re-defaults, while a hand-picked day survives every recompute. A
     // `useState` initializer would freeze the first upload's day and quietly stamp the wrong date.
     const [picked, setPicked] = useState<string | null>(null);
-    const reportDate = picked ?? defaultReportDate(facts, today());
-    const { mutateAsync: createSnapshot, isPending } = useMutation(createSnapshotMutationOptions());
+    // Today is Kyiv's today (ADR-0017) — the same day the confirmation below compares against.
+    const reportDate = picked ?? defaultReportDate(facts, kyivDay());
+    const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+    const { mutate: createSnapshot, isPending } = useMutation(createSnapshotMutationOptions());
 
     const plan = planSnapshot({
         facts,
@@ -90,11 +98,11 @@ function SaveSnapshot({
 
     const blocked = blockedReason();
 
-    async function handleSave() {
+    function push() {
         if (!plan.ok) {
             return;
         }
-        await createSnapshot(plan.input, {
+        createSnapshot(plan.input, {
             onSuccess() {
                 toast.success(ui('snapshotSaved', locale));
             },
@@ -103,6 +111,24 @@ function SaveSnapshot({
             },
         });
     }
+
+    // Any day but today rewrites a closed day, so the push waits for an explicit "yes" (ADR-0017).
+    // Today goes straight through — the common case stays one click.
+    function handleSave() {
+        if (needsReportDateConfirmation(reportDate)) {
+            setIsConfirmOpen(true);
+            return;
+        }
+        push();
+    }
+
+    function handleConfirm() {
+        setIsConfirmOpen(false);
+        push();
+    }
+
+    const parsedDate = parseISODate(reportDate);
+    const dateLabel = parsedDate ? longDate(parsedDate, locale) : reportDate;
 
     return (
         <div className="flex flex-wrap items-end gap-3">
@@ -127,6 +153,28 @@ function SaveSnapshot({
                     {ui('geoCount', locale)}
                 </span>
             )}
+            <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>{ui('snapshotDateConfirmTitle', locale)}</DialogTitle>
+                        <DialogDescription>
+                            {ui('snapshotDateConfirmBody', locale).replace('{date}', dateLabel)}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <DialogClose
+                            render={
+                                <Button type="button" variant="outline">
+                                    {ui('cancel', locale)}
+                                </Button>
+                            }
+                        />
+                        <Button type="button" onClick={handleConfirm}>
+                            {ui('snapshotDateConfirmYes', locale).replace('{date}', dateLabel)}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

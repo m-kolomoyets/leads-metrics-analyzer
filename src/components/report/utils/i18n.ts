@@ -107,6 +107,9 @@ const UI: Record<Locale, Record<string, string>> = {
         snapshotNeedsPreset: 'Спершу збережи пресет для гео',
         snapshotNoFacts: 'Немає рядків для збереження',
         snapshotNeedsDate: 'Вкажи дату звіту',
+        snapshotDateConfirmTitle: 'Зберегти не за сьогодні?',
+        snapshotDateConfirmBody: 'Звіт буде зараховано за {date}, а не за сьогодні. Це змінює вже закритий день.',
+        snapshotDateConfirmYes: 'Так, зарахувати за {date}',
         rowsCount: 'рядків',
         geoCount: 'гео',
         snapshotHint: 'Зріз фіксує активні версії пресетів і спільних налаштувань — числа відтворяться назавжди.',
@@ -223,6 +226,9 @@ const UI: Record<Locale, Record<string, string>> = {
         snapshotNeedsPreset: 'Save a preset first for geo',
         snapshotNoFacts: 'Nothing left to save',
         snapshotNeedsDate: 'Pick a report date',
+        snapshotDateConfirmTitle: 'Save for a day other than today?',
+        snapshotDateConfirmBody: 'Report will be counted for {date}, not today. This changes an already closed day.',
+        snapshotDateConfirmYes: 'Yes, count for {date}',
         rowsCount: 'rows',
         geoCount: 'geo',
         snapshotHint: 'A snapshot pins the active preset and shared-settings versions — the numbers reproduce forever.',
@@ -290,6 +296,17 @@ export function actionLabel(zone: Zone, locale: Locale): string {
 
 export function ui(key: string, locale: Locale): string {
     return UI[locale][key] ?? key;
+}
+
+// The month spelled out — "3 серпня 2026" — because a stamped report date is read once and has to be
+// unambiguous; `03/08/2026` means two different days on two sides of the Atlantic.
+const LONG_DATE: Record<Locale, Intl.DateTimeFormat> = {
+    uk: new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' }),
+    en: new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+};
+
+export function longDate(date: Date, locale: Locale): string {
+    return LONG_DATE[locale].format(date);
 }
 
 // The structured reason as the reference "why" line — the criteria that decided, per locale, never

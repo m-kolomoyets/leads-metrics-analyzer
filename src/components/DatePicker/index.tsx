@@ -1,20 +1,12 @@
-import type { Locale } from '@/components/report/utils/i18n';
 import type { DatePickerProps } from './types';
 import { useState } from 'react';
 import { CalendarIcon } from 'lucide-react';
 import { parseISODate, toISODate } from '@/lib/utils/isoDate';
 import { DAY_PICKER_LOCALE } from '@/components/report/utils/dayPickerLocale';
-import { ui } from '@/components/report/utils/i18n';
+import { longDate, ui } from '@/components/report/utils/i18n';
 import { Button } from '@/components/ui/Button';
 import { Calendar } from '@/components/ui/Calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover';
-
-// The trigger spells the month out — "3 серпня 2026" — because a stamped report date is read once and
-// has to be unambiguous; `03/08/2026` means two different days on two sides of the Atlantic.
-const DATE_FORMAT: Record<Locale, Intl.DateTimeFormat> = {
-    uk: new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' }),
-    en: new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
-};
 
 // Single-day picker: the app's Calendar in a Popover, wearing the app's Button and tokens, in place of
 // the browser's native date input (which ignores the theme and renders differently per platform).
@@ -40,7 +32,7 @@ function DatePicker({ value, onChange, locale, id, disabled, className, align = 
                 render={
                     <Button id={id} type="button" size="sm" variant="outline" disabled={disabled} className={className}>
                         <CalendarIcon data-icon="inline-start" />
-                        {selected ? DATE_FORMAT[locale].format(selected) : ui('datePick', locale)}
+                        {selected ? longDate(selected, locale) : ui('datePick', locale)}
                     </Button>
                 }
             />
