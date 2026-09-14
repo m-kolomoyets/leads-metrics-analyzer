@@ -55,3 +55,10 @@ export type OfferThreadEntryIdInput = z.infer<typeof offerThreadEntryIdInputSche
 export const offerThreadEntryIdInputSchema = z.object({
     entryId: z.uuid(),
 });
+
+export type SetOfferDeadlineInput = z.infer<typeof setOfferDeadlineInputSchema>;
+export const setOfferDeadlineInputSchema = z.object({
+    offerCardId: z.uuid(),
+    // `YYYY-MM-DD`, or null to clear (slice 09).
+    deadline: z.iso.date().nullable(),
+});

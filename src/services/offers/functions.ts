@@ -25,6 +25,7 @@ import {
     team,
     user,
 } from '@/lib/db/schema';
+import { formatDeadline } from '@/lib/domain/deadline';
 import { parseOfferString } from '@/lib/domain/offerString';
 import { canEditComment } from '@/lib/domain/offerThread';
 import { listSnapshotsFilter, matchesNoRows } from '@/services/snapshots/visibility';
@@ -36,6 +37,7 @@ import {
     offerCardIdInputSchema,
     offerThreadEntryIdInputSchema,
     retryOfferFxInputSchema,
+    setOfferDeadlineInputSchema,
 } from './schemas';
 import { fixRateToUsd } from './fx';
 import { pickAssignment } from './pickAssignment';
@@ -392,7 +394,65 @@ export const changeOfferAssignmentFn = createServerFn({ method: 'POST' })
             throw new Error(OFFER_NOT_FOUND_MESSAGE);
         }
 
+        // Ownership history lives in the Thread (PRD story 32): the new Assignment as people read
+        // it, with the actor.
+        await db.insert(offerThreadEntry).values({
+            offerCardId: view.id,
+            authorUserId: me.id,
+            kind: 'assignment_changed',
+            body: `${view.teamName ?? view.assignedTeamText} · ${view.buyerNickname ?? 'whole team'}`,
+        });
+
         return { ok: true, card: view };
+    });
+
+// Set, move or clear the Deadline (PRD stories 26–27, 29). Gated by the role's `editDeadline`
+// capability — a buyer reads it, never moves it. Every actual change writes a system entry into
+// the Thread with the actor and the new value; a no-op save writes nothing. Archived cards are
+// read-only.
+export const setOfferDeadlineFn = createServerFn({ method: 'POST' })
+    .inputValidator(setOfferDeadlineInputSchema)
+    .handler(async ({ data }): Promise<OfferCardView> => {
+        const me = await requireUser();
+        const viewer = viewerFrom(me);
+
+        if (!canOffer(me.role, 'editDeadline')) {
+            throw new Error(FORBIDDEN_MESSAGE);
+        }
+
+        const current = await loadOfferCardView(viewer, data.offerCardId);
+
+        if (!current) {
+            throw new Error(OFFER_NOT_FOUND_MESSAGE);
+        }
+
+        if (current.archivedAt !== null) {
+            throw new Error(FORBIDDEN_MESSAGE);
+        }
+
+        if (current.deadline === data.deadline) {
+            return current;
+        }
+
+        await db
+            .update(offerCard)
+            .set({ deadline: data.deadline, updatedAt: new Date() })
+            .where(eq(offerCard.id, data.offerCardId));
+
+        await db.insert(offerThreadEntry).values({
+            offerCardId: data.offerCardId,
+            authorUserId: me.id,
+            kind: 'deadline_changed',
+            body: data.deadline === null ? '' : formatDeadline(data.deadline),
+        });
+
+        const view = await loadOfferCardView(viewer, data.offerCardId);
+
+        if (!view) {
+            throw new Error(OFFER_NOT_FOUND_MESSAGE);
+        }
+
+        return view;
     });
 
 // ---- Thread (offers-and-home/08) ----------------------------------------------------------------

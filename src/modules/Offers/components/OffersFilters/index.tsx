@@ -13,6 +13,8 @@ const ANY = 'any';
 const DEADLINE_OPTIONS: { value: OfferDeadlineFilter; label: string }[] = [
     { value: 'none', label: 'No deadline' },
     { value: 'any', label: 'Has deadline' },
+    { value: 'due-soon', label: 'Due soon' },
+    { value: 'overdue', label: 'Overdue' },
 ];
 
 const CLAIM_OPTIONS: { value: OfferClaimFilter; label: string }[] = [

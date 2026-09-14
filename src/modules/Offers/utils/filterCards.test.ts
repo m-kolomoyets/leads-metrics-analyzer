@@ -10,7 +10,8 @@ const subject = (overrides: Partial<OfferFilterSubject> = {}): OfferFilterSubjec
         teamId: 'falcons',
         buyerUserId: 'mbchips',
         archivedAt: null,
-        hasDeadline: false,
+        deadline: null,
+        deadlineState: 'neutral',
         hasClaim: false,
         ...overrides,
     };
@@ -51,15 +52,19 @@ describe('filterOfferCards', () => {
         expect(filterOfferCards(all, search({ team: 'wolves', buyer: 'mbchips' }))).toEqual([]);
     });
 
-    it('reads deadline and claim presence off the subject', () => {
-        const withDeadline = subject({ offerId: '2', hasDeadline: true });
+    it('reads deadline presence and state, and claim presence, off the subject', () => {
+        const withDeadline = subject({ offerId: '2', deadline: '2026-10-01', deadlineState: 'neutral' });
+        const dueSoon = subject({ offerId: '4', deadline: '2026-09-15', deadlineState: 'due-soon' });
+        const overdue = subject({ offerId: '5', deadline: '2026-09-01', deadlineState: 'overdue' });
         const withClaim = subject({ offerId: '3', hasClaim: true });
-        const cards = [live, withDeadline, withClaim];
+        const cards = [live, withDeadline, dueSoon, overdue, withClaim];
 
-        expect(filterOfferCards(cards, search({ deadline: 'any' }))).toEqual([withDeadline]);
+        expect(filterOfferCards(cards, search({ deadline: 'any' }))).toEqual([withDeadline, dueSoon, overdue]);
         expect(filterOfferCards(cards, search({ deadline: 'none' }))).toEqual([live, withClaim]);
+        expect(filterOfferCards(cards, search({ deadline: 'due-soon' }))).toEqual([dueSoon]);
+        expect(filterOfferCards(cards, search({ deadline: 'overdue' }))).toEqual([overdue]);
         expect(filterOfferCards(cards, search({ claim: 'yes' }))).toEqual([withClaim]);
-        expect(filterOfferCards(cards, search({ claim: 'no' }))).toEqual([live, withDeadline]);
+        expect(filterOfferCards(cards, search({ claim: 'no' }))).toEqual([live, withDeadline, dueSoon, overdue]);
     });
 
     it('combines the search with the filters', () => {

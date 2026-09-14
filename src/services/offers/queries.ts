@@ -6,6 +6,7 @@ import type {
     OfferCardIdInput,
     OfferThreadEntryIdInput,
     RetryOfferFxInput,
+    SetOfferDeadlineInput,
 } from './schemas';
 import { mutationOptions, queryOptions } from '@tanstack/react-query';
 import {
@@ -21,6 +22,7 @@ import {
     listUnlistedOffersFn,
     markOfferCardSeenFn,
     retryOfferFxFn,
+    setOfferDeadlineFn,
     unarchiveOfferCardFn,
 } from './functions';
 import { offerKeys } from './queryKeys';
@@ -177,6 +179,20 @@ export const markOfferCardSeenMutationOptions = () => {
         },
         onSuccess(_data, _variables, _onMutateResult, { client }) {
             client.invalidateQueries({ queryKey: offerKeys.listQueryKey() });
+        },
+    });
+};
+
+// A moved Deadline changes the card's mark in the list and writes a Thread entry (slice 09).
+export const setOfferDeadlineMutationOptions = () => {
+    return mutationOptions({
+        mutationKey: offerKeys.setDeadlineMutationKey(),
+        mutationFn(data: SetOfferDeadlineInput) {
+            return setOfferDeadlineFn({ data });
+        },
+        onSuccess(_data, variables, _onMutateResult, { client }) {
+            client.invalidateQueries({ queryKey: offerKeys.listQueryKey() });
+            client.invalidateQueries({ queryKey: offerKeys.threadQueryKey(variables.offerCardId) });
         },
     });
 };

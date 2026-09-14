@@ -26,6 +26,7 @@ import { offerCardAnchor } from '../../constants';
 import { formatPayoutOriginal, formatPayoutUsd } from '../../utils/formatPayout';
 import { ChangeAssignmentForm } from '../ChangeAssignmentForm';
 import { Highlight } from '../Highlight';
+import { OfferDeadline } from '../OfferDeadline';
 import { OfferThread } from '../OfferThread';
 
 const createdFormat = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium' });
@@ -48,7 +49,16 @@ const warningText = (warning: OfferWarning): string => {
 // caption underneath (PRD story 12), then who it is for and who issued it. Warnings sit last, each
 // with its fix where one exists (retry the rate, change the Assignment — slice 06). An archived card
 // is read-only (story 10): it keeps everything but offers no action beyond unarchive.
-function OfferCardItem({ card, query, canRetryFx, canArchive, canChangeAssignment, canComment }: OfferCardItemProps) {
+function OfferCardItem({
+    card,
+    query,
+    canRetryFx,
+    canArchive,
+    canChangeAssignment,
+    canComment,
+    deadlineState,
+    canEditDeadline,
+}: OfferCardItemProps) {
     const [isAssignmentOpen, setIsAssignmentOpen] = useState(false);
     const [isThreadOpen, setIsThreadOpen] = useState(false);
     const { mutate: retryFx, isPending: isRetrying } = useMutation(retryOfferFxMutationOptions());
@@ -153,6 +163,12 @@ function OfferCardItem({ card, query, canRetryFx, canArchive, canChangeAssignmen
                                 Change
                             </Button>
                         )}
+                    </dd>
+                </div>
+                <div className="flex items-center gap-1">
+                    <dt>Deadline</dt>
+                    <dd>
+                        <OfferDeadline card={card} state={deadlineState} canEdit={canEditDeadline} />
                     </dd>
                 </div>
                 <div className="flex gap-1">

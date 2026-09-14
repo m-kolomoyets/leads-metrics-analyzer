@@ -10,6 +10,7 @@
 //   D3 — snapshot.status/replaced_by/replaced_at (replaceable Snapshots) ✓
 //   offers-and-home/04 — offer_card, fx_rate (Offer Cards, ADR-0027) ✓
 //   offers-and-home/08 — offer_thread_entry, offer_card_seen (Thread, unread counts) ✓
+//   offers-and-home/09 — offer_card.deadline ✓
 // See docs/specs/0001-multi-user-auth-teams-persistence.md, docs/specs/0003-reports-feed-archive-detailed-report.md
 // and docs/adr/0002, 0006, 0007, 0015, 0018.
 
@@ -561,6 +562,9 @@ export const offerCard = pgTable(
                 },
                 { onDelete: 'cascade' }
             ),
+        // The day the offer must be launched by (CONTEXT.md §Deadline, slice 09) — a calendar date,
+        // judged against Kyiv's today. Null when none was set.
+        deadline: date('deadline'),
         // Null while live. Archiving keeps the row and its history; the partial unique index only
         // counts live cards.
         archivedAt: timestamp('archived_at', { withTimezone: true }),

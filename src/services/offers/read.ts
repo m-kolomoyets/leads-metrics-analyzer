@@ -38,6 +38,7 @@ export const selectOfferCards = () => {
             createdByUserId: offerCard.createdByUserId,
             createdByNickname: user.nickname,
             createdAt: offerCard.createdAt,
+            deadline: offerCard.deadline,
             archivedAt: offerCard.archivedAt,
         })
         .from(offerCard)
@@ -70,6 +71,7 @@ export const toOfferCardView = (viewer: Viewer, row: OfferCardJoinedRow, unreadC
         // The creator FK cascades on user delete, so a listed card always has one; guard anyway.
         createdByNickname: row.createdByNickname ?? '',
         createdAt: row.createdAt.toISOString(),
+        deadline: row.deadline,
         archivedAt: row.archivedAt?.toISOString() ?? null,
         unreadCount,
         access: offerAccessFor(viewer, {

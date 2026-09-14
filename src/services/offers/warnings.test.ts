@@ -25,6 +25,7 @@ describe('offerWarnings', () => {
         createdByUserId: 'u1',
         createdByNickname: 'ihor',
         createdAt: '2026-09-14T10:00:00.000Z',
+        deadline: null,
         archivedAt: null,
         unreadCount: 0,
         access: 'read',

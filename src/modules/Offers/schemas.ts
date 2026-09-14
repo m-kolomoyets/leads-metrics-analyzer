@@ -5,7 +5,7 @@ import { z } from 'zod';
 // than throwing the page away. Every filter is absent by default — "no question asked" is the whole
 // live list.
 
-export const OFFER_DEADLINE_FILTERS = ['none', 'any'] as const;
+export const OFFER_DEADLINE_FILTERS = ['none', 'any', 'due-soon', 'overdue'] as const;
 export const OFFER_CLAIM_FILTERS = ['yes', 'no'] as const;
 
 export type OfferDeadlineFilter = (typeof OFFER_DEADLINE_FILTERS)[number];
@@ -20,8 +20,8 @@ export const offersSearchSchema = z.object({
     // Team and buyer ids; an id outside the viewer's list matches nothing rather than revealing it.
     team: optionalToken,
     buyer: optionalToken,
-    // Deadline state and Advertiser Claim presence — placeholders until slices 09 and 07 land the
-    // fields: every card reads "no deadline" / "no claim" for now (PRD story 14).
+    // Deadline presence or state (slice 09), and Advertiser Claim presence — a placeholder until
+    // slice 07 lands the field: every card reads "no claim" for now (PRD story 14).
     deadline: z.enum(OFFER_DEADLINE_FILTERS).optional().catch(undefined),
     claim: z.enum(OFFER_CLAIM_FILTERS).optional().catch(undefined),
     // Archived cards are hidden by default and shown INSTEAD of live ones when asked for (story 11).

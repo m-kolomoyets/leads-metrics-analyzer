@@ -7,6 +7,8 @@ import { useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 import { PlusIcon, SearchXIcon, TagIcon } from 'lucide-react';
 import { canOffer } from '@/lib/auth/offerAccess';
+import { deadlineState } from '@/lib/domain/deadline';
+import { kyivDay } from '@/lib/utils/kyivDay';
 import { offerCardsQueryOptions, unlistedOffersQueryOptions } from '@/services/offers/queries';
 import {
     MainLayoutHeader,
@@ -42,13 +44,16 @@ function Offers() {
     const canArchive = canOffer(role, 'archive');
     const canChangeAssignment = canOffer(role, 'changeAssignment');
     const canComment = canOffer(role, 'comment');
+    const canEditDeadline = canOffer(role, 'editDeadline');
     // Null while closed; an object (possibly empty) while open, so a seed from an Unlisted Offer
     // survives until the sheet closes and the next "New card" opens blank.
     const [createSeed, setCreateSeed] = useState<Partial<CreateOfferCardInput> | null>(null);
 
     const query = search.q ?? '';
-    // Deadline and Advertiser Claim do not exist on a card yet (slices 09, 07): every card reads
-    // "none"/"no" until then, which is exactly what the placeholder filters promise.
+    // Today is Kyiv's today (ADR-0017): the filter, the marks and the badge judge one day.
+    const today = kyivDay();
+    // The Advertiser Claim does not exist on a card yet (slice 07): every card reads "no" until
+    // then, which is exactly what the placeholder filter promises.
     const subjects = cards.map((card): OfferFilterSubject & { card: typeof card } => {
         return {
             card,
@@ -57,7 +62,8 @@ function Offers() {
             teamId: card.teamId,
             buyerUserId: card.buyerUserId,
             archivedAt: card.archivedAt,
-            hasDeadline: false,
+            deadline: card.deadline,
+            deadlineState: deadlineState(card, today),
             hasClaim: false,
         };
     });
@@ -121,11 +127,13 @@ function Offers() {
                     </Empty>
                 ) : (
                     <ul className="flex flex-col gap-3">
-                        {visible.map(({ card }) => {
+                        {visible.map(({ card, deadlineState: state }) => {
                             return (
                                 <li key={card.id}>
                                     <OfferCardItem
                                         card={card}
+                                        deadlineState={state}
+                                        canEditDeadline={canEditDeadline}
                                         query={query}
                                         canRetryFx={canCreate}
                                         canArchive={canArchive}

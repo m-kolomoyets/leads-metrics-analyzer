@@ -1,9 +1,10 @@
+import type { DeadlineState } from '@/lib/domain/deadline';
 import type { OffersSearch } from '../schemas';
 
 // The directory's filter and search over the cards the server already scoped (PRD stories 11, 13,
-// 14). Pure, over the minimal card shape the filters read — the deadline and Advertiser Claim
-// fields do not exist yet (slices 09 and 07), so the caller supplies their presence as booleans and
-// every card reads "none"/"no" until then.
+// 14). Pure, over the minimal card shape the filters read. The Deadline's state is judged by the
+// caller against Kyiv's today (slice 09); the Advertiser Claim field does not exist yet (slice 07),
+// so its presence arrives as a boolean and every card reads "no" until then.
 
 export type OfferFilterSubject = {
     offerId: string;
@@ -11,8 +12,27 @@ export type OfferFilterSubject = {
     teamId: string | null;
     buyerUserId: string | null;
     archivedAt: string | null;
-    hasDeadline: boolean;
+    deadline: string | null;
+    deadlineState: DeadlineState;
     hasClaim: boolean;
+};
+
+const matchesDeadlineFilter = (subject: OfferFilterSubject, filter: OffersSearch['deadline']): boolean => {
+    switch (filter) {
+        case undefined: {
+            return true;
+        }
+        case 'none': {
+            return subject.deadline === null;
+        }
+        case 'any': {
+            return subject.deadline !== null;
+        }
+        case 'due-soon':
+        case 'overdue': {
+            return subject.deadlineState === filter;
+        }
+    }
 };
 
 export const matchesOfferSearch = (subject: Pick<OfferFilterSubject, 'offerId' | 'rawString'>, query: string) => {
@@ -38,7 +58,7 @@ export const matchesOfferFilters = (subject: OfferFilterSubject, search: OffersS
         return false;
     }
 
-    if (search.deadline !== undefined && subject.hasDeadline !== (search.deadline === 'any')) {
+    if (!matchesDeadlineFilter(subject, search.deadline)) {
         return false;
     }
 

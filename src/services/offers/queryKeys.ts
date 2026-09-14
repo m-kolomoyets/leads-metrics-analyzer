@@ -39,4 +39,7 @@ export const offerKeys = {
     markSeenMutationKey() {
         return [...offerKeys.all, 'mark-seen'] as const;
     },
+    setDeadlineMutationKey() {
+        return [...offerKeys.all, 'set-deadline'] as const;
+    },
 };

@@ -31,6 +31,8 @@ export type OfferCardView = {
     createdByUserId: string;
     createdByNickname: string;
     createdAt: string;
+    // `YYYY-MM-DD` or null (slice 09).
+    deadline: string | null;
     archivedAt: string | null;
     // Live comments by others since the viewer last opened the card (offers-and-home/08).
     unreadCount: number;

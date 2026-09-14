@@ -1,0 +1,1 @@
+ALTER TABLE "offer_card" ADD COLUMN "deadline" date;
