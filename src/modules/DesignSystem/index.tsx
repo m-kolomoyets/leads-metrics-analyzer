@@ -311,9 +311,9 @@ function DesignSystem() {
             <Section
                 id="map"
                 title="Charts — WorldMap"
-                description="Zone on the stroke at full strength, the same hue washed inside at --map-fill-opacity; land with nothing to say in --map-land. Wheel zooms, drag pans, the region row is a camera preset. Dots is slice 17's stub."
+                description="Zone on the stroke at full strength, the same hue washed inside at --map-fill-opacity; land with nothing to say in --map-land. Wheel zooms, drag pans, the region row is a camera preset. Dots is slice 17's experiment: the same sample as a lattice, density on the row above it."
             >
-                <ThemeSplit>
+                <ThemeSplit stacked>
                     {() => {
                         return <MapPrimitive />;
                     }}

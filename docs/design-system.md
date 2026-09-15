@@ -249,7 +249,7 @@ fade, and neither do the dashed cost lines, where several fills at once would be
 
 ## The workbench
 
-`/design` (dev-only, outside `_authenticated` — `src/routes/design.tsx`) renders every token above and
+`/design` (public, in every build, outside `_authenticated` — `src/routes/design/index.tsx`) renders every token above and
 every `ui/` primitive in every state it supports, with light and dark side by side rather than behind
 the switcher. Zone swatches re-measure their contrast against their own surface on each render, so the
 table above is checked rather than trusted.

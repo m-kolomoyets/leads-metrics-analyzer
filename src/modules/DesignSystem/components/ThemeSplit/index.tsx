@@ -7,14 +7,22 @@ type ThemeSplitProps = {
     // theme in its key to stay unique across the two panes.
     children: (theme: ThemeName) => React.ReactNode;
     className?: string;
+    // One theme above the other instead of side by side, for a specimen that needs the full width
+    // to be judged (the map).
+    stacked?: boolean;
 };
 
 // Both themes at once, neither behind the switcher. `.light` and `.dark` pin their own subtree's
 // tokens (see the `@custom-variant dark` note in src/styles/index.css), so the pane on the right is
 // the real dark theme even while the app around it is light.
-function ThemeSplit({ children, className }: ThemeSplitProps) {
+function ThemeSplit({ children, className, stacked = false }: ThemeSplitProps) {
     return (
-        <div className="border-border grid gap-px overflow-hidden rounded-md border md:grid-cols-2">
+        <div
+            className={cn(
+                'border-border grid gap-px overflow-hidden rounded-md border',
+                stacked ? 'grid-cols-1' : 'md:grid-cols-2'
+            )}
+        >
             {THEMES.map((theme) => {
                 return (
                     <div key={theme} className={cn(theme, 'bg-background text-foreground flex flex-col')}>
