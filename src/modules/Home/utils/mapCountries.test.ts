@@ -42,6 +42,13 @@ describe('toMapCountries', () => {
         ]);
     });
 
+    it('hands a fill mode weight over and leaves an unranked market flat', () => {
+        const [kr, jp] = toMapCountries([row({ geo: 'KR' }), row({ geo: 'JP' })], nameOf, new Map([['KR', 0.4]]));
+
+        expect(kr.fillWeight).toBe(0.4);
+        expect(jp.fillWeight).toBeUndefined();
+    });
+
     it('says why a thin market is grey', () => {
         const [country] = toMapCountries([row({ revenue: 300, roi: -70, zone: 'neutral', isThin: true })], nameOf);
 

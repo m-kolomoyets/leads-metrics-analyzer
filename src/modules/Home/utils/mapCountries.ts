@@ -7,13 +7,19 @@ import { int, pct, usd, usdRound, usdSigned } from '@/components/report/utils/fo
 // zone paints, what "too little data" means — are decided here and handed over as a tone and
 // formatted strings, so the map never learns what a Geo Total is.
 
-export const toMapCountries = (rows: CountryRollup[], nameOf: (geo: string) => string): WorldMapCountry[] => {
+// `weights` is a fill mode's ranking (`fillWeights`); a geo it does not name paints flat.
+export const toMapCountries = (
+    rows: CountryRollup[],
+    nameOf: (geo: string) => string,
+    weights: Map<string, number> = new Map()
+): WorldMapCountry[] => {
     return rows.map((row): WorldMapCountry => {
         return {
             code: row.geo,
             // Neutral for a thin market whatever its ROI (PRD story 48) — the rollup already folded
             // that into `zone`, and the ROI row below says why in words.
             tone: row.zone,
+            fillWeight: weights.get(row.geo),
             tooltip: {
                 title: nameOf(row.geo),
                 rows: [

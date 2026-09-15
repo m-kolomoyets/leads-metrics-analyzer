@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MAP_FILL_MODES } from '@/lib/domain/mapFill';
 import { HOME_PERIODS } from './utils/period';
 
 // The Home page's search params (offers-and-home/13, 14). The feed's `range`/`from`/`to` names with
@@ -12,6 +13,8 @@ export const homeSearchSchema = z.object({
     // Meaningful only for `custom`; a missing edge resolves to today (`resolvePeriod`).
     from: calendarDateSchema.optional().catch(undefined),
     to: calendarDateSchema.optional().catch(undefined),
+    // How strong each market's wash is (slice 15); the colour is the zone in every mode.
+    mode: z.enum(MAP_FILL_MODES).catch('profitability').default('profitability'),
     // The market opened in the panel (slice 14), ISO alpha-2, so a country view is a link.
     country: z
         .string()

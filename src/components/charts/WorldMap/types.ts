@@ -23,8 +23,9 @@ export type WorldMapCountry = {
     code: string;
     // Paints the stroke at full strength and the fill as a wash.
     tone: ChartTone;
-    // Overrides the wash's default opacity (0–1). Left for a fill mode to scale (slice 15).
-    fillOpacity?: number;
+    // Scales the wash (0–1) between the faintest and the strongest wash the theme allows; absent
+    // paints the flat default. The caller ranks (a fill mode, slice 15), the map only shades.
+    fillWeight?: number;
     tooltip: WorldMapTooltip;
 };
 

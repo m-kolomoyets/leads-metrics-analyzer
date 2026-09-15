@@ -66,7 +66,13 @@ const fillOpacityFor = (country: WorldMapCountry | undefined, isSelected: boolea
         return SELECTED_FILL_OPACITY;
     }
 
-    return country.fillOpacity ?? 'var(--map-fill-opacity)';
+    if (country.fillWeight === undefined) {
+        return 'var(--map-fill-opacity)';
+    }
+
+    // A weighted wash runs floor→ceiling in the theme's own range, so 0 is still a visible tint and 1
+    // stays under the selected state's solid fill.
+    return `calc(var(--map-fill-opacity-floor) + ${country.fillWeight} * (var(--map-fill-opacity-ceiling) - var(--map-fill-opacity-floor)))`;
 };
 
 type WorldMapViewProps = WorldMapProps & {
