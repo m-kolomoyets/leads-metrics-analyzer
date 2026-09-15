@@ -149,3 +149,100 @@ export const countryBuyers = (input: PeriodRollupInput, geo: string): CountryBuy
             return b.profit - a.profit;
         });
 };
+
+// One market inside a buyer's rating row (offers-and-home/16): the row a rating entry expands into,
+// graded like the panel's rows so the two agree market for market.
+export type BuyerGeoRollup = Money & {
+    geo: string;
+};
+
+// A buyer over the whole period (PRD stories 55–56); for a buyer viewer their one row IS "my stats"
+// (story 57), since row-scope hands them nobody else's pushes.
+export type BuyerRating = Money & {
+    // 1-based position under the sort asked for.
+    rank: number;
+    buyerUserId: string;
+    // Markets that moved money — a frozen row with neither spend nor revenue is a market they did
+    // not really run.
+    activeGeos: number;
+    // Best profit first.
+    geos: BuyerGeoRollup[];
+};
+
+// Profit leads by default; weighted ROI is the other reading of the same rows (story 55).
+export const RATING_SORTS = ['profit', 'roi'] as const;
+
+export type RatingSort = (typeof RATING_SORTS)[number];
+
+type GeoBucket = {
+    spend: number;
+    revenue: number;
+};
+
+type SortRule = (a: BuyerRating, b: BuyerRating) => number;
+
+const byProfit: SortRule = (a, b) => {
+    return b.profit - a.profit;
+};
+
+// Unknown ROI (nothing spent) sorts last; ties fall back to profit so the order is total.
+const byRoi: SortRule = (a, b) => {
+    if (a.roi === null || b.roi === null) {
+        return Number(a.roi === null) - Number(b.roi === null);
+    }
+
+    return b.roi - a.roi || byProfit(a, b);
+};
+
+const SORT_RULES: Record<RatingSort, SortRule> = { profit: byProfit, roi: byRoi };
+
+export const buyerRating = (input: PeriodRollupInput, sort: RatingSort): BuyerRating[] => {
+    const counted = countedPushes(input.snapshots);
+    const buckets = new Map<string, Map<string, GeoBucket>>();
+
+    for (const row of input.geos) {
+        const snapshot = counted.get(row.snapshotId);
+
+        if (!snapshot) {
+            continue;
+        }
+
+        const markets = buckets.get(snapshot.buyerUserId) ?? new Map<string, GeoBucket>();
+        const market = markets.get(row.geo) ?? { spend: 0, revenue: 0 };
+
+        market.spend += row.spendPlus;
+        market.revenue += row.geoTotal;
+        markets.set(row.geo, market);
+        buckets.set(snapshot.buyerUserId, markets);
+    }
+
+    const unranked = [...buckets.entries()].map(([buyerUserId, markets]): Omit<BuyerRating, 'rank'> => {
+        const geos = [...markets.entries()]
+            .map(([geo, market]): BuyerGeoRollup => {
+                return { geo, ...grade(market.spend, market.revenue) };
+            })
+            .sort((a, b) => {
+                return b.profit - a.profit;
+            });
+        const spend = geos.reduce((sum, row) => {
+            return sum + row.spend;
+        }, 0);
+        const revenue = geos.reduce((sum, row) => {
+            return sum + row.revenue;
+        }, 0);
+        const activeGeos = geos.filter((row) => {
+            return row.spend > 0 || row.revenue > 0;
+        }).length;
+
+        return { buyerUserId, ...grade(spend, revenue), activeGeos, geos };
+    });
+
+    return unranked
+        .map((row): BuyerRating => {
+            return { rank: 0, ...row };
+        })
+        .sort(SORT_RULES[sort])
+        .map((row, index) => {
+            return { ...row, rank: index + 1 };
+        });
+};

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { MAP_FILL_MODES } from '@/lib/domain/mapFill';
+import { RATING_SORTS } from '@/lib/domain/periodRollup';
 import { HOME_PERIODS } from './utils/period';
 
 // The Home page's search params (offers-and-home/13, 14). The feed's `range`/`from`/`to` names with
@@ -15,6 +16,8 @@ export const homeSearchSchema = z.object({
     to: calendarDateSchema.optional().catch(undefined),
     // How strong each market's wash is (slice 15); the colour is the zone in every mode.
     mode: z.enum(MAP_FILL_MODES).catch('profitability').default('profitability'),
+    // What the buyer rating under the map is ranked by (slice 16); profit leads by default.
+    sort: z.enum(RATING_SORTS).catch('profit').default('profit'),
     // The market opened in the panel (slice 14), ISO alpha-2, so a country view is a link.
     country: z
         .string()

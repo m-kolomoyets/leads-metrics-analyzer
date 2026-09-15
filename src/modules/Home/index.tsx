@@ -1,11 +1,13 @@
 import type { MapFillMode } from '@/lib/domain/mapFill';
+import type { RatingSort } from '@/lib/domain/periodRollup';
 import type { HomePeriod } from './utils/period';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 import countries from 'i18n-iso-countries';
 import enLocale from 'i18n-iso-countries/langs/en.json' with { type: 'json' };
+import { canOffer } from '@/lib/auth/offerAccess';
 import { fillWeights } from '@/lib/domain/mapFill';
-import { countryBuyers, countryRollup } from '@/lib/domain/periodRollup';
+import { buyerRating, countryBuyers, countryRollup } from '@/lib/domain/periodRollup';
 import { cn } from '@/lib/utils/cn';
 import { kyivDay } from '@/lib/utils/kyivDay';
 import { homeGeoQueryOptions } from '@/services/home/queries';
@@ -20,9 +22,11 @@ import { REGION_LABELS } from './constants';
 import { periodLabel } from './utils/format';
 import { toMapCountries } from './utils/mapCountries';
 import { resolvePeriod } from './utils/period';
+import { BuyerRating } from './components/BuyerRating';
 import { CountryPanel } from './components/CountryPanel';
 import { FillModePicker } from './components/FillModePicker';
 import { MapLegend } from './components/MapLegend';
+import { MyStats } from './components/MyStats';
 import { PeriodPicker } from './components/PeriodPicker';
 
 const routeApi = getRouteApi('/_authenticated/home/');
@@ -41,10 +45,20 @@ const countryName = (geo: string): string => {
 // per market (ADR-0004). The map is a chart primitive that knows none of this (ADR-0025): what it
 // gets is a tone per country and the words for its hover card. A click on a market opens it beside
 // the map (slice 14) — the same rollup, split by buyer — and the choice lives in the URL, as does
-// the fill mode (slice 15): colour is always the zone, a mode only ranks the wash's strength.
+// the fill mode (slice 15): colour is always the zone, a mode only ranks the wash's strength. Under
+// the map, the same rows a third way (slice 16): a rating of the buyers in them for a lead, bdm or
+// head, or — for a buyer, whose rows are their own — "my stats".
 function Home() {
     const search = routeApi.useSearch();
     const navigate = routeApi.useNavigate();
+    const role = routeApi.useRouteContext({
+        select(context) {
+            return context.auth.me.role;
+        },
+    });
+    // The offer rating's rule is this rating's rule (PRD stories 45, 55, 57): a buyer is never
+    // ranked in front of peers. The server hands a buyer only their own pushes regardless.
+    const canSeeRating = canOffer(role, 'seeRating');
     // Which month "this month" is, is a Kyiv question (ADR-0017), answered viewer-side so the server
     // only ever sees two dates.
     const today = kyivDay();
@@ -60,13 +74,29 @@ function Home() {
     const rows = data ? countryRollup(data) : [];
     const mapCountries = toMapCountries(rows, countryName, fillWeights(rows, search.mode));
     const selected = search.country ?? null;
+    // Who a buyer is, off the pushes themselves: the panel's and the rating's rows both print names.
+    const nicknames = new Map(
+        (data?.snapshots ?? []).map((row) => {
+            return [row.buyerUserId, row.buyerNickname] as const;
+        })
+    );
+    const rating = data ? buyerRating(data, search.sort) : [];
 
     function handlePeriodChange(next: HomePeriod) {
         // The period is replaced whole (a preset carries no `from`/`to`); the opened country and
         // the fill mode stay.
         navigate({
             search: (previous) => {
-                return { country: previous.country, mode: previous.mode, ...next };
+                return { country: previous.country, mode: previous.mode, sort: previous.sort, ...next };
+            },
+            replace: true,
+        });
+    }
+
+    function handleSortChange(sort: RatingSort) {
+        navigate({
+            search: (previous) => {
+                return { ...previous, sort };
             },
             replace: true,
         });
@@ -100,11 +130,6 @@ function Home() {
         }
 
         // The panel's rows come off the rows the map was painted from: one read, two views of it.
-        const nicknames = new Map(
-            (data?.snapshots ?? []).map((row) => {
-                return [row.buyerUserId, row.buyerNickname] as const;
-            })
-        );
         const buyers = (data ? countryBuyers(data, selected) : []).map((row) => {
             return { ...row, nickname: nicknames.get(row.buyerUserId) ?? row.buyerUserId };
         });
@@ -120,6 +145,23 @@ function Home() {
                 buyers={buyers}
                 isLoading={isPending}
                 onClose={handleClose}
+            />
+        );
+    }
+
+    function renderRating() {
+        if (!canSeeRating) {
+            return <MyStats stats={rating[0]} isLoading={isPending} />;
+        }
+
+        return (
+            <BuyerRating
+                rows={rating.map((row) => {
+                    return { ...row, nickname: nicknames.get(row.buyerUserId) ?? row.buyerUserId };
+                })}
+                sort={search.sort}
+                onSortChange={handleSortChange}
+                isLoading={isPending}
             />
         );
     }
@@ -156,6 +198,8 @@ function Home() {
                         <p className="text-muted-foreground text-xs">No reports in this period.</p>
                     )}
                 </div>
+
+                <div className={cn('lg:col-span-full', isPlaceholderData && 'opacity-60')}>{renderRating()}</div>
             </div>
         </>
     );

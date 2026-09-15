@@ -1,5 +1,6 @@
 import type { WorldMapRegion } from '@/components/charts/WorldMap/types';
 import type { MapFillMode } from '@/lib/domain/mapFill';
+import type { RatingSort } from '@/lib/domain/periodRollup';
 import type { HomePeriodToken } from './utils/period';
 
 export const PERIOD_LABELS: Record<HomePeriodToken, string> = {
@@ -29,4 +30,10 @@ export const FILL_MODE_HINTS: Record<MapFillMode, string> = {
     profitability: 'Colour only — every market at one strength',
     'profit-size': 'Stronger = bigger profit or loss',
     presence: 'Stronger = more spend',
+};
+
+// The two readings of the buyer rating (PRD story 55): volume of money made, or how well it was made.
+export const RATING_SORT_LABELS: Record<RatingSort, string> = {
+    profit: 'By profit',
+    roi: 'By ROI',
 };

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Loader } from '@/components/ui/Loader';
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/Table';
 import { dayLabel } from '../../utils/format';
+import { Stat } from '../Stat';
 
 // One market, opened from the map (offers-and-home/14, PRD story 50): the period's totals — the very
 // figures the hover card shows, read off the same rollup — and one row per buyer the viewer may see,
@@ -123,25 +124,6 @@ function CountryPanel({ geo, name, market, buyers, isLoading = false, onClose }:
                 </>
             )}
         </section>
-    );
-}
-
-type StatProps = {
-    label: string;
-    value: string;
-    className?: string;
-    hint?: string;
-};
-
-function Stat({ label, value, className, hint }: StatProps) {
-    return (
-        <div className="flex flex-col gap-0.5">
-            <dt className="text-muted-foreground">{label}</dt>
-            <dd className={cn('text-sm font-semibold tabular-nums', className)}>
-                {value}
-                {hint && <span className="text-muted-foreground ml-1 text-xs font-normal">({hint})</span>}
-            </dd>
-        </div>
     );
 }
 

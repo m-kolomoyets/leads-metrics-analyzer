@@ -1,5 +1,5 @@
 import type { PeriodGeoRow, PeriodRollupInput, PeriodSnapshotRow } from './periodRollup';
-import { countryBuyers, countryRollup, THIN_REVENUE_USD } from './periodRollup';
+import { buyerRating, countryBuyers, countryRollup, THIN_REVENUE_USD } from './periodRollup';
 
 // The Home map's per-country figures (offers-and-home/13, PRD stories 46–49): each buyer's latest
 // active push per report date (ADR-0017), summed per Geo on the Geo Total basis across the period's
@@ -290,5 +290,148 @@ describe('countryBuyers', () => {
         );
 
         expect(rows[0]).toMatchObject({ zone: 'neutral', isThin: true });
+    });
+});
+
+// The buyer rating under the map (offers-and-home/16, PRD stories 55–57): one row per buyer the
+// viewer may see, over every market they ran, profit-first or weighted-ROI-first, each row carrying
+// its markets. A buyer's own single row is their "my stats".
+describe('buyerRating', () => {
+    const data = input({
+        snapshots: [
+            push({ snapshotId: 's1', buyerUserId: 'u1' }),
+            push({ snapshotId: 's2', buyerUserId: 'u2' }),
+            push({ snapshotId: 's3', buyerUserId: 'u3' }),
+        ],
+        geos: [
+            // u1: $10 000 spend, +$3 000 profit, ROI 30 — volume.
+            geo({ snapshotId: 's1', geo: 'KR', spendPlus: 6000, geoTotal: 8000 }),
+            geo({ snapshotId: 's1', geo: 'JP', spendPlus: 4000, geoTotal: 5000 }),
+            // u2: $1 000 spend, +$1 000 profit, ROI 100 — efficiency.
+            geo({ snapshotId: 's2', geo: 'KR', spendPlus: 1000, geoTotal: 2000 }),
+            // u3: nothing spent, nothing made — an empty row in a market.
+            geo({ snapshotId: 's3', geo: 'DE', spendPlus: 0, geoTotal: 0 }),
+        ],
+    });
+
+    it('sums each buyer across their markets, ROI weighted on the sums, ranked by profit', () => {
+        const rows = buyerRating(data, 'profit');
+
+        expect(
+            rows.map((row) => {
+                return [row.rank, row.buyerUserId, row.profit, row.roi];
+            })
+        ).toEqual([
+            [1, 'u1', 3000, 30],
+            [2, 'u2', 1000, 100],
+            [3, 'u3', 0, null],
+        ]);
+    });
+
+    it('re-ranks by weighted ROI on demand, unknown ROI last', () => {
+        const rows = buyerRating(data, 'roi');
+
+        expect(
+            rows.map((row) => {
+                return [row.rank, row.buyerUserId];
+            })
+        ).toEqual([
+            [1, 'u2'],
+            [2, 'u1'],
+            [3, 'u3'],
+        ]);
+    });
+
+    it('weights ROI on the sums, never a mean of markets', () => {
+        const rows = buyerRating(
+            input({
+                snapshots: [push({ snapshotId: 's1' })],
+                geos: [
+                    geo({ snapshotId: 's1', geo: 'KR', spendPlus: 50, geoTotal: 150 }),
+                    geo({ snapshotId: 's1', geo: 'JP', spendPlus: 5000, geoTotal: 4000 }),
+                ],
+            }),
+            'profit'
+        );
+
+        // A mean of +200 and −20 would read +90; the sums say −900 on 5 050.
+        expect(rows[0]?.roi).toBeCloseTo((-900 / 5050) * 100);
+        expect(rows[0]?.zone).toBe('yellow');
+    });
+
+    it('counts a market as active only when it moved money', () => {
+        const rows = buyerRating(data, 'profit');
+        const byId = new Map(
+            rows.map((row) => {
+                return [row.buyerUserId, row.activeGeos] as const;
+            })
+        );
+
+        expect(byId.get('u1')).toBe(2);
+        expect(byId.get('u2')).toBe(1);
+        expect(byId.get('u3')).toBe(0);
+    });
+
+    it('carries each buyer their markets, best profit first, graded like the panel rows', () => {
+        const [top] = buyerRating(data, 'profit');
+
+        expect(top?.geos).toEqual([
+            {
+                geo: 'KR',
+                spend: 6000,
+                revenue: 8000,
+                profit: 2000,
+                roi: (2000 / 6000) * 100,
+                zone: 'green',
+                isThin: false,
+            },
+            { geo: 'JP', spend: 4000, revenue: 5000, profit: 1000, roi: 25, zone: 'yellow', isThin: false },
+        ]);
+    });
+
+    it('takes the latest push of a day and skips a replaced one, like the map', () => {
+        const rows = buyerRating(
+            input({
+                snapshots: [
+                    push({ snapshotId: 's1', takenAt: '2026-09-10T10:00:00Z' }),
+                    push({ snapshotId: 's2', takenAt: '2026-09-10T12:00:00Z' }),
+                    push({ snapshotId: 's3', takenAt: '2026-09-10T14:00:00Z', status: 'replaced' }),
+                ],
+                geos: [
+                    geo({ snapshotId: 's1', spendPlus: 1000, geoTotal: 1500 }),
+                    geo({ snapshotId: 's2', spendPlus: 1200, geoTotal: 1800 }),
+                    geo({ snapshotId: 's3', spendPlus: 9000, geoTotal: 9000 }),
+                ],
+            }),
+            'profit'
+        );
+
+        expect(rows).toHaveLength(1);
+        expect(rows[0]).toMatchObject({ spend: 1200, revenue: 1800 });
+    });
+
+    it('rates only the buyers whose pushes arrived: row-scope is the server’s, the rating adds nobody', () => {
+        const own = input({
+            snapshots: [push({ snapshotId: 's1', buyerUserId: 'u1' })],
+            geos: [geo({ snapshotId: 's1' }), geo({ snapshotId: 'orphan', geo: 'DE' })],
+        });
+
+        expect(
+            buyerRating(own, 'profit').map((row) => {
+                return row.buyerUserId;
+            })
+        ).toEqual(['u1']);
+        expect(buyerRating(input({}), 'profit')).toEqual([]);
+    });
+
+    it('sums to the map figures across markets', () => {
+        const total = countryRollup(data).reduce((sum, row) => {
+            return sum + row.revenue;
+        }, 0);
+        const rated = buyerRating(data, 'profit').reduce((sum, row) => {
+            return sum + row.revenue;
+        }, 0);
+
+        expect(rated).toBe(total);
     });
 });
