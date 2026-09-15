@@ -1,11 +1,12 @@
-import type { GeometryCollection, Topology } from 'topojson-specification';
 import type { WorldMapRegion } from '../types';
+import type { WorldTopology } from './atlas';
 import type { DotGrid, DotGridCountry } from './dotGrid';
 import type { ProjectedBounds } from './fitTransform';
 import { geoNaturalEarth1, geoPath } from 'd3-geo';
 import countries from 'i18n-iso-countries';
 import { feature } from 'topojson-client';
 import { ANTARCTICA_ID, MAP_HEIGHT, MAP_WIDTH, MICRO_COUNTRIES, REGION_BOUNDS } from '../constants';
+import { restoreCrimea } from './atlas';
 import { buildDotGrid } from './dotGrid';
 
 // The world's shapes, projected once. The atlas is ~110 kB of TopoJSON, so it is code-split and
@@ -32,9 +33,6 @@ export type WorldGeometry = {
     // on first ask per step and kept: the lattice is a function of the geometry and the step alone.
     dotGrid: (step: number) => DotGrid;
 };
-
-type CountryProperties = { name: string };
-type WorldTopology = Topology<{ countries: GeometryCollection<CountryProperties> }>;
 
 // Natural Earth is pseudocylindrical: y depends on latitude alone and x grows with longitude, so a
 // box's extremes sit on its two meridians — but at which latitude depends on the box, so both edges
@@ -147,7 +145,7 @@ let pending: Promise<WorldGeometry> | null = null;
 // is dynamic on purpose: it is what makes the atlas its own chunk.
 export const loadWorldGeometry = (): Promise<WorldGeometry> => {
     pending ??= import('world-atlas/countries-110m.json').then((module) => {
-        return buildGeometry(module.default as unknown as WorldTopology);
+        return buildGeometry(restoreCrimea(module.default as unknown as WorldTopology));
     });
 
     return pending;
