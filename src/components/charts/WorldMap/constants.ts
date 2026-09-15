@@ -55,6 +55,12 @@ export const REGION_BOUNDS: Record<Exclude<WorldMapRegion, 'world'>, [[number, n
     ],
 };
 
+// The dot grid's lattice (slice 17): the step between dots in degrees, and each dot's radius as a
+// share of the step's width at the equator, so the dots read as a texture with air between them.
+// Fewer degrees is more dots — 1.5° is ~9,000 circles for the world, still a fluid zoom.
+export const DOT_GRID_STEP = 1.5;
+export const DOT_GRID_RADIUS_RATIO = 0.36;
+
 // Antarctica: an ISO country, but a slab across the bottom of every projection that no campaign
 // ever targets. Left off the map like every atlas does.
 export const ANTARCTICA_ID = '010';

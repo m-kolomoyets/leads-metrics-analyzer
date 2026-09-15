@@ -1,6 +1,7 @@
 import type { WorldMapCountry, WorldMapRegion, WorldMapRender } from '@/components/charts/WorldMap/types';
 import { useState } from 'react';
 import { WorldMap } from '@/components/charts/WorldMap';
+import { DOT_GRID_STEP } from '@/components/charts/WorldMap/constants';
 import { Segmented, SegmentedItem } from '@/components/ui/Segmented';
 
 // The map with sample data, both themes, so its paint is reviewed against the tokens rather than
@@ -18,6 +19,10 @@ const REGION_LABELS: Record<WorldMapRegion, string> = {
 };
 
 const RENDERS: WorldMapRender[] = ['shapes', 'dots'];
+
+// Lattice steps in degrees for the dot grid, densest first; the primitive's default sits in the
+// middle so the review can look either side of it.
+const DOT_STEPS = [1, 1.5, 2, 3];
 
 const sample = (code: string, tone: WorldMapCountry['tone'], roi: string): WorldMapCountry => {
     return {
@@ -47,6 +52,7 @@ const SAMPLE: WorldMapCountry[] = [
 
 function MapPrimitive() {
     const [render, setRender] = useState<WorldMapRender>('shapes');
+    const [dotStep, setDotStep] = useState(DOT_GRID_STEP);
 
     return (
         <div className="flex flex-col gap-3">
@@ -66,7 +72,25 @@ function MapPrimitive() {
                     );
                 })}
             </Segmented>
-            <WorldMap countries={SAMPLE} regionLabels={REGION_LABELS} render={render} />
+            {render === 'dots' && (
+                <Segmented label="Dot step" mode="toggle">
+                    {DOT_STEPS.map((step) => {
+                        return (
+                            <SegmentedItem
+                                key={step}
+                                selected={step === dotStep}
+                                onSelect={() => {
+                                    setDotStep(step);
+                                }}
+                                className="px-2 py-0.5 text-xs"
+                            >
+                                {step}°
+                            </SegmentedItem>
+                        );
+                    })}
+                </Segmented>
+            )}
+            <WorldMap countries={SAMPLE} regionLabels={REGION_LABELS} render={render} dotStep={dotStep} />
         </div>
     );
 }

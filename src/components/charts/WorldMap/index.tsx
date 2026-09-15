@@ -6,7 +6,16 @@ import { cn } from '@/lib/utils/cn';
 import { Segmented, SegmentedItem } from '@/components/ui/Segmented';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { TONE_STROKE } from '../constants';
-import { FIT_PADDING, MAP_HEIGHT, MAP_WIDTH, MAX_SCALE, MIN_SCALE, WORLD_MAP_REGIONS } from './constants';
+import {
+    DOT_GRID_RADIUS_RATIO,
+    DOT_GRID_STEP,
+    FIT_PADDING,
+    MAP_HEIGHT,
+    MAP_WIDTH,
+    MAX_SCALE,
+    MIN_SCALE,
+    WORLD_MAP_REGIONS,
+} from './constants';
 import { fitTransform } from './utils/fitTransform';
 import { loadWorldGeometry } from './utils/geometry';
 import { useMapZoom } from './hooks/useMapZoom';
@@ -43,6 +52,12 @@ const TOOLTIP_FLIP_AT = 0.6;
 
 // A shapeless market's dot, in screen pixels at any zoom.
 const DOT_RADIUS = 4;
+
+// A grid dot's radius in canvas units: a share of the lattice step's width at the equator. Unlike
+// the marker above it scales with the zoom — the dots are the land, not a pin on it.
+const gridDotRadius = (step: number): number => {
+    return (step * MAP_WIDTH * DOT_GRID_RADIUS_RATIO) / 360;
+};
 
 // The chosen country: a stroke heavier than its neighbours' and a wash as full as a hover's, so it
 // stays marked once the pointer has moved on to the panel beside it.
@@ -84,12 +99,13 @@ function WorldMapView({
     regionLabels,
     countryNames,
     render = 'shapes',
+    dotStep = DOT_GRID_STEP,
     isStale = false,
     selectedCode = null,
     onSelect,
     geometryPromise,
 }: WorldMapViewProps) {
-    const { shapes, points, regionBounds } = use(geometryPromise);
+    const { shapes, points, regionBounds, dotGrid } = use(geometryPromise);
     const svgRef = useRef<SVGSVGElement>(null);
     const frameRef = useRef<HTMLDivElement>(null);
     const { transform, isUserDriven, fitTo } = useMapZoom(svgRef);
@@ -107,12 +123,12 @@ function WorldMapView({
     const outlined = shapes.filter((shape) => {
         return shape.code === null || !byCode.has(shape.code);
     });
-    const painted =
-        render === 'shapes'
-            ? shapes.filter((shape) => {
-                  return shape.code !== null && byCode.has(shape.code);
-              })
-            : [];
+    const painted = shapes.filter((shape) => {
+        return shape.code !== null && byCode.has(shape.code);
+    });
+    // Cached per step on the geometry, so a re-render pays for a lookup and a density change pays
+    // once.
+    const grid = render === 'dots' ? dotGrid(dotStep) : null;
     // A painted market the atlas has no shape for is a dot instead (Singapore, Hong Kong, Malta…).
     const shaped = new Set(
         shapes.map((shape) => {
@@ -197,6 +213,53 @@ function WorldMapView({
                         : undefined
                 }
             />
+        );
+    }
+
+    // The dot grid's country: its lattice points as circles, painted like the shape's fill would
+    // be, over an invisible copy of the shape that catches the pointer — a hover between two dots
+    // is still a hover on the country, and the card, the click and the cursor are the shape's own.
+    function renderDotted(shape: WorldShape) {
+        const country = shape.code === null ? undefined : byCode.get(shape.code);
+        const isSelected = country !== undefined && country.code === selectedCode;
+        const fill = country ? TONE_STROKE[country.tone] : 'var(--map-land)';
+        const fillOpacity = fillOpacityFor(country, isSelected);
+        const radius = gridDotRadius(dotStep);
+
+        return (
+            <g
+                key={shape.key}
+                className={cn('group', country && onSelect && 'cursor-pointer')}
+                data-selected={isSelected || undefined}
+                onPointerMove={(event) => {
+                    handlePointerMove(shape, event);
+                }}
+                onPointerLeave={handlePointerLeave}
+                onClick={
+                    country
+                        ? () => {
+                              handleClick(country);
+                          }
+                        : undefined
+                }
+            >
+                <path d={shape.d} className="fill-transparent stroke-none" />
+                {grid?.[shape.key]?.map(([cx, cy]) => {
+                    return (
+                        <circle
+                            key={`${cx},${cy}`}
+                            cx={cx}
+                            cy={cy}
+                            r={radius}
+                            style={{ fill, fillOpacity }}
+                            className={cn(
+                                'pointer-events-none motion-safe:transition-[fill-opacity] motion-safe:duration-150',
+                                country && 'group-hover:[fill-opacity:0.7]!'
+                            )}
+                        />
+                    );
+                })}
+            </g>
         );
     }
 
@@ -307,23 +370,18 @@ function WorldMapView({
                     aria-label="World map"
                 >
                     <g transform={transform.toString()}>
-                        {outlined.map((shape) => {
-                            return renderShape(shape, undefined);
-                        })}
-                        {painted.map((shape) => {
-                            return renderShape(shape, byCode.get(shape.code ?? ''));
-                        })}
-                        {render === 'shapes' && dotted.map(renderDot)}
+                        {render === 'shapes' &&
+                            outlined.map((shape) => {
+                                return renderShape(shape, undefined);
+                            })}
+                        {render === 'shapes' &&
+                            painted.map((shape) => {
+                                return renderShape(shape, byCode.get(shape.code ?? ''));
+                            })}
+                        {render === 'dots' && shapes.map(renderDotted)}
+                        {dotted.map(renderDot)}
                     </g>
                 </svg>
-
-                {/* The dot grid is slice 17's experiment: the branch exists so a page can ask for it,
-                    and answers with the land alone until it is built. */}
-                {render === 'dots' && (
-                    <p className="text-muted-foreground absolute inset-x-0 bottom-2 text-center text-xs">
-                        Dot grid render is not built yet.
-                    </p>
-                )}
 
                 {renderTooltip()}
             </div>

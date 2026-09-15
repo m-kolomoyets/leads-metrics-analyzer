@@ -1,10 +1,12 @@
 import type { GeometryCollection, Topology } from 'topojson-specification';
 import type { WorldMapRegion } from '../types';
+import type { DotGrid, DotGridCountry } from './dotGrid';
 import type { ProjectedBounds } from './fitTransform';
 import { geoNaturalEarth1, geoPath } from 'd3-geo';
 import countries from 'i18n-iso-countries';
 import { feature } from 'topojson-client';
 import { ANTARCTICA_ID, MAP_HEIGHT, MAP_WIDTH, MICRO_COUNTRIES, REGION_BOUNDS } from '../constants';
+import { buildDotGrid } from './dotGrid';
 
 // The world's shapes, projected once. The atlas is ~110 kB of TopoJSON, so it is code-split and
 // pulled in only when a map first renders — after the page has painted its frame — and then kept
@@ -26,6 +28,9 @@ export type WorldGeometry = {
     points: Record<string, [number, number]>;
     // Each region's box, projected, for the panel's presets.
     regionBounds: Record<Exclude<WorldMapRegion, 'world'>, ProjectedBounds>;
+    // The dot grid (slice 17) at a lattice step in degrees, projected and keyed by shape key. Built
+    // on first ask per step and kept: the lattice is a function of the geometry and the step alone.
+    dotGrid: (step: number) => DotGrid;
 };
 
 type CountryProperties = { name: string };
@@ -77,6 +82,7 @@ const buildGeometry = (world: WorldTopology): WorldGeometry => {
     const path = geoPath(projection);
     const collection = feature(world, world.objects.countries);
 
+    const land: DotGridCountry[] = [];
     const shapes = collection.features.flatMap((shape): WorldShape[] => {
         const id = String(shape.id ?? '');
 
@@ -90,9 +96,13 @@ const buildGeometry = (world: WorldTopology): WorldGeometry => {
             return [];
         }
 
+        const key = id || shape.properties.name;
+
+        land.push({ key, feature: shape });
+
         return [
             {
-                key: id || shape.properties.name,
+                key,
                 code: countries.numericToAlpha2(id) ?? null,
                 name: shape.properties.name,
                 d,
@@ -116,7 +126,19 @@ const buildGeometry = (world: WorldTopology): WorldGeometry => {
         }
     }
 
-    return { shapes, points, regionBounds };
+    const dotGrids = new Map<number, DotGrid>();
+    const dotGrid = (step: number): DotGrid => {
+        let grid = dotGrids.get(step);
+
+        if (!grid) {
+            grid = buildDotGrid(land, projection, step);
+            dotGrids.set(step, grid);
+        }
+
+        return grid;
+    };
+
+    return { shapes, points, regionBounds, dotGrid };
 };
 
 let pending: Promise<WorldGeometry> | null = null;

@@ -29,8 +29,8 @@ export type WorldMapCountry = {
     tooltip: WorldMapTooltip;
 };
 
-// Shapes ship; the dot grid is an experiment on the Design System page (slice 17) and not a mode a
-// page picks yet.
+// Shapes ship; the dot grid is an experiment on the Design System page (slice 17), judged there
+// and not a mode a page picks yet.
 export type WorldMapRender = 'shapes' | 'dots';
 
 export type WorldMapProps = {
@@ -41,6 +41,8 @@ export type WorldMapProps = {
     // names; a caller with better names passes them here, keyed by code.
     countryNames?: Record<string, string>;
     render?: WorldMapRender;
+    // The dot grid's density, as the lattice step in degrees; fewer is denser. Read only by `dots`.
+    dotStep?: number;
     // Dims the whole plot while a new period loads, so the old map stays legible underneath.
     isStale?: boolean;
     // The country drawn as chosen — a heavier stroke, a fuller wash. Only a listed country can be
