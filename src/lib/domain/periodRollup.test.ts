@@ -1,5 +1,5 @@
 import type { PeriodGeoRow, PeriodRollupInput, PeriodSnapshotRow } from './periodRollup';
-import { countryRollup, THIN_REVENUE_USD } from './periodRollup';
+import { countryBuyers, countryRollup, THIN_REVENUE_USD } from './periodRollup';
 
 // The Home map's per-country figures (offers-and-home/13, PRD stories 46–49): each buyer's latest
 // active push per report date (ADR-0017), summed per Geo on the Geo Total basis across the period's
@@ -177,5 +177,118 @@ describe('countryRollup', () => {
                 return row.geo;
             })
         ).toEqual(['KR']);
+    });
+});
+
+// The country panel's rows (offers-and-home/14): one per buyer in the market, the same selection and
+// basis as the map, so the rows sum to the tooltip's figures. Sorted by profit, best first.
+describe('countryBuyers', () => {
+    it('sums one buyer over two days and remembers their last report date', () => {
+        const rows = countryBuyers(
+            input({
+                snapshots: [
+                    push({ snapshotId: 's1', reportDate: '2026-09-10' }),
+                    push({ snapshotId: 's2', reportDate: '2026-09-12', takenAt: '2026-09-12T10:00:00Z' }),
+                ],
+                geos: [
+                    geo({ snapshotId: 's1', spendPlus: 1000, geoTotal: 1500 }),
+                    geo({ snapshotId: 's2', spendPlus: 500, geoTotal: 400 }),
+                ],
+            }),
+            'KR'
+        );
+
+        expect(rows).toEqual([
+            {
+                buyerUserId: 'u1',
+                spend: 1500,
+                revenue: 1900,
+                profit: 400,
+                roi: (400 / 1500) * 100,
+                lastReportDate: '2026-09-12',
+                zone: 'yellow',
+                isThin: false,
+            },
+        ]);
+    });
+
+    it('takes the latest push of a day and ignores a replaced one, like the map', () => {
+        const rows = countryBuyers(
+            input({
+                snapshots: [
+                    push({ snapshotId: 's1', takenAt: '2026-09-10T10:00:00Z' }),
+                    push({ snapshotId: 's2', takenAt: '2026-09-10T12:00:00Z' }),
+                    push({ snapshotId: 's3', takenAt: '2026-09-10T14:00:00Z', status: 'replaced' }),
+                ],
+                geos: [
+                    geo({ snapshotId: 's1', spendPlus: 1000, geoTotal: 1500 }),
+                    geo({ snapshotId: 's2', spendPlus: 1200, geoTotal: 1800 }),
+                    geo({ snapshotId: 's3', spendPlus: 9000, geoTotal: 9000 }),
+                ],
+            }),
+            'KR'
+        );
+
+        expect(rows[0]).toMatchObject({ spend: 1200, revenue: 1800, lastReportDate: '2026-09-10' });
+    });
+
+    it('lists only the market asked for, sorted by profit, best first', () => {
+        const data = input({
+            snapshots: [
+                push({ snapshotId: 's1', buyerUserId: 'u1' }),
+                push({ snapshotId: 's2', buyerUserId: 'u2' }),
+                push({ snapshotId: 's3', buyerUserId: 'u3' }),
+            ],
+            geos: [
+                geo({ snapshotId: 's1', spendPlus: 1000, geoTotal: 1200 }),
+                geo({ snapshotId: 's2', spendPlus: 1000, geoTotal: 2000 }),
+                geo({ snapshotId: 's3', geo: 'JP', spendPlus: 100, geoTotal: 900 }),
+            ],
+        });
+
+        expect(
+            countryBuyers(data, 'KR').map((row) => {
+                return row.buyerUserId;
+            })
+        ).toEqual(['u2', 'u1']);
+        expect(countryBuyers(data, 'JP')).toHaveLength(1);
+        expect(countryBuyers(data, 'DE')).toEqual([]);
+    });
+
+    it('sums to the map figures for the same market', () => {
+        const data = input({
+            snapshots: [push({ snapshotId: 's1', buyerUserId: 'u1' }), push({ snapshotId: 's2', buyerUserId: 'u2' })],
+            geos: [
+                geo({ snapshotId: 's1', spendPlus: 1000, geoTotal: 1200 }),
+                geo({ snapshotId: 's2', spendPlus: 300, geoTotal: 100 }),
+            ],
+        });
+        const market = countryRollup(data).find((row) => {
+            return row.geo === 'KR';
+        });
+        const rows = countryBuyers(data, 'KR');
+
+        expect(
+            rows.reduce((sum, row) => {
+                return sum + row.spend;
+            }, 0)
+        ).toBe(market?.spend);
+        expect(
+            rows.reduce((sum, row) => {
+                return sum + row.revenue;
+            }, 0)
+        ).toBe(market?.revenue);
+    });
+
+    it('reads a thin buyer as neutral, the market rule applied per row', () => {
+        const rows = countryBuyers(
+            input({
+                snapshots: [push({ snapshotId: 's1' })],
+                geos: [geo({ snapshotId: 's1', spendPlus: 100, geoTotal: THIN_REVENUE_USD - 1 })],
+            }),
+            'KR'
+        );
+
+        expect(rows[0]).toMatchObject({ zone: 'neutral', isThin: true });
     });
 });

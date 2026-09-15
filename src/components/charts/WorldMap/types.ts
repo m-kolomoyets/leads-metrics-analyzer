@@ -42,5 +42,11 @@ export type WorldMapProps = {
     render?: WorldMapRender;
     // Dims the whole plot while a new period loads, so the old map stays legible underneath.
     isStale?: boolean;
+    // The country drawn as chosen — a heavier stroke, a fuller wash. Only a listed country can be
+    // chosen: an outline has nothing to open.
+    selectedCode?: string | null;
+    // Fired on a click on a listed country; drag and wheel never reach it. The caller owns the
+    // selection (a URL param, say) and hands it back as `selectedCode`.
+    onSelect?: (code: string) => void;
     className?: string;
 };

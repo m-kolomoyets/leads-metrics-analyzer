@@ -3,7 +3,8 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 import countries from 'i18n-iso-countries';
 import enLocale from 'i18n-iso-countries/langs/en.json' with { type: 'json' };
-import { countryRollup } from '@/lib/domain/periodRollup';
+import { countryBuyers, countryRollup } from '@/lib/domain/periodRollup';
+import { cn } from '@/lib/utils/cn';
 import { kyivDay } from '@/lib/utils/kyivDay';
 import { homeGeoQueryOptions } from '@/services/home/queries';
 import { WorldMap } from '@/components/charts/WorldMap';
@@ -14,8 +15,10 @@ import {
 } from '@/components/layouts/MainLayoutHeader';
 import { Loader } from '@/components/ui/Loader';
 import { REGION_LABELS } from './constants';
+import { periodLabel } from './utils/format';
 import { toMapCountries } from './utils/mapCountries';
 import { resolvePeriod } from './utils/period';
+import { CountryPanel } from './components/CountryPanel';
 import { MapLegend } from './components/MapLegend';
 import { PeriodPicker } from './components/PeriodPicker';
 
@@ -29,17 +32,12 @@ const countryName = (geo: string): string => {
     return countries.getName(geo, 'en') ?? geo;
 };
 
-const periodFormat = new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', day: 'numeric', month: 'short' });
-
-const periodLabel = (from: string, to: string): string => {
-    return `${periodFormat.format(new Date(`${from}T00:00:00Z`))} — ${periodFormat.format(new Date(`${to}T00:00:00Z`))}`;
-};
-
 // Home (offers-and-home/13, PRD stories 46–53): the period's geography in one look. The server hands
 // back the frozen Geo Rollups within the viewer's row-scope — a buyer's own pushes, a lead's team,
 // everyone's for bdm and head — and `countryRollup` picks each buyer's latest push per day and sums
 // per market (ADR-0004). The map is a chart primitive that knows none of this (ADR-0025): what it
-// gets is a tone per country and the words for its hover card.
+// gets is a tone per country and the words for its hover card. A click on a market opens it beside
+// the map (slice 14) — the same rollup, split by buyer — and the choice lives in the URL.
 function Home() {
     const search = routeApi.useSearch();
     const navigate = routeApi.useNavigate();
@@ -57,9 +55,59 @@ function Home() {
     });
     const rows = data ? countryRollup(data) : [];
     const mapCountries = toMapCountries(rows, countryName);
+    const selected = search.country ?? null;
 
     function handlePeriodChange(next: HomePeriod) {
-        navigate({ search: next, replace: true });
+        // The period is replaced whole (a preset carries no `from`/`to`); the opened country stays.
+        navigate({
+            search: (previous) => {
+                return { country: previous.country, ...next };
+            },
+            replace: true,
+        });
+    }
+
+    function handleSelect(country: string | null) {
+        navigate({
+            search: (previous) => {
+                return { ...previous, country: country ?? undefined };
+            },
+            replace: true,
+        });
+    }
+
+    function handleClose() {
+        handleSelect(null);
+    }
+
+    function renderPanel() {
+        if (selected === null) {
+            return null;
+        }
+
+        // The panel's rows come off the rows the map was painted from: one read, two views of it.
+        const nicknames = new Map(
+            (data?.snapshots ?? []).map((row) => {
+                return [row.buyerUserId, row.buyerNickname] as const;
+            })
+        );
+        const buyers = (data ? countryBuyers(data, selected) : []).map((row) => {
+            return { ...row, nickname: nicknames.get(row.buyerUserId) ?? row.buyerUserId };
+        });
+        const market = rows.find((row) => {
+            return row.geo === selected;
+        });
+
+        return (
+            <CountryPanel
+                geo={selected}
+                name={countryName(selected)}
+                market={market}
+                buyers={buyers}
+                isLoading={isPending}
+                onClose={handleClose}
+            />
+        );
     }
 
     return (
@@ -71,15 +119,19 @@ function Home() {
                 </MainLayoutHeaderActions>
             </MainLayoutHeader>
 
-            <div className="flex flex-col gap-3">
+            <div className={cn('grid gap-3', selected !== null && 'lg:grid-cols-[minmax(0,1fr)_minmax(20rem,24rem)]')}>
                 <WorldMap
                     countries={mapCountries}
                     regionLabels={REGION_LABELS}
                     isStale={isPlaceholderData}
-                    className="w-full"
+                    selectedCode={selected}
+                    onSelect={handleSelect}
+                    className="w-full min-w-0"
                 />
 
-                <div className="flex flex-wrap items-center justify-between gap-2">
+                {renderPanel()}
+
+                <div className="flex flex-wrap items-center justify-between gap-2 lg:col-span-full">
                     <MapLegend />
                     {isPending && <Loader />}
                     {!isPending && rows.length === 0 && (

@@ -44,6 +44,31 @@ const TOOLTIP_FLIP_AT = 0.6;
 // A shapeless market's dot, in screen pixels at any zoom.
 const DOT_RADIUS = 4;
 
+// The chosen country: a stroke heavier than its neighbours' and a wash as full as a hover's, so it
+// stays marked once the pointer has moved on to the panel beside it.
+const SELECTED_STROKE_WIDTH = 2.5;
+const SELECTED_FILL_OPACITY = 0.7;
+
+const strokeWidthFor = (country: WorldMapCountry | undefined, isSelected: boolean): number => {
+    if (!country) {
+        return 0.5;
+    }
+
+    return isSelected ? SELECTED_STROKE_WIDTH : 1.25;
+};
+
+const fillOpacityFor = (country: WorldMapCountry | undefined, isSelected: boolean): number | string => {
+    if (!country) {
+        return 1;
+    }
+
+    if (isSelected) {
+        return SELECTED_FILL_OPACITY;
+    }
+
+    return country.fillOpacity ?? 'var(--map-fill-opacity)';
+};
+
 type WorldMapViewProps = WorldMapProps & {
     geometryPromise: Promise<Awaited<ReturnType<typeof loadWorldGeometry>>>;
 };
@@ -54,6 +79,8 @@ function WorldMapView({
     countryNames,
     render = 'shapes',
     isStale = false,
+    selectedCode = null,
+    onSelect,
     geometryPromise,
 }: WorldMapViewProps) {
     const { shapes, points, regionBounds } = use(geometryPromise);
@@ -124,10 +151,17 @@ function WorldMapView({
         setHover(null);
     }
 
+    // A click on a listed country. A drag ends in a click too, but d3-zoom swallows that one before
+    // it reaches React, so only a still pointer selects.
+    function handleClick(country: WorldMapCountry) {
+        onSelect?.(country.code);
+    }
+
     function renderShape(shape: WorldShape, country: WorldMapCountry | undefined) {
         const stroke = country ? TONE_STROKE[country.tone] : 'var(--map-land-stroke)';
         const fill = country ? TONE_STROKE[country.tone] : 'var(--map-land)';
-        const fillOpacity = country ? (country.fillOpacity ?? 'var(--map-fill-opacity)') : 1;
+        const isSelected = country !== undefined && country.code === selectedCode;
+        const fillOpacity = fillOpacityFor(country, isSelected);
 
         return (
             <path
@@ -136,23 +170,33 @@ function WorldMapView({
                 // Strokes keep their width under zoom: a border that thickens as the reader zooms in
                 // becomes the map, and the fill it outlines disappears behind it.
                 vectorEffect="non-scaling-stroke"
-                strokeWidth={country ? 1.25 : 0.5}
+                strokeWidth={strokeWidthFor(country, isSelected)}
                 strokeLinejoin="round"
                 style={{ fill, fillOpacity, stroke }}
                 className={cn(
                     'motion-safe:transition-[fill-opacity] motion-safe:duration-150',
-                    country && 'hover:[fill-opacity:0.7]!'
+                    country && 'hover:[fill-opacity:0.7]!',
+                    country && onSelect && 'cursor-pointer'
                 )}
+                data-selected={isSelected || undefined}
                 onPointerMove={(event) => {
                     handlePointerMove(shape, event);
                 }}
                 onPointerLeave={handlePointerLeave}
+                onClick={
+                    country
+                        ? () => {
+                              handleClick(country);
+                          }
+                        : undefined
+                }
             />
         );
     }
 
     function renderDot(country: WorldMapCountry) {
         const [cx, cy] = points[country.code];
+        const isSelected = country.code === selectedCode;
 
         return (
             <circle
@@ -162,17 +206,24 @@ function WorldMapView({
                 // Held at one screen size under zoom, like the strokes: a dot is a marker, not land.
                 r={DOT_RADIUS / transform.k}
                 vectorEffect="non-scaling-stroke"
-                strokeWidth={1.25}
+                strokeWidth={strokeWidthFor(country, isSelected)}
                 style={{
                     fill: TONE_STROKE[country.tone],
-                    fillOpacity: country.fillOpacity ?? 'var(--map-fill-opacity)',
+                    fillOpacity: fillOpacityFor(country, isSelected),
                     stroke: TONE_STROKE[country.tone],
                 }}
-                className="motion-safe:transition-[fill-opacity] hover:[fill-opacity:0.7]! motion-safe:duration-150"
+                className={cn(
+                    'motion-safe:transition-[fill-opacity] hover:[fill-opacity:0.7]! motion-safe:duration-150',
+                    onSelect && 'cursor-pointer'
+                )}
+                data-selected={isSelected || undefined}
                 onPointerMove={(event) => {
                     handlePointerMove({ code: country.code, name: country.code }, event);
                 }}
                 onPointerLeave={handlePointerLeave}
+                onClick={() => {
+                    handleClick(country);
+                }}
             />
         );
     }

@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { HOME_PERIODS } from './utils/period';
 
-// The Home page's search params (offers-and-home/13). The feed's `range`/`from`/`to` names with the
-// Home token vocabulary; `.catch()` throughout per repo convention, so a stale token or a mangled
-// date opens on this month rather than throwing the page away.
+// The Home page's search params (offers-and-home/13, 14). The feed's `range`/`from`/`to` names with
+// the Home token vocabulary, plus the opened country; `.catch()` throughout per repo convention, so
+// a stale token or a mangled date opens on this month rather than throwing the page away.
 
 const calendarDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
@@ -12,4 +12,10 @@ export const homeSearchSchema = z.object({
     // Meaningful only for `custom`; a missing edge resolves to today (`resolvePeriod`).
     from: calendarDateSchema.optional().catch(undefined),
     to: calendarDateSchema.optional().catch(undefined),
+    // The market opened in the panel (slice 14), ISO alpha-2, so a country view is a link.
+    country: z
+        .string()
+        .regex(/^[A-Z]{2}$/)
+        .optional()
+        .catch(undefined),
 });

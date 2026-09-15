@@ -2,12 +2,12 @@ import type { Viewer } from '@/lib/auth/scope';
 import type { MeData } from '@/services/auth/types';
 import type { HomeGeoView } from './types';
 import { createServerFn } from '@tanstack/react-start';
-import { and, gte, inArray, lte } from 'drizzle-orm';
+import { and, eq, gte, inArray, lte } from 'drizzle-orm';
 import { seesDollarsOn } from '@/lib/auth/dollarSurface';
 import { FORBIDDEN_MESSAGE, requireUser } from '@/lib/auth/guards';
 import { scopeFor } from '@/lib/auth/scope';
 import { db } from '@/lib/db';
-import { snapshot, snapshotGeo } from '@/lib/db/schema';
+import { snapshot, snapshotGeo, user } from '@/lib/db/schema';
 import { kyivDay } from '@/lib/utils/kyivDay';
 import { listSnapshotsFilter, matchesNoRows } from '@/services/snapshots/visibility';
 import { homeRangeInputSchema } from './schemas';
@@ -45,11 +45,15 @@ export const listHomeGeoFn = createServerFn({ method: 'GET' })
             .select({
                 snapshotId: snapshot.id,
                 buyerUserId: snapshot.createdByUserId,
+                // Named here so the country panel (slice 14) reads off the same rows — no second
+                // fetch for who a buyer is.
+                buyerNickname: user.nickname,
                 reportDate: snapshot.reportDate,
                 takenAt: snapshot.takenAt,
                 status: snapshot.status,
             })
             .from(snapshot)
+            .innerJoin(user, eq(user.id, snapshot.createdByUserId))
             .where(
                 and(listSnapshotsFilter(scope), gte(snapshot.reportDate, data.from), lte(snapshot.reportDate, data.to))
             )
