@@ -1,5 +1,6 @@
 import type { ActualFunnel } from './claim';
 import { daysUntilDeadline } from './deadline';
+import { latestPerBuyerDay } from './latestPush';
 
 // The offer buyer rating (offers-and-home/11, PRD stories 38–45): who ran this offer in the period,
 // and what they made of it. Pure — the server selects the frozen rows within the viewer's row-scope
@@ -95,27 +96,6 @@ export const ratingPeriodRange = (period: RatingPeriod, today: string): { from: 
 // The window's bounds; `from` is null for all time, so the server puts no lower bound on the read.
 export const ratingWindowRange = (window: RatingWindow, today: string): { from: string | null; to: string } => {
     return window === 'all' ? { from: null, to: today } : ratingPeriodRange(window, today);
-};
-
-// Snapshots are cumulative — each push restates the day so far — so the latest active push per
-// buyer per report date IS that day (ADR-0017); ties on `taken_at` go to arrival order.
-const latestPerBuyerDay = (snapshots: RatingSnapshotRow[]): RatingSnapshotRow[] => {
-    const latest = new Map<string, RatingSnapshotRow>();
-
-    for (const row of snapshots) {
-        if (row.status !== 'active') {
-            continue;
-        }
-
-        const key = `${row.buyerUserId}\u0000${row.reportDate}`;
-        const current = latest.get(key);
-
-        if (!current || Date.parse(row.takenAt) >= Date.parse(current.takenAt)) {
-            latest.set(key, row);
-        }
-    }
-
-    return [...latest.values()];
 };
 
 // The offer's Attributed funnel over the counted pushes, every visible buyer together — the actual

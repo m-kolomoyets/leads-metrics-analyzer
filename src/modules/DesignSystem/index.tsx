@@ -16,6 +16,7 @@ import { formatContrastRatio } from './utils/contrast';
 import { ActionPrimitives } from './components/ActionPrimitives';
 import { ContentPrimitives } from './components/ContentPrimitives';
 import { FormPrimitives } from './components/FormPrimitives';
+import { MapPrimitive } from './components/MapPrimitive';
 import { OverlayPrimitives } from './components/OverlayPrimitives';
 import { Section } from './components/Section';
 import { Specimen } from './components/Specimen';
@@ -303,6 +304,18 @@ function DesignSystem() {
                 <ThemeSplit>
                     {() => {
                         return <ContentPrimitives />;
+                    }}
+                </ThemeSplit>
+            </Section>
+
+            <Section
+                id="map"
+                title="Charts — WorldMap"
+                description="Zone on the stroke at full strength, the same hue washed inside at --map-fill-opacity; land with nothing to say in --map-land. Wheel zooms, drag pans, the region row is a camera preset. Dots is slice 17's stub."
+            >
+                <ThemeSplit>
+                    {() => {
+                        return <MapPrimitive />;
                     }}
                 </ThemeSplit>
             </Section>

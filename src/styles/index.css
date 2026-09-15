@@ -106,6 +106,13 @@
        and this only gives the panel somewhere to stand. */
     --chart-fill-opacity: 0.3;
     --chart-fill-blur: 14px;
+
+    /* The world map (offers-and-home/13), additive like the chart tokens above. A market with no
+       reports is land, not a verdict: the grid's own grey, hairlined a step darker. A painted market
+       wears its zone at full strength on the stroke and this much of it as a wash. */
+    --map-land: #ededed;
+    --map-land-stroke: #d0d0d0;
+    --map-fill-opacity: 0.28;
 }
 
 .dark {
@@ -168,6 +175,9 @@
     --chart-halo-blur: 10px;
     --chart-fill-opacity: 0.42;
     --chart-fill-blur: 16px;
+    --map-land: #232328;
+    --map-land-stroke: #3a3a40;
+    --map-fill-opacity: 0.4;
 }
 
 @theme inline {
